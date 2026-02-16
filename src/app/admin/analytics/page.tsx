@@ -39,6 +39,7 @@ interface AnalyticsData {
   order_status: Record<string, number>;
 }
 
+
 const STATUS_COLORS: Record<string, string> = {
   pending: '#eab308',
   processing: '#3b82f6',
@@ -182,9 +183,12 @@ export default function AnalyticsPage() {
                   dataKey="date"
                   stroke="#64748b"
                   fontSize={12}
-                  tickFormatter={(v: string) => new Date(v).toLocaleDateString('en', { month: 'short', day: 'numeric' })}
+                  tickFormatter={(v) => new Date(String(v)).toLocaleDateString('en', { month: 'short', day: 'numeric' })}
                 />
-                <YAxis stroke="#64748b" fontSize={12} tickFormatter={(v: number) => `₦${(v / 1000).toFixed(0)}k`} />
+                <YAxis stroke="#64748b" fontSize={12} tickFormatter={(v) => {
+                  const num = Number(v ?? 0)
+                  return `₦${(num / 1000).toFixed(0)}k`
+                }} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#e2e8f0' }}
                   labelFormatter={(v) => new Date(String(v)).toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })}
@@ -217,7 +221,7 @@ export default function AnalyticsPage() {
                     dataKey="date"
                     stroke="#64748b"
                     fontSize={11}
-                    tickFormatter={(v: string) => new Date(v).toLocaleDateString('en', { day: 'numeric' })}
+                    tickFormatter={(v) => new Date(String(v)).toLocaleDateString('en', { day: 'numeric' })}
                   />
                   <YAxis stroke="#64748b" fontSize={11} allowDecimals={false} />
                   <Tooltip
@@ -251,7 +255,10 @@ export default function AnalyticsPage() {
                     outerRadius={80}
                     paddingAngle={3}
                     dataKey="value"
-                    label={(props: any) => `${props.name || ''} ${((props.percent || 0) * 100).toFixed(0)}%`}
+                    label={({ name, percent }) => {
+                      const pct = Number(percent ?? 0) * 100
+                      return `${name ?? ''} ${pct.toFixed(0)}%`
+                    }}
                     labelLine={false}
                   >
                     {orderStatusData.map((entry, index) => (
