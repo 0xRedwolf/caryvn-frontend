@@ -2,7 +2,8 @@
 
 [build]
 builder = "nixpacks"
-buildCommand = "npm install && npm run build"
+# Copy static files to standalone directory after build
+buildCommand = "npm install && npm run build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/"
 
 [deploy]
 startCommand = "HOSTNAME=0.0.0.0 PORT=$PORT node .next/standalone/server.js"
