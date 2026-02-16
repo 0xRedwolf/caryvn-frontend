@@ -187,8 +187,8 @@ export default function AnalyticsPage() {
                 <YAxis stroke="#64748b" fontSize={12} tickFormatter={(v: number) => `₦${(v / 1000).toFixed(0)}k`} />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#e2e8f0' }}
-                  labelFormatter={(v: string) => new Date(v).toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })}
-                  formatter={(value: number, name: string) => [`₦${value.toLocaleString()}`, name.charAt(0).toUpperCase() + name.slice(1)]}
+                  labelFormatter={(v) => new Date(String(v)).toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  formatter={(value, name) => [`₦${Number(value).toLocaleString()}`, String(name).charAt(0).toUpperCase() + String(name).slice(1)]}
                 />
                 <Area type="monotone" dataKey="revenue" stroke="#3b82f6" fill="url(#revenueGrad)" strokeWidth={2} />
                 <Area type="monotone" dataKey="profit" stroke="#10b981" fill="url(#profitGrad)" strokeWidth={2} />
@@ -222,7 +222,7 @@ export default function AnalyticsPage() {
                   <YAxis stroke="#64748b" fontSize={11} allowDecimals={false} />
                   <Tooltip
                     contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#e2e8f0' }}
-                    labelFormatter={(v: string) => new Date(v).toLocaleDateString('en', { month: 'short', day: 'numeric' })}
+                    labelFormatter={(v) => new Date(String(v)).toLocaleDateString('en', { month: 'short', day: 'numeric' })}
                   />
                   <Bar dataKey="users" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -251,7 +251,7 @@ export default function AnalyticsPage() {
                     outerRadius={80}
                     paddingAngle={3}
                     dataKey="value"
-                    label={({ name, percent }: { name: string; percent: number }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    label={(props: any) => `${props.name || ''} ${((props.percent || 0) * 100).toFixed(0)}%`}
                     labelLine={false}
                   >
                     {orderStatusData.map((entry, index) => (
