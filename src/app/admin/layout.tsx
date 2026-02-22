@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { ThemeToggle } from '@/contexts/ThemeContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import Logo from '@/components/Logo';
 import { useState } from 'react';
 
 const adminLinks = [
@@ -36,17 +37,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Sidebar */}
         <aside className={`w-64 bg-surface-darker border-r border-border-dark flex flex-col fixed h-screen z-50 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
           {/* Logo */}
-          <div className="h-16 flex items-center justify-between px-6 border-b border-border-dark">
-            <Link href="/admin" className="flex items-center gap-3">
-              <div className="size-8 text-primary flex items-center justify-center rounded-lg bg-primary/10">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                </svg>
-              </div>
-              <div>
-                <span className="text-white text-lg font-bold">Caryvn</span>
-                <span className="block text-xs text-primary">Admin Panel</span>
-              </div>
+          <div className="h-20 flex items-center justify-between px-6 border-b border-border-dark">
+            <Link href="/admin" className="flex items-center gap-2">
+              <Logo width={220} height={72} />
+              <span className="text-xs text-primary font-semibold">Admin</span>
             </Link>
             <div className="flex items-center gap-2">
               <ThemeToggle />
@@ -113,7 +107,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Main Content */}
         <main className="flex-1 lg:ml-64">
           {/* Mobile top bar */}
-          <div className="lg:hidden sticky top-0 z-30 h-14 bg-surface-darker border-b border-border-dark flex items-center justify-between px-4">
+          <div className="lg:hidden sticky top-0 z-30 h-16 bg-surface-darker border-b border-border-dark flex items-center justify-between px-4">
             <button
               onClick={() => setSidebarOpen(true)}
               className="text-text-secondary hover:text-white"
@@ -123,12 +117,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </svg>
             </button>
             <Link href="/admin" className="flex items-center gap-2">
-              <div className="size-7 text-primary flex items-center justify-center rounded-lg bg-primary/10">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                </svg>
-              </div>
-              <span className="text-white text-sm font-bold">Admin</span>
+              <Logo width={200} height={64} />
+              <span className="text-xs text-primary font-semibold">Admin</span>
             </Link>
             <ThemeToggle />
           </div>

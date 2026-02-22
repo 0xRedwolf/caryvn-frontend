@@ -5,22 +5,18 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ThemeToggle } from '@/contexts/ThemeContext';
 import { formatCurrency } from '@/lib/utils';
 import { useState } from 'react';
+import Logo from '@/components/Logo';
 
 export default function Navbar() {
   const { user, isAuthenticated, logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 glass-nav h-16 flex items-center justify-center">
+    <nav className="fixed top-0 left-0 right-0 z-50 glass-nav h-20 flex items-center justify-center">
       <div className="w-full max-w-7xl px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-3 cursor-pointer">
-          <div className="size-8 text-primary flex items-center justify-center rounded-lg bg-primary/10">
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-            </svg>
-          </div>
-          <h2 className="text-white text-lg font-bold tracking-tight">Caryvn</h2>
+        <Link href="/" className="flex items-center cursor-pointer">
+          <Logo width={240} height={80} />
         </Link>
 
         {/* Desktop Nav */}
@@ -80,7 +76,7 @@ export default function Navbar() {
             <>
               <Link
                 href="/login"
-                className="hidden sm:flex h-9 px-4 items-center justify-center rounded-lg text-sm font-medium text-slate-300 hover:text-white transition-colors"
+                className="flex h-9 px-4 items-center justify-center rounded-lg text-sm font-medium text-slate-300 hover:text-white transition-colors"
               >
                 Login
               </Link>
@@ -139,6 +135,11 @@ export default function Navbar() {
             >
               API Docs
             </Link>
+            {/* Theme toggle in mobile menu */}
+            <div className="flex items-center justify-between px-3 py-2 rounded-lg text-slate-300">
+              <span className="text-sm">Theme</span>
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       )}

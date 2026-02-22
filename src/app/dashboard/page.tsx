@@ -121,7 +121,7 @@ export default function DashboardPage() {
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <Link
-          href="/services"
+          href="/dashboard/new-order"
           className="bg-surface-dark rounded-xl border border-border-dark p-5 flex items-center gap-4 card-hover"
         >
           <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
@@ -202,7 +202,7 @@ export default function DashboardPage() {
         ) : (
           <div className="p-8 flex flex-col items-center justify-center">
             <p className="text-text-secondary mb-4">No orders yet</p>
-            <Link href="/services" className="btn-primary inline-flex items-center justify-center">
+            <Link href="/dashboard/new-order" className="btn-primary inline-flex items-center justify-center">
               Browse Services
             </Link>
           </div>

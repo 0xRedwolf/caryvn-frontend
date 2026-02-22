@@ -34,7 +34,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-background-dark">
       <Navbar />
       
-      <div className="flex items-center justify-center min-h-screen pt-16 px-4">
+      <div className="flex items-center justify-center min-h-screen pt-20 px-4">
         <div className="w-full max-w-md">
           {/* Header */}
           <div className="text-center mb-8">
