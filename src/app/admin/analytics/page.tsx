@@ -152,7 +152,9 @@ export default function AnalyticsPage() {
                 </span>
               )}
             </div>
-            <p className="text-2xl font-bold text-white">{card.value}</p>
+            <p className={`text-2xl font-bold ${
+              card.label === 'Total Revenue' ? 'analytics-revenue-text' : card.label === 'Total Profit' ? 'text-emerald-500' : card.label === 'Avg Order Value' ? 'analytics-avg-text' : 'text-white'
+            }`}>{card.value}</p>
             <p className="text-text-secondary text-sm mt-1">
               {card.sub || card.label}
             </p>

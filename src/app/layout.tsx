@@ -10,9 +10,51 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Caryvn - Premium SMM Reseller Panel",
-  description: "SMM Services That Deliver. Fast. Safe. Transparent. Premium social media marketing services at competitive prices.",
-  keywords: ["SMM", "social media marketing", "Instagram followers", "TikTok views", "YouTube subscribers"],
+  metadataBase: new URL('https://www.caryvn.com'),
+  title: "Caryvn - Premium Social Media Boosting Panel",
+  description: "Boost your social media accounts with Caryvn. Cheap, fast, and reliable SMM services for Instagram, TikTok, YouTube, Twitter, Facebook, Audiomack, and more. Over 80 countries supported with instant delivery and 24/7 support.",
+  keywords: [
+    "SMM Panel", 
+    "Social Media Marketing", 
+    "Instagram Followers", 
+    "TikTok Views",
+    "TikTok Followers",
+    "TikTok Likes",
+    "Instagram Followers",
+    "Instagram Likes",
+    "Instagram Views",
+    "YouTube Subscribers",
+    "Cheap SMM Services",
+    "Social Media Boosting",
+    "Social Media Growth",
+    "Twitter likes",
+    "Twitter followers",
+    "Buy Followers",
+    "Digital Marketing",
+    "Caryvn"
+  ],
+  openGraph: {
+    title: "Caryvn - Premium Social Media Boosting Panel",
+    description: "Boost your social media accounts with Caryvn. Cheap, fast, and reliable SMM services. Over 80 countries supported with instant delivery and 24/7 support.",
+    url: "https://www.caryvn.com",
+    siteName: "Caryvn",
+    images: [
+      {
+        url: "/logo-full.png",
+        width: 1200,
+        height: 630,
+        alt: "Caryvn Logo",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Caryvn - Premium Social Media Boosting Panel",
+    description: "Boost your social media accounts with Caryvn. Cheap, fast, and reliable SMM services. Over 80 countries supported with instant delivery and 24/7 support.",
+    images: ["/logo-full.png"],
+  },
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any" },

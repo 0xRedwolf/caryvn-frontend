@@ -1,9 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { adminApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
+
+interface Activity {
+  id: string;
+  action: string;
+  page: string;
+  metadata: Record<string, unknown>;
+  ip_address: string;
+  user_agent: string;
+  created_at: string;
+}
 
 interface User {
   id: string;
@@ -41,6 +51,13 @@ export default function AdminUsersPage() {
   const [txModalBalance, setTxModalBalance] = useState('');
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [txLoading, setTxLoading] = useState(false);
+
+  // Activity modal state
+  const [actModalUser, setActModalUser] = useState<string | null>(null);
+  const [actModalEmail, setActModalEmail] = useState('');
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [actLoading, setActLoading] = useState(false);
+  const actPollRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (token) {
@@ -100,6 +117,44 @@ export default function AdminUsersPage() {
     }
   };
 
+  const fetchActivity = useCallback(async (userId: string) => {
+    if (!token) return;
+    const result = await adminApi.getUserActivity(userId, token);
+    if (result.data) {
+      const data = result.data as { activities: Activity[] };
+      setActivities(data.activities || []);
+    }
+  }, [token]);
+
+  const handleViewActivity = async (userId: string, email: string) => {
+    if (!token) return;
+    setActModalUser(userId);
+    setActModalEmail(email);
+    setActLoading(true);
+    await fetchActivity(userId);
+    setActLoading(false);
+
+    // Start polling every 5 seconds
+    if (actPollRef.current) clearInterval(actPollRef.current);
+    actPollRef.current = setInterval(() => fetchActivity(userId), 5000);
+  };
+
+  const closeActivityModal = () => {
+    setActModalUser(null);
+    setActivities([]);
+    if (actPollRef.current) {
+      clearInterval(actPollRef.current);
+      actPollRef.current = null;
+    }
+  };
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (actPollRef.current) clearInterval(actPollRef.current);
+    };
+  }, []);
+
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'deposit': return 'text-emerald-500';
@@ -107,6 +162,26 @@ export default function AdminUsersPage() {
       case 'refund': return 'text-blue-400';
       case 'bonus': return 'text-amber-400';
       default: return 'text-text-secondary';
+    }
+  };
+
+  const getActionIcon = (action: string) => {
+    switch (action) {
+      case 'page_visit': return '📄';
+      case 'click': return '👆';
+      case 'order': return '🛒';
+      case 'login': return '🔑';
+      default: return '⚡';
+    }
+  };
+
+  const getActionLabel = (action: string) => {
+    switch (action) {
+      case 'page_visit': return 'Page Visit';
+      case 'click': return 'Click';
+      case 'order': return 'Order';
+      case 'login': return 'Login';
+      default: return action;
     }
   };
 
@@ -193,6 +268,12 @@ export default function AdminUsersPage() {
                           Transactions
                         </button>
                         <button
+                          onClick={() => handleViewActivity(user.id, user.email)}
+                          className="px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors"
+                        >
+                          Activity
+                        </button>
+                        <button
                           onClick={() => handleToggleActive(user.id, user.email)}
                           disabled={actionLoading === user.id}
                           className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
@@ -259,6 +340,63 @@ export default function AdminUsersPage() {
                 </div>
               ) : (
                 <p className="text-text-secondary text-center py-8">No transactions found</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Activity Modal */}
+      {actModalUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-surface-dark rounded-2xl border border-border-dark w-full max-w-2xl max-h-[80vh] flex flex-col mx-4">
+            <div className="p-6 border-b border-border-dark flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-white">User Activity</h2>
+                <p className="text-text-secondary text-sm">
+                  {actModalEmail}
+                  <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-xs">
+                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+                    Live — refreshing every 5s
+                  </span>
+                </p>
+              </div>
+              <button
+                onClick={closeActivityModal}
+                className="text-text-secondary hover:text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              {actLoading ? (
+                <div className="text-center py-8">
+                  <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+                </div>
+              ) : activities.length > 0 ? (
+                <div className="space-y-2">
+                  {activities.map((act) => (
+                    <div key={act.id} className="flex items-start gap-3 p-3 rounded-lg bg-surface-darker/50 border border-border-dark">
+                      <span className="text-lg mt-0.5">{getActionIcon(act.action)}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold uppercase text-primary">{getActionLabel(act.action)}</span>
+                          <span className="text-white font-medium text-sm truncate">{act.page}</span>
+                        </div>
+                        <div className="flex items-center gap-3 mt-1">
+                          {act.ip_address && (
+                            <span className="text-text-secondary text-xs">IP: {act.ip_address}</span>
+                          )}
+                          <span className="text-text-secondary text-xs">{formatDate(act.created_at)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-text-secondary text-center py-8">No activity recorded yet</p>
               )}
             </div>
           </div>

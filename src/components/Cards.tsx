@@ -84,9 +84,10 @@ interface StatsCardProps {
   icon: React.ReactNode;
   change?: string;
   positive?: boolean;
+  valueClassName?: string;
 }
 
-export function StatsCard({ title, value, icon, change, positive }: StatsCardProps) {
+export function StatsCard({ title, value, icon, change, positive, valueClassName }: StatsCardProps) {
   return (
     <div className="bg-surface-dark rounded-xl border border-border-dark p-5">
       <div className="flex items-center justify-between mb-3">
@@ -95,7 +96,7 @@ export function StatsCard({ title, value, icon, change, positive }: StatsCardPro
           {icon}
         </div>
       </div>
-      <p className="text-white text-2xl font-bold">{value}</p>
+      <p className={`text-2xl font-bold ${valueClassName || 'text-white'}`}>{value}</p>
       {change && (
         <p className={`text-xs mt-1 ${positive ? 'text-emerald-500' : 'text-red-500'}`}>
           {positive ? '↑' : '↓'} {change}
