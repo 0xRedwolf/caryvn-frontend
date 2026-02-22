@@ -344,6 +344,16 @@ html.light .hover\:bg-primary\/5:hover {
   background-color: #dbeafe !important;
 }
 
+/* Light mode sidebar/nav hover - soft blue tint instead of grey */
+html.light .hover\:bg-surface-dark:hover {
+  background-color: #eff6ff !important;
+}
+
+/* Light mode table row hover - soft blue tint instead of grey */
+html.light .hover\:bg-surface-darker\/50:hover {
+  background-color: #eff6ff !important;
+}
+
 /* Soft highlight section for light mode */
 html.light .bg-soft-section {
   background-color: #eff6ff;

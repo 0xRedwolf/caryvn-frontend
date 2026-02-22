@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import Logo from '@/components/Logo';
 
 export default function Footer() {
   return (
@@ -7,13 +10,8 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="md:col-span-1">
-            <Link href="/" className="flex items-center gap-3 mb-4">
-              <div className="size-8 text-primary flex items-center justify-center rounded-lg bg-primary/10">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                </svg>
-              </div>
-              <span className="text-white text-lg font-bold">Caryvn</span>
+            <Link href="/" className="block mb-3" style={{ height: '60px', overflow: 'hidden' }}>
+              <Logo width={240} height={240} className="object-contain object-left" style={{ marginTop: '-90px' }} />
             </Link>
             <p className="text-text-secondary text-sm">
               Premium SMM services that deliver results. Fast, safe, and reliable social media growth.

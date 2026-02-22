@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
 import { servicesApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -80,7 +78,7 @@ const platformConfig = [
   { name: "Spotify", dark: "bg-green-500 text-white", light: "bg-green-500 text-white" },
 ];
 
-export default function ServicesPage() {
+export default function NewOrderPage() {
   const { theme } = useTheme();
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -241,228 +239,216 @@ export default function ServicesPage() {
     : 0;
 
   return (
-    <div className="min-h-screen bg-background-dark">
-      <Navbar />
-
-      <div className="pt-24 pb-16">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Tabs */}
-          <div className="flex gap-2 mb-8">
-            <button className="px-6 py-3 rounded-lg bg-primary text-white font-medium">
-              New order
-            </button>
-            <button className="px-6 py-3 rounded-lg bg-surface-dark text-text-secondary border border-border-dark hover:text-white transition-colors">
-              Favorites
-            </button>
-          </div>
-
-          {/* Platform Icons */}
-          <div className="flex flex-wrap gap-2 mb-8">
-            {platformConfig.map((platform) => (
-              <button
-                key={platform.name}
-                onClick={() => setSelectedPlatform(platform.name)}
-                className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold transition-all ${
-                  selectedPlatform === platform.name
-                    ? `${theme === 'dark' ? platform.dark : platform.light} scale-110 shadow-lg`
-                    : "bg-surface-dark text-text-secondary hover:text-white border border-border-dark"
-                }`}
-                title={platform.name}
-              >
-                <PlatformIcon name={platform.name} />
-              </button>
-            ))}
-          </div>
-
-          {/* Order Form Card */}
-          <div className="bg-surface-dark rounded-2xl border border-border-dark p-6">
-            {loading ? (
-              <div className="py-12 text-center">
-                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-text-secondary">Loading services...</p>
-              </div>
-            ) : (
-              <form onSubmit={handleOrderSubmit} className="space-y-6">
-                {/* Category Dropdown */}
-                <div>
-                  <label className="block text-sm font-medium text-white mb-2">
-                    Category
-                  </label>
-                  <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="select"
-                  >
-                    <option value="">-- Select a category --</option>
-                    {categories.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Service Dropdown */}
-                <div>
-                  <label className="block text-sm font-medium text-white mb-2">
-                    Service
-                  </label>
-                  <select
-                    value={selectedServiceId}
-                    onChange={(e) => setSelectedServiceId(e.target.value)}
-                    className="select"
-                    disabled={!selectedCategory}
-                  >
-                    <option value="">-- Select a service --</option>
-                    {servicesInCategory.map((service) => (
-                      <option key={service.id} value={service.id.toString()}>
-                        {service.provider_id} - {service.name} -{" "}
-                        {formatCurrency(service.user_rate)} per 1000
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Link Input */}
-                <div>
-                  <label className="block text-sm font-medium text-white mb-2">
-                    Link
-                  </label>
-                  <input
-                    type="url"
-                    value={orderLink}
-                    onChange={(e) => setOrderLink(e.target.value)}
-                    className="input"
-                    placeholder="Paste link here"
-                    disabled={!selectedService}
-                  />
-                </div>
-
-                {/* Quantity Input */}
-                <div>
-                  <label className="block text-sm font-medium text-white mb-2">
-                    Quantity
-                  </label>
-                  <input
-                    type="number"
-                    value={orderQuantity}
-                    onChange={(e) => setOrderQuantity(e.target.value)}
-                    min={selectedService?.min_quantity || 0}
-                    max={selectedService?.max_quantity || 0}
-                    className="input"
-                    disabled={!selectedService}
-                  />
-                  {selectedService && (
-                    <p className="text-text-secondary text-xs mt-1">
-                      Min: {selectedService.min_quantity.toLocaleString()} -
-                      Max: {selectedService.max_quantity.toLocaleString()}
-                    </p>
-                  )}
-                </div>
-
-                {/* Custom Comments Textarea - Shows only for custom comment services */}
-                {requiresComments && (
-                  <div>
-                    <label className="block text-sm font-medium text-white mb-2">
-                      Custom Comments
-                      <span className="text-primary ml-1">*</span>
-                    </label>
-                    <textarea
-                      value={orderComments}
-                      onChange={(e) => setOrderComments(e.target.value)}
-                      className="input min-h-[120px] py-3 resize-y"
-                      placeholder="Enter each comment on a new line&#10;Example:&#10;Great post!&#10;Love this content!&#10;Amazing work!"
-                      disabled={!selectedService}
-                    />
-                    <p className="text-text-secondary text-xs mt-1">
-                      Enter one comment per line. The number of comments should match your quantity.
-                    </p>
-                  </div>
-                )}
-
-                {/* Service Info Box */}
-                {selectedService && (
-                  <div className="bg-primary/10 border border-primary/20 rounded-xl p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-primary font-medium">
-                        ID: {selectedService.provider_id}
-                      </span>
-                    </div>
-                    <p className="text-text-secondary text-sm mb-3">
-                      {selectedService.name}
-                    </p>
-                    <div className="flex items-center gap-3">
-                      {selectedService.has_refill && (
-                        <span className="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-xs">
-                          ♻️ Has Refill
-                        </span>
-                      )}
-                      {selectedService.has_cancel && (
-                        <span className="px-2 py-1 rounded bg-amber-500/10 text-amber-400 text-xs">
-                          ❌ You can cancel
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Price Summary */}
-                {selectedService && (
-                  <div className="bg-surface-darker rounded-xl p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-text-secondary">
-                        Rate per 1000:
-                      </span>
-                      <span className="text-white">
-                        {formatCurrency(selectedService.user_rate)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-text-secondary">Quantity:</span>
-                      <span className="text-white">
-                        {parseInt(orderQuantity).toLocaleString() || 0}
-                      </span>
-                    </div>
-                    <div className="border-t border-border-dark pt-2 mt-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-white font-medium">Total:</span>
-                        <span className="text-primary text-xl font-bold">
-                          {formatCurrency(orderPrice)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Error Message */}
-                {orderError && (
-                  <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-                    {orderError}
-                  </div>
-                )}
-
-                {/* Success Message */}
-                {orderSuccess && (
-                  <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
-                    {orderSuccess}
-                  </div>
-                )}
-
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={!selectedService || orderLoading}
-                  className="w-full btn-primary disabled:opacity-50"
-                >
-                  {orderLoading ? "Processing..." : "Submit Order"}
-                </button>
-              </form>
-            )}
-          </div>
-        </div>
+    <div>
+      {/* Page Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-white">New Order</h1>
+        <p className="text-text-secondary text-sm mt-1">Place a new order for social media services</p>
       </div>
 
-      <Footer />
+      {/* Platform Icons */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        {platformConfig.map((platform) => (
+          <button
+            key={platform.name}
+            onClick={() => setSelectedPlatform(platform.name)}
+            className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg font-bold transition-all ${
+              selectedPlatform === platform.name
+                ? `${theme === 'dark' ? platform.dark : platform.light} scale-110 shadow-lg`
+                : "bg-surface-dark text-text-secondary hover:text-white border border-border-dark"
+            }`}
+            title={platform.name}
+          >
+            <PlatformIcon name={platform.name} />
+          </button>
+        ))}
+      </div>
+
+      {/* Order Form Card */}
+      <div className="bg-surface-dark rounded-2xl border border-border-dark p-6">
+        {loading ? (
+          <div className="py-12 text-center">
+            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-text-secondary">Loading services...</p>
+          </div>
+        ) : (
+          <form onSubmit={handleOrderSubmit} className="space-y-6">
+            {/* Category Dropdown */}
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">
+                Category
+              </label>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="select"
+              >
+                <option value="">-- Select a category --</option>
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Service Dropdown */}
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">
+                Service
+              </label>
+              <select
+                value={selectedServiceId}
+                onChange={(e) => setSelectedServiceId(e.target.value)}
+                className="select"
+                disabled={!selectedCategory}
+              >
+                <option value="">-- Select a service --</option>
+                {servicesInCategory.map((service) => (
+                  <option key={service.id} value={service.id.toString()}>
+                    {service.provider_id} - {service.name} -{" "}
+                    {formatCurrency(service.user_rate)} per 1000
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Link Input */}
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">
+                Link
+              </label>
+              <input
+                type="url"
+                value={orderLink}
+                onChange={(e) => setOrderLink(e.target.value)}
+                className="input"
+                placeholder="Paste link here"
+                disabled={!selectedService}
+              />
+            </div>
+
+            {/* Quantity Input */}
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">
+                Quantity
+              </label>
+              <input
+                type="number"
+                value={orderQuantity}
+                onChange={(e) => setOrderQuantity(e.target.value)}
+                min={selectedService?.min_quantity || 0}
+                max={selectedService?.max_quantity || 0}
+                className="input"
+                disabled={!selectedService}
+              />
+              {selectedService && (
+                <p className="text-text-secondary text-xs mt-1">
+                  Min: {selectedService.min_quantity.toLocaleString()} -
+                  Max: {selectedService.max_quantity.toLocaleString()}
+                </p>
+              )}
+            </div>
+
+            {/* Custom Comments Textarea - Shows only for custom comment services */}
+            {requiresComments && (
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">
+                  Custom Comments
+                  <span className="text-primary ml-1">*</span>
+                </label>
+                <textarea
+                  value={orderComments}
+                  onChange={(e) => setOrderComments(e.target.value)}
+                  className="input min-h-[120px] py-3 resize-y"
+                  placeholder={"Enter each comment on a new line\nExample:\nGreat post!\nLove this content!\nAmazing work!"}
+                  disabled={!selectedService}
+                />
+                <p className="text-text-secondary text-xs mt-1">
+                  Enter one comment per line. The number of comments should match your quantity.
+                </p>
+              </div>
+            )}
+
+            {/* Service Info Box */}
+            {selectedService && (
+              <div className="bg-primary/10 border border-primary/20 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-primary font-medium">
+                    ID: {selectedService.provider_id}
+                  </span>
+                </div>
+                <p className="text-text-secondary text-sm mb-3">
+                  {selectedService.name}
+                </p>
+                <div className="flex items-center gap-3">
+                  {selectedService.has_refill && (
+                    <span className="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-xs">
+                      ♻️ Refill
+                    </span>
+                  )}
+                  {selectedService.has_cancel && (
+                    <span className="px-2 py-1 rounded bg-amber-500/10 text-amber-400 text-xs">
+                      ❌ Cancel
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Price Summary */}
+            {selectedService && (
+              <div className="bg-surface-darker rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-text-secondary">
+                    Rate per 1000:
+                  </span>
+                  <span className="text-white">
+                    {formatCurrency(selectedService.user_rate)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-text-secondary">Quantity:</span>
+                  <span className="text-white">
+                    {parseInt(orderQuantity).toLocaleString() || 0}
+                  </span>
+                </div>
+                <div className="border-t border-border-dark pt-2 mt-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-white font-medium">Total:</span>
+                    <span className="text-primary text-xl font-bold">
+                      {formatCurrency(orderPrice)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Error Message */}
+            {orderError && (
+              <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                {orderError}
+              </div>
+            )}
+
+            {/* Success Message */}
+            {orderSuccess && (
+              <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
+                {orderSuccess}
+              </div>
+            )}
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={!selectedService || orderLoading}
+              className="w-full btn-primary disabled:opacity-50"
+            >
+              {orderLoading ? "Processing..." : "Submit Order"}
+            </button>
+          </form>
+        )}
+      </div>
     </div>
   );
 }

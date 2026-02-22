@@ -5,12 +5,13 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { ThemeToggle } from '@/contexts/ThemeContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import Logo from '@/components/Logo';
 import { formatCurrency } from '@/lib/utils';
 import { useState } from 'react';
 
 const sidebarLinks = [
   { name: 'Dashboard', href: '/dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
-  { name: 'New Order', href: '/services', icon: 'M12 4v16m8-8H4' },
+  { name: 'New Order', href: '/dashboard/new-order', icon: 'M12 4v16m8-8H4' },
   { name: 'My Orders', href: '/dashboard/orders', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2' },
   { name: 'Wallet', href: '/dashboard/wallet', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
   { name: 'Support', href: '/dashboard/tickets', icon: 'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' },
@@ -36,14 +37,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Sidebar */}
         <aside className={`w-64 bg-surface-darker border-r border-border-dark flex flex-col fixed h-screen z-50 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
           {/* Logo */}
-          <div className="h-16 flex items-center justify-between px-6 border-b border-border-dark">
-            <Link href="/" className="flex items-center gap-3">
-              <div className="size-8 text-primary flex items-center justify-center rounded-lg bg-primary/10">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                </svg>
-              </div>
-              <span className="text-white text-lg font-bold">Caryvn</span>
+          <div className="h-20 flex items-center justify-between px-6 border-b border-border-dark">
+            <Link href="/" className="flex items-center">
+              <Logo width={220} height={72} />
             </Link>
             <div className="flex items-center gap-2">
               <ThemeToggle />
@@ -122,7 +118,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Main Content */}
         <main className="flex-1 lg:ml-64">
           {/* Mobile top bar */}
-          <div className="lg:hidden sticky top-0 z-30 h-14 bg-surface-darker border-b border-border-dark flex items-center justify-between px-4">
+          <div className="lg:hidden sticky top-0 z-30 h-16 bg-surface-darker border-b border-border-dark flex items-center justify-between px-4">
             <button
               onClick={() => setSidebarOpen(true)}
               className="text-text-secondary hover:text-white"
@@ -131,15 +127,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <Link href="/" className="flex items-center gap-2">
-              <div className="size-7 text-primary flex items-center justify-center rounded-lg bg-primary/10">
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-                </svg>
-              </div>
-              <span className="text-white text-sm font-bold">Caryvn</span>
+            <Link href="/" className="flex items-center">
+              <Logo width={200} height={64} />
             </Link>
-            <span className="text-primary text-sm font-semibold">{formatCurrency(user?.balance || '0')}</span>
+            <div className="flex items-center gap-3">
+              <ThemeToggle />
+              <span className="text-primary text-sm font-semibold">{formatCurrency(user?.balance || '0')}</span>
+            </div>
           </div>
           <div className="p-4 sm:p-6 lg:p-8">
             {children}
