@@ -85,6 +85,12 @@ export const authApi = {
 
   refreshToken: (refreshToken: string) =>
     api('/token/refresh/', { method: 'POST', body: { refresh: refreshToken } }),
+
+  requestPasswordReset: (email: string) =>
+    api('/auth/password-reset/', { method: 'POST', body: { email } }),
+
+  confirmPasswordReset: (data: Record<string, string>) =>
+    api('/auth/password-reset/confirm/', { method: 'POST', body: data }),
 };
 
 // Wallet API
@@ -226,4 +232,13 @@ export const adminApi = {
 
   getUserTransactions: (userId: string, token: string) =>
     api(`/admin/users/${userId}/transactions/`, { token }),
+
+  getUserActivity: (userId: string, token: string, limit = 100) =>
+    api(`/admin/users/${userId}/activity/?limit=${limit}`, { token }),
+};
+
+// Activity Tracking API
+export const activityApi = {
+  logPageVisit: (page: string, token: string) =>
+    api('/activity/', { method: 'POST', body: { page, action: 'page_visit' }, token }),
 };

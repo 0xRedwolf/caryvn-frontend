@@ -67,7 +67,7 @@ export default function Navbar() {
               </Link>
               <button
                 onClick={logout}
-                className="flex h-9 px-4 items-center justify-center rounded-lg bg-surface-dark border border-border-dark text-sm font-medium text-slate-300 hover:text-white transition-all"
+                className="flex h-9 px-4 items-center justify-center rounded-lg bg-red-500/10 border border-red-500/20 text-sm font-medium text-red-400 hover:bg-red-600 hover:text-white transition-all"
               >
                 Logout
               </button>
@@ -76,13 +76,13 @@ export default function Navbar() {
             <>
               <Link
                 href="/login"
-                className="flex h-9 px-4 items-center justify-center rounded-lg text-sm font-medium text-slate-300 hover:text-white transition-colors"
+                className="flex h-8 sm:h-9 px-3 sm:px-4 items-center justify-center rounded-lg bg-primary hover:bg-primary-hover text-white text-xs sm:text-sm font-semibold shadow-lg shadow-primary/20 transition-all transform hover:scale-105"
               >
                 Login
               </Link>
               <Link
                 href="/register"
-                className="flex h-9 px-4 items-center justify-center rounded-lg bg-primary hover:bg-primary-hover text-white text-sm font-semibold shadow-lg shadow-primary/20 transition-all transform hover:scale-105"
+                className="hidden sm:flex h-9 px-4 items-center justify-center rounded-lg bg-primary hover:bg-primary-hover text-white text-sm font-semibold shadow-lg shadow-primary/20 transition-all transform hover:scale-105"
               >
                 Sign Up
               </Link>
@@ -135,11 +135,6 @@ export default function Navbar() {
             >
               API Docs
             </Link>
-            {/* Theme toggle in mobile menu */}
-            <div className="flex items-center justify-between px-3 py-2 rounded-lg text-slate-300">
-              <span className="text-sm">Theme</span>
-              <ThemeToggle />
-            </div>
           </div>
         </div>
       )}

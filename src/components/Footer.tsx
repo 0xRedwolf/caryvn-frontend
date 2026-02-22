@@ -10,11 +10,11 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* Brand */}
           <div className="md:col-span-1">
-            <Link href="/" className="block mb-3" style={{ height: '60px', overflow: 'hidden' }}>
-              <Logo width={240} height={240} className="object-contain object-left" style={{ marginTop: '-90px' }} />
+            <Link href="/" className="block mb-4">
+              <Logo width={180} height={60} className="object-contain" />
             </Link>
             <p className="text-text-secondary text-sm">
-              Premium SMM services that deliver results. Fast, safe, and reliable social media growth.
+              Premium SMM boosting services that deliver results. Fast, safe, and reliable social media growth.
             </p>
           </div>
 

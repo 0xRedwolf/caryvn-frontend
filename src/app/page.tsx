@@ -83,13 +83,13 @@ export default function Home() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
-              SMM Services That Deliver.
+              The Best <span className="gradient-text">Social Media Boosting Platform</span>
               <br />
-              <span className="gradient-text">Fast. Safe. Transparent.</span>
+              Grow your social media Accounts.
             </h1>
             <p className="text-lg text-text-secondary max-w-2xl mx-auto mb-10">
-              Premium social media marketing services at competitive prices. 
-              Grow your presence on Instagram, TikTok, YouTube, and more with real, high-quality engagement.
+              Premium social media marketing services at the cheapest prices. 
+              Boost your accounts on Instagram, TikTok, YouTube, and more with real, high-quality engagement.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
@@ -209,43 +209,57 @@ export default function Home() {
 
       {/* API Section */}
       <section className="py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold text-white mb-4">Powerful API for Resellers</h2>
+            <p className="text-text-secondary">Integrate our services directly into your own platform</p>
+          </div>
+          
           <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div>
-              <h2 className="text-3xl font-bold text-white mb-4">Powerful API for Resellers</h2>
-              <p className="text-text-secondary mb-6">
+            <div className="text-center md:text-left">
+              <p className="text-text-secondary mb-6 text-lg">
                 Automate your panel with our comprehensive REST API. Create orders, check status, 
-                and manage your business programmatically.
+                and manage your business programmatically with ease.
               </p>
-              <ul className="space-y-3 mb-8">
+              <ul className="space-y-4 mb-8 inline-block md:block text-left">
                 {['Full REST API access', 'Real-time order status', 'Competitive reseller pricing', 'Comprehensive documentation'].map((item, i) => (
                   <li key={i} className="flex items-center gap-3 text-text-secondary">
-                    <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5 text-primary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                    {item}
+                    <span>{item}</span>
                   </li>
                 ))}
               </ul>
-              <Link href="/api-docs" className="btn-primary inline-flex items-center gap-2">
-                View API Docs
-              </Link>
-            </div>
-            <div className="bg-surface-dark rounded-2xl border border-border-dark p-6 font-mono text-sm">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-3 h-3 rounded-full bg-red-500" />
-                <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                <div className="w-3 h-3 rounded-full bg-green-500" />
+              <div className="pt-4">
+                <Link href="/api-docs" className="btn-primary inline-flex items-center gap-2">
+                  View API Docs
+                </Link>
               </div>
-              <pre className="text-text-secondary overflow-x-auto">
+            </div>
+            
+            <div className="bg-surface-dark rounded-2xl border border-border-dark p-6 font-mono text-sm shadow-2xl relative group">
+              {/* Terminal Header Decor */}
+              <div className="flex items-center gap-2 mb-6 border-b border-border-dark/50 pb-4">
+                <div className="w-3 h-3 rounded-full bg-red-500/50" />
+                <div className="w-3 h-3 rounded-full bg-yellow-500/50" />
+                <div className="w-3 h-3 rounded-full bg-green-500/50" />
+                <span className="ml-2 text-xs text-text-secondary opacity-50 uppercase tracking-widest">Request.json</span>
+              </div>
+              
+              <pre className="text-blue-400 overflow-x-auto">
 {`POST /api/orders/create/
 {
   "service_id": 1,
   "link": "https://instagram.com/user",
   "quantity": 1000
-}
-
-Response:
+}`}
+              </pre>
+              
+              <div className="my-4 border-t border-border-dark/50" />
+              
+              <pre className="text-emerald-400 overflow-x-auto">
+{`Response:
 {
   "order": {
     "id": "abc123",

@@ -398,3 +398,29 @@ html.light .btn-primary {
 html.light .btn-primary:hover {
   background-color: #1d4ed8 !important;
 }
+
+/* Light mode blue accent text */
+html.light .light-blue-text {
+  color: #1f48ff !important;
+}
+
+/* Logout button hover — ensure white text on bold red in light mode */
+html.light .hover\:bg-red-600:hover {
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+}
+
+/* Ensure blue buttons keep white text in light mode */
+html.light .bg-blue-600 {
+  color: #ffffff !important;
+}
+
+/* Analytics Total Revenue text color */
+.analytics-revenue-text {
+  color: #1f48ff !important;
+}
+
+/* Analytics Avg Order Value text color */
+.analytics-avg-text {
+  color: #f97316 !important;
+}

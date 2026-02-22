@@ -8,6 +8,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import Logo from '@/components/Logo';
 import { formatCurrency } from '@/lib/utils';
 import { useState } from 'react';
+import { useActivityTracker } from '@/hooks/useActivityTracker';
 
 const sidebarLinks = [
   { name: 'Dashboard', href: '/dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
@@ -22,6 +23,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  useActivityTracker();
 
   return (
     <ProtectedRoute>
@@ -105,7 +107,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
             <button
               onClick={logout}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-text-secondary hover:text-white hover:bg-surface-dark transition-colors text-sm"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-red-400 bg-red-500/10 hover:bg-red-600 hover:text-white transition-colors text-sm"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
