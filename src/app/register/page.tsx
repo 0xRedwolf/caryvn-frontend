@@ -9,6 +9,7 @@ import Navbar from '@/components/Navbar';
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
     email: '',
+    username: '',
     password: '',
     password2: '',
     first_name: '',
@@ -115,6 +116,22 @@ export default function RegisterPage() {
                   required
                   className="input"
                   placeholder="you@example.com"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="username" className="block text-sm font-medium text-white mb-2">
+                  Username
+                </label>
+                <input
+                  id="username"
+                  name="username"
+                  type="text"
+                  value={formData.username}
+                  onChange={handleChange}
+                  required
+                  className="input"
+                  placeholder="Choose a unique username"
                 />
               </div>
 

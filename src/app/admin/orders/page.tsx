@@ -135,7 +135,7 @@ export default function AdminOrdersPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1">Orders</h1>
           <p className="text-text-secondary">{total} total orders</p>
@@ -145,7 +145,7 @@ export default function AdminOrdersPage() {
           placeholder="Search orders..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="input max-w-xs"
+          className="input w-full sm:max-w-xs"
         />
       </div>
 
@@ -251,7 +251,7 @@ export default function AdminOrdersPage() {
                       <span className="text-white font-mono text-sm">{order.id.slice(0, 8)}</span>
                     </td>
                     <td className="py-4 px-4">
-                      <span className="text-text-secondary text-sm">{order.user_email}</span>
+                      <span className="text-text-secondary text-sm truncate max-w-[120px] md:max-w-xs block">{order.user_email}</span>
                     </td>
                     <td className="py-4 px-4">
                       <span className="text-white text-sm truncate max-w-[200px] block">{order.service_name}</span>
