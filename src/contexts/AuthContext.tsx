@@ -21,8 +21,8 @@ interface AuthContextType {
   refreshToken: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (data: { email: string; password: string; password2: string; first_name?: string; last_name?: string }) => Promise<{ success: boolean; error?: string }>;
+  login: (loginIdentifier: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  register: (data: { email: string; username: string; password: string; password2: string; first_name?: string; last_name?: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -88,9 +88,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(REFRESH_KEY);
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (loginIdentifier: string, password: string) => {
     try {
-      const result = await authApi.login({ email, password });
+      const result = await authApi.login({ login: loginIdentifier, password });
       
       if (result.data) {
         const data = result.data as { user: User; tokens: { access: string; refresh: string } };
@@ -108,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const register = async (data: { email: string; password: string; password2: string; first_name?: string; last_name?: string }) => {
+  const register = async (data: { email: string; username: string; password: string; password2: string; first_name?: string; last_name?: string }) => {
     try {
       const result = await authApi.register(data);
       
@@ -127,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { success: false, error: 'Network error' };
     }
   };
+
 
   const logout = async () => {
     if (refreshTokenState && token) {

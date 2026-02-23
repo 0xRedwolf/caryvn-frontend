@@ -39,9 +39,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Sidebar */}
         <aside className={`w-64 bg-surface-darker border-r border-border-dark flex flex-col fixed h-screen z-50 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
           {/* Logo */}
-          <div className="h-20 flex items-center justify-between px-6 border-b border-border-dark">
-            <Link href="/admin" className="flex items-center">
-              <Logo width={220} height={72} />
+          <div className="h-20 flex items-center px-6 border-b border-border-dark">
+            <Link href="/admin" className="flex items-center justify-start flex-1">
+              <Logo width={220} height={48} />
             </Link>
             <div className="flex items-center gap-2">
               <ThemeToggle />
@@ -106,9 +106,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 lg:ml-64">
+        <main className="flex-1 lg:ml-64 min-w-0 overflow-hidden">
           {/* Mobile top bar */}
-          <div className="lg:hidden sticky top-0 z-30 h-16 bg-surface-darker border-b border-border-dark flex items-center justify-between px-4">
+          <div className="lg:hidden sticky top-0 z-30 h-16 bg-surface-darker border-b border-border-dark flex items-center px-4 gap-4">
             <button
               onClick={() => setSidebarOpen(true)}
               className="text-text-secondary hover:text-white"
@@ -117,8 +117,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <Link href="/admin" className="flex items-center">
-              <Logo width={200} height={64} />
+            <Link href="/admin" className="flex items-center justify-start flex-1">
+              <Logo width={180} height={36} />
             </Link>
             <ThemeToggle />
           </div>

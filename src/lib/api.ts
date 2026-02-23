@@ -62,11 +62,11 @@ export async function api<T = unknown>(
 
 // Auth API
 export const authApi = {
-  register: (data: { email: string; password: string; password2: string; first_name?: string; last_name?: string }) =>
-    api('/auth/register/', { method: 'POST', body: data }),
+  register: (data: { email: string; username: string; password: string; password2: string; first_name?: string; last_name?: string }) =>
+    api('/auth/register/', { method: 'POST', body: data as unknown as Record<string, unknown> }),
 
-  login: (data: { email: string; password: string }) =>
-    api('/auth/login/', { method: 'POST', body: data }),
+  login: (data: { login: string; password: string }) =>
+    api('/auth/login/', { method: 'POST', body: data as unknown as Record<string, unknown> }),
 
   logout: (refreshToken: string, token: string) =>
     api('/auth/logout/', { method: 'POST', body: { refresh: refreshToken }, token }),

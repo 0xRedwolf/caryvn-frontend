@@ -6,77 +6,80 @@ import Logo from '@/components/Logo';
 export default function Footer() {
   return (
     <footer className="bg-surface-darker border-t border-border-dark">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-0 pb-16">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-12">
           {/* Brand */}
-          <div className="md:col-span-1">
-            <Link href="/" className="block mb-4">
-              <Logo width={180} height={60} className="object-contain" />
+          <div className="md:col-span-5 flex flex-col items-start text-left">
+            <Link href="/" className="block mb-2">
+              <Logo width={180} height={40} className="object-left" />
             </Link>
-            <p className="text-text-secondary text-sm">
+            <p className="text-text-secondary text-sm max-w-sm leading-relaxed">
               Premium SMM boosting services that deliver results. Fast, safe, and reliable social media growth.
             </p>
           </div>
 
-          {/* Services */}
-          <div>
-            <h3 className="text-white font-semibold mb-4">Services</h3>
-            <ul className="space-y-2">
-              {['Instagram', 'TikTok', 'YouTube', 'Facebook', 'Twitter/X'].map((service) => (
-                <li key={service}>
-                  <Link
-                    href={`/services?platform=${service.toLowerCase()}`}
-                    className="text-text-secondary hover:text-white text-sm transition-colors"
-                  >
-                    {service}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {/* Links sections */}
+          <div className="md:col-span-7 grid grid-cols-2 sm:grid-cols-3 gap-8">
+            {/* Services */}
+            <div>
+              <h3 className="text-white font-bold text-sm uppercase tracking-wider mb-6">Services</h3>
+              <ul className="space-y-3">
+                {['Instagram', 'TikTok', 'YouTube', 'Facebook', 'Twitter/X'].map((service) => (
+                  <li key={service}>
+                    <Link
+                      href={`/services?platform=${service.toLowerCase()}`}
+                      className="text-text-secondary hover:text-white text-sm transition-colors"
+                    >
+                      {service}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-          {/* Company */}
-          <div>
-            <h3 className="text-white font-semibold mb-4">Company</h3>
-            <ul className="space-y-2">
-              {[
-                { name: 'About Us', href: '/about' },
-                { name: 'API Documentation', href: '/api-docs' },
-                { name: 'Terms of Service', href: '/terms' },
-                { name: 'Privacy Policy', href: '/privacy' },
-              ].map((link) => (
-                <li key={link.name}>
-                  <Link
-                    href={link.href}
-                    className="text-text-secondary hover:text-white text-sm transition-colors"
-                  >
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+            {/* Company */}
+            <div>
+              <h3 className="text-white font-bold text-sm uppercase tracking-wider mb-6">Company</h3>
+              <ul className="space-y-3">
+                {[
+                  { name: 'About Us', href: '/about' },
+                  { name: 'API Documentation', href: '/api-docs' },
+                  { name: 'Terms of Service', href: '/terms' },
+                  { name: 'Privacy Policy', href: '/privacy' },
+                ].map((link) => (
+                  <li key={link.name}>
+                    <Link
+                      href={link.href}
+                      className="text-text-secondary hover:text-white text-sm transition-colors"
+                    >
+                      {link.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-          {/* Support */}
-          <div>
-            <h3 className="text-white font-semibold mb-4">Support</h3>
-            <ul className="space-y-2">
-              {[
-                { name: 'Help Center', href: '/help' },
-                { name: 'Contact Us', href: '/contact' },
-                { name: 'Support Tickets', href: '/dashboard/tickets' },
-                { name: 'Status Page', href: '/status' },
-              ].map((link) => (
-                <li key={link.name}>
-                  <Link
-                    href={link.href}
-                    className="text-text-secondary hover:text-white text-sm transition-colors"
-                  >
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            {/* Support */}
+            <div>
+              <h3 className="text-white font-bold text-sm uppercase tracking-wider mb-6">Support</h3>
+              <ul className="space-y-3">
+                {[
+                  { name: 'Help Center', href: '/help' },
+                  { name: 'Contact Us', href: '/contact' },
+                  { name: 'Support Tickets', href: '/dashboard/tickets' },
+                  { name: 'Status Page', href: '/status' },
+                ].map((link) => (
+                  <li key={link.name}>
+                    <Link
+                      href={link.href}
+                      className="text-text-secondary hover:text-white text-sm transition-colors"
+                    >
+                      {link.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
 

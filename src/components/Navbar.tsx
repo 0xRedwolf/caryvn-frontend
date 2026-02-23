@@ -16,7 +16,7 @@ export default function Navbar() {
       <div className="w-full max-w-7xl px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center cursor-pointer">
-          <Logo width={240} height={80} />
+          <Logo width={240} height={56} />
         </Link>
 
         {/* Desktop Nav */}

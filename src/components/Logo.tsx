@@ -10,7 +10,7 @@ interface LogoProps {
   style?: React.CSSProperties;
 }
 
-export default function Logo({ width = 240, height = 80, className = '', style }: LogoProps) {
+export default function Logo({ width = 240, height = 56, className = '', style }: LogoProps) {
   const { theme } = useTheme();
 
   return (
@@ -19,7 +19,7 @@ export default function Logo({ width = 240, height = 80, className = '', style }
       alt="Caryvn"
       width={width}
       height={height}
-      className={`object-contain ${className}`}
+      className={`object-contain object-left ${className}`}
       style={style}
       priority
     />

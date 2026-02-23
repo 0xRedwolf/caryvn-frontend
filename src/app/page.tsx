@@ -85,7 +85,6 @@ export default function Home() {
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
               The Best <span className="gradient-text">Social Media Boosting Platform</span>
               <br />
-              Grow your social media Accounts.
             </h1>
             <p className="text-lg text-text-secondary max-w-2xl mx-auto mb-10">
               Premium social media marketing services at the cheapest prices. 

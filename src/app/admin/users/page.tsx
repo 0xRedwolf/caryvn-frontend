@@ -187,7 +187,7 @@ export default function AdminUsersPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1">Users</h1>
           <p className="text-text-secondary">{total} registered users</p>
@@ -197,7 +197,7 @@ export default function AdminUsersPage() {
           placeholder="Search by email..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="input max-w-xs"
+          className="input w-full sm:max-w-xs"
         />
       </div>
 
@@ -238,7 +238,7 @@ export default function AdminUsersPage() {
                         <p className="text-white font-medium">
                           {user.first_name} {user.last_name}
                         </p>
-                        <p className="text-text-secondary text-sm">{user.email}</p>
+                        <p className="text-text-secondary text-sm truncate max-w-[150px] md:max-w-xs">{user.email}</p>
                       </div>
                     </td>
                     <td className="py-4 px-4">

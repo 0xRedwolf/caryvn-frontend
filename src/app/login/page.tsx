@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Navbar from '@/components/Navbar';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
+  const [loginIdentifier, setLoginIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,7 +19,7 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
-    const result = await login(email, password);
+    const result = await login(loginIdentifier, password);
     
     if (result.success) {
       router.push('/dashboard');
@@ -52,17 +52,17 @@ export default function LoginPage() {
               )}
 
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-white mb-2">
-                  Email Address
+                <label htmlFor="login" className="block text-sm font-medium text-white mb-2">
+                  Username or Email
                 </label>
                 <input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="login"
+                  type="text"
+                  value={loginIdentifier}
+                  onChange={(e) => setLoginIdentifier(e.target.value)}
                   required
                   className="input"
-                  placeholder="you@example.com"
+                  placeholder="Enter your username or email"
                 />
               </div>
 

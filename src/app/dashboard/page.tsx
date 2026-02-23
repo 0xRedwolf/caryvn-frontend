@@ -63,11 +63,11 @@ export default function DashboardPage() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white light-blue-text mb-1">
-          Welcome back, {user?.first_name || user?.email?.split('@')[0]}!
+      <div className="mb-8 min-w-0 overflow-hidden">
+        <h1 className="text-2xl font-bold text-white mb-1 truncate break-words">
+          Welcome back, <span className="gradient-text">{user?.username || user?.first_name || user?.email?.split('@')[0]}</span>!
         </h1>
-        <p className="text-text-secondary">
+        <p className="text-text-secondary truncate">
           Here's an overview of your account
         </p>
       </div>
@@ -81,7 +81,7 @@ export default function DashboardPage() {
             <StatsCard
               title="Balance"
               value={formatCurrency(user?.balance || '0')}
-              valueClassName="text-white light-blue-text"
+              valueClassName="text-primary"
               icon={
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
