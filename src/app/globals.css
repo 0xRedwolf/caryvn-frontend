@@ -123,6 +123,30 @@
   }
 }
 
+/* Scrolling announcement ticker */
+@keyframes ticker {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.ticker-scroll {
+  animation: ticker 30s linear infinite;
+}
+
+@media (max-width: 768px) {
+  .ticker-scroll {
+    animation-duration: 20s;
+  }
+}
+
+.ticker-scroll:hover {
+  animation-play-state: paused;
+}
+
 /* Button styles */
 .btn-primary {
   height: 2.75rem;
@@ -423,4 +447,82 @@ html.light .bg-blue-600 {
 /* Analytics Avg Order Value text color */
 .analytics-avg-text {
   color: #f97316 !important;
+}
+
+/* Ad banner — dark mode (default) */
+.ad-banner {
+  background: linear-gradient(
+    135deg,
+    rgb(37 99 235 / 0.12) 0%,
+    #0f172a 50%,
+    rgb(37 99 235 / 0.12) 100%
+  );
+  border: 1px solid rgb(37 99 235 / 0.3);
+}
+
+.ad-banner-title {
+  color: #ffffff;
+}
+
+.ad-banner-desc {
+  color: #94a3b8;
+}
+
+.ad-banner-glow-tr {
+  position: absolute;
+  top: -5rem;
+  right: -5rem;
+  width: 15rem;
+  height: 15rem;
+  background: rgb(37 99 235 / 0.2);
+  border-radius: 9999px;
+  filter: blur(80px);
+  transition: background 0.5s;
+}
+
+.ad-banner:hover .ad-banner-glow-tr {
+  background: rgb(37 99 235 / 0.3);
+}
+
+.ad-banner-glow-bl {
+  position: absolute;
+  bottom: -5rem;
+  left: -5rem;
+  width: 12rem;
+  height: 12rem;
+  background: rgb(34 211 238 / 0.15);
+  border-radius: 9999px;
+  filter: blur(80px);
+}
+
+/* Ad banner — light mode */
+html.light .ad-banner {
+  background: linear-gradient(
+    135deg,
+    rgb(37 99 235 / 0.08) 0%,
+    #ffffff 50%,
+    rgb(37 99 235 / 0.08) 100%
+  ) !important;
+  border-color: rgb(37 99 235 / 0.25) !important;
+  box-shadow: 0 4px 24px rgb(37 99 235 / 0.08);
+}
+
+html.light .ad-banner-title {
+  color: #0f172a !important;
+}
+
+html.light .ad-banner-desc {
+  color: #475569 !important;
+}
+
+html.light .ad-banner-glow-tr {
+  background: rgb(37 99 235 / 0.08);
+}
+
+html.light .ad-banner:hover .ad-banner-glow-tr {
+  background: rgb(37 99 235 / 0.15);
+}
+
+html.light .ad-banner-glow-bl {
+  background: rgb(34 211 238 / 0.08);
 }

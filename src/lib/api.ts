@@ -110,6 +110,9 @@ export const walletApi = {
 
   verifyTopup: (reference: string, token: string) =>
     api(`/wallet/topup/verify/?reference=${reference}`, { token }),
+
+  hideTransaction: (transactionId: string, token: string) =>
+    api(`/wallet/transactions/${transactionId}/hide/`, { method: 'POST', token }),
 };
 
 // Services API
@@ -144,6 +147,9 @@ export const ordersApi = {
 
   getOrder: (orderId: string, token: string) =>
     api(`/orders/${orderId}/`, { token }),
+
+  hideOrder: (orderId: string, token: string) =>
+    api(`/orders/${orderId}/hide/`, { method: 'POST', token }),
 };
 
 // Tickets API
@@ -235,6 +241,27 @@ export const adminApi = {
 
   getUserActivity: (userId: string, token: string, limit = 100) =>
     api(`/admin/users/${userId}/activity/?limit=${limit}`, { token }),
+
+  deleteUser: (userId: string, token: string) =>
+    api(`/admin/users/${userId}/delete/`, { method: 'DELETE', token }),
+
+  deleteLog: (logId: number, token: string) =>
+    api(`/admin/logs/${logId}/delete/`, { method: 'DELETE', token }),
+
+  deleteOrder: (orderId: string, token: string) =>
+    api(`/admin/orders/${orderId}/delete/`, { method: 'DELETE', token }),
+
+  toggleServiceActive: (serviceId: number, token: string) =>
+    api(`/admin/services/${serviceId}/toggle-active/`, { method: 'POST', token }),
+
+  getAllServices: (token: string) =>
+    api('/services/?include_inactive=true', { token }),
+
+  getSiteSettings: (token: string) =>
+    api('/admin/settings/', { token }),
+
+  toggleShowInactiveServices: (token: string) =>
+    api('/admin/settings/toggle-show-inactive/', { method: 'POST', token }),
 };
 
 // Activity Tracking API

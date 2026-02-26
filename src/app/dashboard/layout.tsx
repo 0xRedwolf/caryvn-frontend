@@ -27,7 +27,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <ProtectedRoute>
-      <div className="min-h-screen bg-background-dark flex">
+      <div className={`min-h-screen bg-background-dark flex ${sidebarOpen ? 'overflow-hidden h-screen' : ''}`}>
         {/* Mobile overlay */}
         {sidebarOpen && (
           <div
@@ -37,10 +37,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )}
 
         {/* Sidebar */}
-        <aside className={`w-64 bg-surface-darker border-r border-border-dark flex flex-col fixed h-screen z-50 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
+        <aside className={`w-64 bg-surface-darker border-r border-border-dark flex flex-col fixed h-screen z-50 transition-transform duration-300 overflow-y-auto ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
           {/* Logo */}
           <div className="h-20 flex items-center px-6 border-b border-border-dark">
-            <Link href="/" className="flex items-center justify-start flex-1">
+            <Link href="/dashboard" className="flex items-center justify-start flex-1">
               <Logo width={220} height={48} />
             </Link>
             <div className="flex items-center gap-2">
@@ -69,25 +69,40 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           {/* Nav Links */}
-          <nav className="flex-1 p-4 space-y-1">
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {sidebarLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                    isActive
-                      ? 'bg-primary/10 text-primary'
-                      : 'text-text-secondary hover:text-white hover:bg-surface-dark'
-                  }`}
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={link.icon} />
-                  </svg>
-                  {link.name}
-                </Link>
+                <div key={link.href}>
+                  <Link
+                    href={link.href}
+                    onClick={() => setSidebarOpen(false)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                      isActive
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-text-secondary hover:text-white hover:bg-surface-dark'
+                    }`}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={link.icon} />
+                    </svg>
+                    {link.name}
+                  </Link>
+                  {/* External link — after Wallet */}
+                  {link.href === '/dashboard/wallet' && (
+                    <a
+                      href="https://zapotp.com/login"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-text-secondary hover:text-white hover:bg-surface-dark mt-1"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                      </svg>
+                      Get Foreign Numbers
+                    </a>
+                  )}
+                </div>
               );
             })}
           </nav>
@@ -129,7 +144,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
-            <Link href="/" className="flex items-center justify-start flex-1">
+            <Link href="/dashboard" className="flex items-center justify-start flex-1">
               <Logo width={200} height={36} />
             </Link>
             <ThemeToggle />

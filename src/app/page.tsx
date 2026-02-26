@@ -206,6 +206,51 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Ad Banner */}
+      <section className="py-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <a
+            href="https://zapotp.com/login"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ad-banner block relative overflow-hidden rounded-2xl p-8 md:p-12 group card-hover"
+          >
+            {/* Glow accent */}
+            <div className="ad-banner-glow-tr" />
+            <div className="ad-banner-glow-bl" />
+
+            <div className="relative flex flex-col md:flex-row items-center gap-6 md:gap-10">
+              {/* Icon / Visual */}
+              <div className="flex-shrink-0 w-16 h-16 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center">
+                <svg className="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+                </svg>
+              </div>
+
+              {/* Copy */}
+              <div className="flex-1 text-center md:text-left">
+                <h3 className="text-xl md:text-2xl font-bold ad-banner-title mb-2">
+                  Buy Foreign Numbers Instantly
+                </h3>
+                <p className="ad-banner-desc text-sm md:text-base max-w-xl">
+                  Get virtual numbers for OTP verification from 80+ countries. Instant activation, affordable prices, and reliable delivery at zapotp.com.
+                </p>
+              </div>
+
+              {/* CTA */}
+              <div className="flex-shrink-0">
+                <span className="btn-primary inline-flex items-center gap-2 whitespace-nowrap">
+                  Visit Now
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </span>
+              </div>
+            </div>
+          </a>
+        </div>
+      </section>
+
       {/* API Section */}
       <section className="py-20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">

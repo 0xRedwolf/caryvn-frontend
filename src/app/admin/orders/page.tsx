@@ -27,9 +27,9 @@ export default function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [search, setSearch] = useState('');
   const [total, setTotal] = useState(0);
-  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
-  const [actionLoading, setActionLoading] = useState('');
   const [actionResult, setActionResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -63,74 +63,19 @@ export default function AdminOrdersPage() {
     setLoading(false);
   };
 
-  const toggleSelect = (id: string) => {
-    setSelectedOrders(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedOrders.size === orders.length) {
-      setSelectedOrders(new Set());
-    } else {
-      setSelectedOrders(new Set(orders.map(o => o.id)));
-    }
-  };
-
-  const handleCancelRefund = async () => {
-    if (!token || selectedOrders.size === 0) return;
-    setActionLoading('cancel');
-    const result = await adminApi.cancelRefundOrders(Array.from(selectedOrders), token);
-    setActionLoading('');
+  const handleDeleteOrder = async (orderId: string) => {
+    if (!token) return;
+    setDeleteLoading(true);
+    const result = await adminApi.deleteOrder(orderId, token);
+    setDeleteLoading(false);
+    setDeleteConfirm(null);
     if (result.data) {
-      const data = result.data as { refunded: number; skipped: number; errors: string[] };
-      setActionResult({
-        type: data.errors.length > 0 ? 'error' : 'success',
-        message: `Refunded ${data.refunded}, skipped ${data.skipped}${data.errors.length > 0 ? `. Errors: ${data.errors.join(', ')}` : ''}`,
-      });
+      setOrders(prev => prev.filter(o => o.id !== orderId));
+      setTotal(prev => prev - 1);
+      setActionResult({ type: 'success', message: 'Order deleted' });
     } else {
-      setActionResult({ type: 'error', message: result.error || 'Failed' });
+      setActionResult({ type: 'error', message: result.error || 'Failed to delete' });
     }
-    setSelectedOrders(new Set());
-    loadOrders();
-  };
-
-  const handleRetry = async () => {
-    if (!token || selectedOrders.size === 0) return;
-    setActionLoading('retry');
-    const result = await adminApi.retryOrders(Array.from(selectedOrders), token);
-    setActionLoading('');
-    if (result.data) {
-      const data = result.data as { retried: number; failed: number; errors: string[] };
-      setActionResult({
-        type: data.errors.length > 0 ? 'error' : 'success',
-        message: `Retried ${data.retried}, failed ${data.failed}${data.errors.length > 0 ? `. Errors: ${data.errors.join(', ')}` : ''}`,
-      });
-    } else {
-      setActionResult({ type: 'error', message: result.error || 'Failed' });
-    }
-    setSelectedOrders(new Set());
-    loadOrders();
-  };
-
-  const handleCheckStatus = async () => {
-    if (!token || selectedOrders.size === 0) return;
-    setActionLoading('check');
-    const result = await adminApi.checkOrderStatus(Array.from(selectedOrders), token);
-    setActionLoading('');
-    if (result.data) {
-      const data = result.data as { updated: number; skipped: number; errors: string[] };
-      setActionResult({
-        type: data.errors.length > 0 ? 'error' : 'success',
-        message: `Updated ${data.updated}, skipped ${data.skipped}${data.errors.length > 0 ? `. Errors: ${data.errors.join(', ')}` : ''}`,
-      });
-    } else {
-      setActionResult({ type: 'error', message: result.error || 'Failed' });
-    }
-    setSelectedOrders(new Set());
-    loadOrders();
   };
 
   return (
@@ -157,36 +102,6 @@ export default function AdminOrdersPage() {
             : 'bg-red-500/10 border border-red-500/20 text-red-400'
         }`}>
           {actionResult.message}
-        </div>
-      )}
-
-      {/* Action Bar */}
-      {selectedOrders.size > 0 && (
-        <div className="mb-4 p-3 bg-surface-darker rounded-xl border border-primary/30 flex flex-wrap items-center gap-3">
-          <span className="text-white text-sm font-medium">{selectedOrders.size} selected</span>
-          <div className="flex gap-2 ml-auto">
-            <button
-              onClick={handleCancelRefund}
-              disabled={!!actionLoading}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors disabled:opacity-50"
-            >
-              {actionLoading === 'cancel' ? '...' : '🔄 Cancel & Refund'}
-            </button>
-            <button
-              onClick={handleRetry}
-              disabled={!!actionLoading}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-colors disabled:opacity-50"
-            >
-              {actionLoading === 'retry' ? '...' : '🔁 Retry with Provider'}
-            </button>
-            <button
-              onClick={handleCheckStatus}
-              disabled={!!actionLoading}
-              className="px-3 py-1.5 rounded-lg text-xs font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20 hover:bg-purple-500/20 transition-colors disabled:opacity-50"
-            >
-              {actionLoading === 'check' ? '...' : '📊 Check Status'}
-            </button>
-          </div>
         </div>
       )}
 
@@ -217,14 +132,6 @@ export default function AdminOrdersPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border-dark text-left">
-                  <th className="py-3 px-4">
-                    <input
-                      type="checkbox"
-                      checked={selectedOrders.size === orders.length && orders.length > 0}
-                      onChange={toggleSelectAll}
-                      className="rounded border-border-dark"
-                    />
-                  </th>
                   <th className="py-3 px-4 text-text-secondary text-sm font-medium">ID</th>
                   <th className="py-3 px-4 text-text-secondary text-sm font-medium">User</th>
                   <th className="py-3 px-4 text-text-secondary text-sm font-medium">Service</th>
@@ -234,19 +141,12 @@ export default function AdminOrdersPage() {
                   <th className="py-3 px-4 text-text-secondary text-sm font-medium">Status</th>
                   <th className="py-3 px-4 text-text-secondary text-sm font-medium">Provider</th>
                   <th className="py-3 px-4 text-text-secondary text-sm font-medium">Date</th>
+                  <th className="py-3 px-4 text-text-secondary text-sm font-medium w-10"></th>
                 </tr>
               </thead>
               <tbody>
                 {orders.map((order) => (
-                  <tr key={order.id} className={`border-b border-border-dark hover:bg-surface-darker/50 ${selectedOrders.has(order.id) ? 'bg-primary/5' : ''}`}>
-                    <td className="py-4 px-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedOrders.has(order.id)}
-                        onChange={() => toggleSelect(order.id)}
-                        className="rounded border-border-dark"
-                      />
-                    </td>
+                  <tr key={order.id} className="border-b border-border-dark hover:bg-surface-darker/50 group">
                     <td className="py-4 px-4">
                       <span className="text-white font-mono text-sm">{order.id.slice(0, 8)}</span>
                     </td>
@@ -280,6 +180,28 @@ export default function AdminOrdersPage() {
                     <td className="py-4 px-4">
                       <span className="text-text-secondary text-sm">{formatDate(order.created_at)}</span>
                     </td>
+                    <td className="py-4 px-4">
+                      {/* Desktop: icon on hover */}
+                      <button
+                        onClick={() => setDeleteConfirm(order.id)}
+                        className="hidden lg:block opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg text-red-400 hover:bg-red-500/10"
+                        title="Delete order"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                      {/* Mobile: always visible */}
+                      <button
+                        onClick={() => setDeleteConfirm(order.id)}
+                        className="lg:hidden p-1.5 rounded-lg text-red-400 hover:bg-red-500/10"
+                        title="Delete order"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -291,6 +213,33 @@ export default function AdminOrdersPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-surface-dark rounded-2xl border border-border-dark p-6 mx-4 max-w-sm w-full">
+            <h3 className="text-lg font-bold text-white mb-2">Delete Order</h3>
+            <p className="text-text-secondary text-sm mb-6">
+              Are you sure you want to permanently delete this order? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-surface-darker text-text-secondary border border-border-dark hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteOrder(deleteConfirm)}
+                disabled={deleteLoading}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+              >
+                {deleteLoading ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

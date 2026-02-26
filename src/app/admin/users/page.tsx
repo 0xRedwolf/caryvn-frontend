@@ -44,6 +44,8 @@ export default function AdminUsersPage() {
   const [total, setTotal] = useState(0);
   const [actionLoading, setActionLoading] = useState('');
   const [actionResult, setActionResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<User | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   
   // Transaction modal state
   const [txModalUser, setTxModalUser] = useState<string | null>(null);
@@ -284,6 +286,12 @@ export default function AdminUsersPage() {
                         >
                           {actionLoading === user.id ? '...' : user.is_active ? 'Deactivate' : 'Activate'}
                         </button>
+                        <button
+                          onClick={() => setDeleteConfirm(user)}
+                          className="px-3 py-1 rounded-lg text-xs font-medium transition-all bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20"
+                        >
+                          Delete
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -398,6 +406,47 @@ export default function AdminUsersPage() {
               ) : (
                 <p className="text-text-secondary text-center py-8">No activity recorded yet</p>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete User Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-surface-dark rounded-2xl border border-border-dark p-6 mx-4 max-w-sm w-full">
+            <h3 className="text-lg font-bold text-white mb-2">Delete User Permanently</h3>
+            <p className="text-text-secondary text-sm mb-2">
+              This will permanently delete <span className="text-white font-medium">{deleteConfirm.email}</span> and all their data (orders, wallet, transactions).
+            </p>
+            <p className="text-red-400 text-xs mb-6">This action cannot be undone.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-surface-darker text-text-secondary border border-border-dark hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (!token) return;
+                  setDeleteLoading(true);
+                  const result = await adminApi.deleteUser(deleteConfirm.id, token);
+                  setDeleteLoading(false);
+                  if (result.data) {
+                    setUsers(prev => prev.filter(u => u.id !== deleteConfirm.id));
+                    setTotal(prev => prev - 1);
+                    setActionResult({ type: 'success', message: `User ${deleteConfirm.email} permanently deleted` });
+                  } else {
+                    setActionResult({ type: 'error', message: result.error || 'Failed to delete user' });
+                  }
+                  setDeleteConfirm(null);
+                }}
+                disabled={deleteLoading}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+              >
+                {deleteLoading ? 'Deleting...' : 'Delete Forever'}
+              </button>
             </div>
           </div>
         </div>
