@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { walletApi, ordersApi } from '@/lib/api';
@@ -28,6 +28,31 @@ export default function DashboardPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
+  const tickerRef = useRef<HTMLDivElement>(null);
+  const tickerSetRef = useRef<HTMLDivElement>(null);
+  const [tickerPaused, setTickerPaused] = useState(false);
+
+  // JS-based ticker for pixel-perfect looping
+  useEffect(() => {
+    let offset = 0;
+    let animId: number;
+    const speed = window.innerWidth < 768 ? 0.3 : 0.5;
+
+    const animate = () => {
+      if (!tickerRef.current || !tickerSetRef.current) return;
+      if (!tickerPaused) {
+        const setWidth = tickerSetRef.current.offsetWidth;
+        offset -= speed;
+        if (Math.abs(offset) >= setWidth) {
+          offset += setWidth;
+        }
+        tickerRef.current.style.transform = `translateX(${offset}px)`;
+      }
+      animId = requestAnimationFrame(animate);
+    };
+    animId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animId);
+  }, [tickerPaused]);
 
   useEffect(() => {
     if (token) {
@@ -63,13 +88,64 @@ export default function DashboardPage() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-8 min-w-0 overflow-hidden">
+      <div className="mb-4 min-w-0 overflow-hidden">
         <h1 className="text-2xl font-bold text-white mb-1 truncate break-words">
           Welcome back, <span className="gradient-text">{user?.username || user?.first_name || user?.email?.split('@')[0]}</span>!
         </h1>
         <p className="text-text-secondary truncate">
           Here's an overview of your account
         </p>
+      </div>
+
+      {/* Scrolling Announcement Ticker */}
+      <div className="mb-8 overflow-hidden rounded-xl border border-border-dark bg-surface-dark">
+        <div className="flex items-center">
+          {/* Label */}
+          <div className="flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 bg-primary/10 border-r border-border-dark">
+            <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z" />
+            </svg>
+            <span className="text-primary text-xs font-semibold whitespace-nowrap">News</span>
+          </div>
+          {/* Scrolling area */}
+          <div
+            className="overflow-hidden relative flex-1 min-w-0"
+            onMouseEnter={() => setTickerPaused(true)}
+            onMouseLeave={() => setTickerPaused(false)}
+          >
+            <div ref={tickerRef} className="flex items-center py-2.5 whitespace-nowrap" style={{ willChange: 'transform' }}>
+              <div ref={tickerSetRef} className="flex items-center shrink-0">
+                <span className="inline-flex items-center gap-1.5 text-text-secondary text-sm mr-8">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                  New services added, Buy Foreign Numbers on <a href="https://zapotp.com/login" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">zapotp.com</a> ⚡
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-text-secondary text-sm mr-8">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+                  New services added, Buy Foreign Numbers on <a href="https://zapotp.com/login" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">zapotp.com</a> ⚡
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-text-secondary text-sm mr-8">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                  New services added, Buy Foreign Numbers on <a href="https://zapotp.com/login" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">zapotp.com</a> ⚡
+                </span>
+              </div>
+              {/* Duplicate set for seamless loop */}
+              <div className="flex items-center shrink-0">
+                <span className="inline-flex items-center gap-1.5 text-text-secondary text-sm mr-8">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                  New services added, Buy Foreign Numbers on <a href="https://zapotp.com/login" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">zapotp.com</a> ⚡
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-text-secondary text-sm mr-8">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
+                  New services added, Buy Foreign Numbers on <a href="https://zapotp.com/login" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">zapotp.com</a> ⚡
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-text-secondary text-sm mr-8">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
+                  New services added, Buy Foreign Numbers on <a href="https://zapotp.com/login" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">zapotp.com</a> ⚡
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Stats */}

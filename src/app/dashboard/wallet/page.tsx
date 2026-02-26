@@ -25,6 +25,8 @@ export default function WalletPage() {
   const [topupAmount, setTopupAmount] = useState('');
   const [topupLoading, setTopupLoading] = useState(false);
   const [topupError, setTopupError] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -45,7 +47,7 @@ export default function WalletPage() {
         if (data.status === 'success') {
           sessionStorage.removeItem('pending_payment_ref');
           await refreshUser();
-          loadTransactions(); // Reload to show updated status
+          loadTransactions();
         }
       }
     } catch {
@@ -62,6 +64,17 @@ export default function WalletPage() {
       setTransactions(data.transactions || []);
     }
     setLoading(false);
+  };
+
+  const handleHideTransaction = async (txId: string) => {
+    if (!token) return;
+    setDeleteLoading(true);
+    const result = await walletApi.hideTransaction(txId, token);
+    setDeleteLoading(false);
+    setDeleteConfirm(null);
+    if (result.data) {
+      setTransactions(prev => prev.filter(tx => tx.id !== txId));
+    }
   };
 
   const handleTopup = async () => {
@@ -92,7 +105,6 @@ export default function WalletPage() {
 
     const data = result.data as { checkout_url: string; reference: string };
     if (data?.checkout_url) {
-      // Redirect to Squad checkout
       window.location.href = data.checkout_url;
     } else {
       setTopupError('Failed to get payment link. Please try again.');
@@ -103,7 +115,6 @@ export default function WalletPage() {
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'deposit':
-        return 'text-emerald-500';
       case 'refund':
         return 'text-emerald-500';
       case 'charge':
@@ -160,7 +171,6 @@ export default function WalletPage() {
       {showTopup && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-surface-dark rounded-2xl border border-border-dark w-full max-w-md p-6 relative animate-in fade-in zoom-in-95 duration-200">
-            {/* Close */}
             <button
               onClick={() => { setShowTopup(false); setTopupLoading(false); }}
               className="absolute top-4 right-4 text-text-secondary hover:text-white transition-colors"
@@ -173,7 +183,6 @@ export default function WalletPage() {
             <h2 className="text-xl font-bold text-white mb-1">Top Up Wallet</h2>
             <p className="text-text-secondary text-sm mb-6">Add funds via Squad payment gateway</p>
 
-            {/* Preset Amounts */}
             <div className="grid grid-cols-3 gap-3 mb-4">
               {PRESET_AMOUNTS.map((amount) => (
                 <button
@@ -190,7 +199,6 @@ export default function WalletPage() {
               ))}
             </div>
 
-            {/* Custom Amount */}
             <div className="mb-4">
               <label className="text-text-secondary text-sm mb-1.5 block">Or enter custom amount</label>
               <div className="relative">
@@ -209,14 +217,12 @@ export default function WalletPage() {
               <p className="text-text-secondary text-xs mt-1.5">Min: ₦100 · Max: ₦500,000</p>
             </div>
 
-            {/* Error */}
             {topupError && (
               <div className="bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg p-3 mb-4 text-sm">
                 {topupError}
               </div>
             )}
 
-            {/* Deposit Button */}
             <button
               onClick={handleTopup}
               disabled={topupLoading || !topupAmount}
@@ -260,44 +266,59 @@ export default function WalletPage() {
         ) : transactions.length > 0 ? (
           <div className="divide-y divide-border-dark">
             {transactions.map((tx) => (
-              <div key={tx.id} className="p-4 flex items-center justify-between">
-                <div className="flex items-center gap-4 flex-1 min-w-0">
-                  <div className={`w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center ${
-                    tx.type === 'deposit' || tx.type === 'refund' 
-                      ? 'bg-emerald-500/10' 
-                      : 'bg-red-500/10'
-                  }`}>
-                    <svg 
-                      className={`w-5 h-5 ${tx.type === 'deposit' || tx.type === 'refund' ? 'text-emerald-500' : 'text-red-400'}`} 
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                    >
-                      <path 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth={2} 
-                        d={tx.type === 'deposit' || tx.type === 'refund' 
-                          ? 'M12 4v16m0-16l-4 4m4-4l4 4' 
-                          : 'M12 20V4m0 16l4-4m-4 4l-4-4'
-                        } 
-                      />
-                    </svg>
+              <div key={tx.id} className="p-4 relative">
+                {/* Delete X button — top right */}
+                <button
+                  onClick={() => setDeleteConfirm(tx.id)}
+                  style={{ position: 'absolute', top: '8px', right: '8px', padding: '4px', borderRadius: '4px', color: '#6b7280', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = '#f87171'; e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = '#6b7280'; e.currentTarget.style.background = 'transparent'; }}
+                  title="Remove from history"
+                >
+                  <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+
+                <div style={{ paddingRight: '24px' }} className="flex items-center justify-between">
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className={`w-10 h-10 rounded-lg flex-shrink-0 hidden md:flex items-center justify-center ${
+                      tx.type === 'deposit' || tx.type === 'refund' 
+                        ? 'bg-emerald-500/10' 
+                        : 'bg-red-500/10'
+                    }`}>
+                      <svg 
+                        className={`w-5 h-5 ${tx.type === 'deposit' || tx.type === 'refund' ? 'text-emerald-500' : 'text-red-400'}`} 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path 
+                          strokeLinecap="round" 
+                          strokeLinejoin="round" 
+                          strokeWidth={2} 
+                          d={tx.type === 'deposit' || tx.type === 'refund' 
+                            ? 'M12 4v16m0-16l-4 4m4-4l4 4' 
+                            : 'M12 20V4m0 16l4-4m-4 4l-4-4'
+                          } 
+                        />
+                      </svg>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-white font-medium capitalize">{tx.type}</p>
+                      <p className="text-text-secondary text-sm truncate">{tx.description}</p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-white font-medium capitalize">{tx.type}</p>
-                    <p className="text-text-secondary text-sm truncate">{tx.description}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <p className={`font-medium ${getTypeColor(tx.type)}`}>
-                      {parseFloat(tx.amount) >= 0 ? '+' : ''}{formatCurrency(tx.amount)}
-                    </p>
-                    <p className="text-text-secondary text-xs">{formatDate(tx.created_at)}</p>
-                  </div>
-                  <div className="w-28 flex justify-end">
-                    {getStatusBadge(tx.status)}
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className={`font-medium ${getTypeColor(tx.type)}`}>
+                        {parseFloat(tx.amount) >= 0 ? '+' : ''}{formatCurrency(tx.amount)}
+                      </p>
+                      <p className="text-text-secondary text-xs">{formatDate(tx.created_at)}</p>
+                    </div>
+                    <div className="w-28 flex justify-end">
+                      {getStatusBadge(tx.status)}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -309,6 +330,33 @@ export default function WalletPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-surface-dark rounded-2xl border border-border-dark p-6 mx-4 max-w-sm w-full">
+            <h3 className="text-lg font-bold text-white mb-2">Remove Transaction</h3>
+            <p className="text-text-secondary text-sm mb-6">
+              This will remove the transaction from your history. This only hides it from your view, it won&apos;t affect your balance.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-surface-darker text-text-secondary border border-border-dark hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleHideTransaction(deleteConfirm)}
+                disabled={deleteLoading}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+              >
+                {deleteLoading ? 'Removing...' : 'Remove'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

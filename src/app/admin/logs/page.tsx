@@ -24,6 +24,8 @@ export default function AdminLogsPage() {
   const [loading, setLoading] = useState(true);
   const [actionFilter, setActionFilter] = useState('All');
   const [expandedLog, setExpandedLog] = useState<number | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
 
   useEffect(() => {
     if (token) {
@@ -45,6 +47,17 @@ export default function AdminLogsPage() {
       setLogs(data.logs || []);
     }
     setLoading(false);
+  };
+
+  const handleDelete = async (logId: number) => {
+    if (!token) return;
+    setDeleteLoading(logId);
+    const result = await adminApi.deleteLog(logId, token);
+    setDeleteLoading(null);
+    setDeleteConfirm(null);
+    if (result.data) {
+      setLogs(prev => prev.filter(l => l.id !== logId));
+    }
   };
 
   const formatJson = (data: any) => {
@@ -91,11 +104,12 @@ export default function AdminLogsPage() {
           logs.map((log) => (
             <div 
               key={log.id} 
-              className="bg-surface-dark rounded-xl border border-border-dark overflow-hidden"
+              className="bg-surface-dark rounded-xl border border-border-dark overflow-hidden group relative"
             >
-              <button
+              {/* Log header — uses div instead of button to avoid nested button hydration error */}
+              <div
                 onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
-                className="w-full p-4 flex items-center justify-between text-left hover:bg-surface-darker/50 transition-colors"
+                className="w-full p-4 flex items-center justify-between text-left hover:bg-surface-darker/50 transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-4">
                   <span className={`w-2 h-2 rounded-full ${log.is_success ? 'bg-emerald-500' : 'bg-red-500'}`} />
@@ -107,8 +121,28 @@ export default function AdminLogsPage() {
                     {log.response_time}ms
                   </span>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                   <span className="text-text-secondary text-sm">{formatDate(log.created_at)}</span>
+                  {/* Desktop: delete icon on hover */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setDeleteConfirm(log.id); }}
+                    className="hidden lg:block opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg text-red-400 hover:bg-red-500/10"
+                    title="Delete log"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                  {/* Mobile: always-visible delete button */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setDeleteConfirm(log.id); }}
+                    className="lg:hidden p-1.5 rounded-lg text-red-400 hover:bg-red-500/10"
+                    title="Delete log"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
                   <svg 
                     className={`w-5 h-5 text-text-secondary transition-transform ${expandedLog === log.id ? 'rotate-180' : ''}`}
                     fill="none" 
@@ -118,7 +152,7 @@ export default function AdminLogsPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </div>
-              </button>
+              </div>
 
               {expandedLog === log.id && (
                 <div className="border-t border-border-dark p-4 space-y-4">
@@ -144,6 +178,33 @@ export default function AdminLogsPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-surface-dark rounded-2xl border border-border-dark p-6 mx-4 max-w-sm w-full">
+            <h3 className="text-lg font-bold text-white mb-2">Delete Log</h3>
+            <p className="text-text-secondary text-sm mb-6">
+              Are you sure you want to permanently delete this API log entry?
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-surface-darker text-text-secondary border border-border-dark hover:text-white transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDelete(deleteConfirm)}
+                disabled={deleteLoading === deleteConfirm}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+              >
+                {deleteLoading === deleteConfirm ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

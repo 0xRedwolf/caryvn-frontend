@@ -17,6 +17,7 @@ interface Service {
   max_quantity: number;
   has_refill: boolean;
   has_cancel: boolean;
+  avg_completion_time: string | null;
 }
 
 // Platform SVG icons
@@ -94,7 +95,7 @@ export default function NewOrderPage() {
   const [orderError, setOrderError] = useState("");
   const [orderSuccess, setOrderSuccess] = useState("");
 
-  const { isAuthenticated, token } = useAuth();
+  const { isAuthenticated, token, refreshUser } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -221,6 +222,8 @@ export default function NewOrderPage() {
       setOrderSuccess("Order placed successfully!");
       setOrderLink("");
       setOrderQuantity(selectedService.min_quantity.toString());
+      // Refresh user profile to update sidebar balance
+      refreshUser();
       setTimeout(() => {
         router.push("/dashboard/orders");
       }, 1500);
@@ -323,7 +326,7 @@ export default function NewOrderPage() {
                 value={orderLink}
                 onChange={(e) => setOrderLink(e.target.value)}
                 className="input"
-                placeholder="Paste link here"
+                placeholder="Paste your link here"
                 disabled={!selectedService}
               />
             </div>
@@ -381,7 +384,7 @@ export default function NewOrderPage() {
                 <p className="text-text-secondary text-sm mb-3">
                   {selectedService.name}
                 </p>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 mb-3">
                   {selectedService.has_refill && (
                     <span className="px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 text-xs">
                       ♻️ Refill
@@ -392,6 +395,15 @@ export default function NewOrderPage() {
                       ❌ Cancel
                     </span>
                   )}
+                </div>
+                <div className="flex items-center gap-2 pt-2 border-t border-primary/10">
+                  <svg className="w-4 h-4 text-primary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-text-secondary text-sm">Average time:</span>
+                  <span className="text-white text-sm font-medium">
+                    {selectedService.avg_completion_time || "N/A"}
+                  </span>
                 </div>
               </div>
             )}
