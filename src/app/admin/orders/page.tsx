@@ -14,6 +14,9 @@ interface Order {
   charge: string;
   profit: string;
   status: string;
+  start_count?: number | null;
+  remains?: number | null;
+  service_has_refill?: boolean;
   provider_order_id?: string;
   created_at: string;
 }
@@ -30,6 +33,8 @@ export default function AdminOrdersPage() {
   const [actionResult, setActionResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [completeLoading, setCompleteLoading] = useState<string | null>(null);
+  const [refillLoading, setRefillLoading] = useState<string | null>(null);
 
   useEffect(() => {
     if (token) {
@@ -75,6 +80,32 @@ export default function AdminOrdersPage() {
       setActionResult({ type: 'success', message: 'Order deleted' });
     } else {
       setActionResult({ type: 'error', message: result.error || 'Failed to delete' });
+    }
+  };
+
+  const handleMarkCompleted = async (orderId: string) => {
+    if (!token) return;
+    setCompleteLoading(orderId);
+    const result = await adminApi.markOrderCompleted(orderId, token);
+    setCompleteLoading(null);
+    if (result.data) {
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'completed' } : o));
+      setActionResult({ type: 'success', message: 'Order marked as completed' });
+    } else {
+      setActionResult({ type: 'error', message: result.error || 'Failed to mark order' });
+    }
+  };
+
+  const handleRefill = async (orderId: string) => {
+    if (!token) return;
+    setRefillLoading(orderId);
+    const result = await adminApi.refillOrder(orderId, token);
+    setRefillLoading(null);
+    if (result.data) {
+      const data = result.data as { message?: string };
+      setActionResult({ type: 'success', message: data.message || 'Refill requested successfully' });
+    } else {
+      setActionResult({ type: 'error', message: result.error || 'Failed to request refill' });
     }
   };
 
@@ -138,7 +169,7 @@ export default function AdminOrdersPage() {
                   <th className="py-3 px-4 text-text-secondary text-sm font-medium">Qty</th>
                   <th className="py-3 px-4 text-text-secondary text-sm font-medium">Charge</th>
                   <th className="py-3 px-4 text-text-secondary text-sm font-medium">Profit</th>
-                  <th className="py-3 px-4 text-text-secondary text-sm font-medium">Status</th>
+                  <th className="py-3 px-4 text-text-secondary text-sm font-medium">Status / Stats</th>
                   <th className="py-3 px-4 text-text-secondary text-sm font-medium">Provider</th>
                   <th className="py-3 px-4 text-text-secondary text-sm font-medium">Date</th>
                   <th className="py-3 px-4 text-text-secondary text-sm font-medium w-10"></th>
@@ -166,9 +197,17 @@ export default function AdminOrdersPage() {
                       <span className="text-emerald-500 font-medium">{formatCurrency(order.profit)}</span>
                     </td>
                     <td className="py-4 px-4">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(order.status)}`}>
-                        {order.status.replace('_', ' ')}
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className={`px-2 py-1 rounded text-xs font-medium w-fit ${getStatusColor(order.status)}`}>
+                          {order.status.replace('_', ' ')}
+                        </span>
+                        {(order.start_count !== null || order.remains !== null) && (
+                          <div className="flex gap-2 text-[10px] text-text-secondary mt-1">
+                            {order.start_count !== null && <span>S: <span className="text-white">{order.start_count}</span></span>}
+                            {order.remains !== null && <span>R: <span className="text-white">{order.remains}</span></span>}
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="py-4 px-4">
                       {order.provider_order_id ? (
@@ -181,26 +220,65 @@ export default function AdminOrdersPage() {
                       <span className="text-text-secondary text-sm">{formatDate(order.created_at)}</span>
                     </td>
                     <td className="py-4 px-4">
-                      {/* Desktop: icon on hover */}
-                      <button
-                        onClick={() => setDeleteConfirm(order.id)}
-                        className="hidden lg:block opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg text-red-400 hover:bg-red-500/10"
-                        title="Delete order"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                      {/* Mobile: always visible */}
-                      <button
-                        onClick={() => setDeleteConfirm(order.id)}
-                        className="lg:hidden p-1.5 rounded-lg text-red-400 hover:bg-red-500/10"
-                        title="Delete order"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
+                      <div className="flex justify-end gap-2">
+                        {/* Complete Button (if pending/processing) */}
+                        {['pending', 'processing', 'in_progress'].includes(order.status) && (
+                          <button
+                            onClick={() => handleMarkCompleted(order.id)}
+                            disabled={completeLoading === order.id}
+                            className="p-1.5 rounded-lg text-emerald-400 hover:bg-emerald-500/10 transition-colors disabled:opacity-50"
+                            title="Force Mark Completed"
+                          >
+                            {completeLoading === order.id ? (
+                              <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </button>
+                        )}
+                        
+                        {/* Refill Button (if eligible) */}
+                        {order.service_has_refill && order.status.toLowerCase() === 'completed' && (
+                          <button
+                            onClick={() => handleRefill(order.id)}
+                            disabled={refillLoading === order.id}
+                            className="p-1.5 rounded-lg text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+                            title="Request Refill"
+                          >
+                            {refillLoading === order.id ? (
+                              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                            )}
+                          </button>
+                        )}
+                        
+                        {/* Desktop Delete: icon on hover */}
+                        <button
+                          onClick={() => setDeleteConfirm(order.id)}
+                          className="hidden lg:block opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg text-red-400 hover:bg-red-500/10"
+                          title="Delete order"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                        
+                        {/* Mobile Delete: always visible */}
+                        <button
+                          onClick={() => setDeleteConfirm(order.id)}
+                          className="lg:hidden p-1.5 rounded-lg text-red-400 hover:bg-red-500/10"
+                          title="Delete order"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -21,9 +21,17 @@ const sidebarLinks = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser, isLoading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   useActivityTracker();
+
+  const handleRefreshBalance = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    await refreshUser();
+    setTimeout(() => setIsRefreshing(false), 500); // Give the spin animation time to complete visually
+  };
 
   return (
     <ProtectedRoute>
@@ -60,7 +68,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           {/* Balance */}
           <div className="p-4 border-b border-border-dark">
             <div className="bg-surface-dark rounded-xl p-4">
-              <p className="text-text-secondary text-xs mb-1">Balance</p>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-text-secondary text-xs">Balance</p>
+                <button 
+                  onClick={handleRefreshBalance}
+                  disabled={isRefreshing}
+                  className="text-text-secondary hover:text-white transition-colors"
+                  title="Refresh Balance"
+                >
+                  <svg 
+                    className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-primary' : ''}`} 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                </button>
+              </div>
               <p className="text-primary text-2xl font-bold">{formatCurrency(user?.balance || '0')}</p>
               <Link href="/dashboard/wallet" className="text-primary text-xs hover:underline mt-2 inline-block">
                 Add Funds →

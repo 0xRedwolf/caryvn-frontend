@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { walletApi } from '@/lib/api';
+import { walletApi, adminApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 interface Transaction {
@@ -25,6 +25,18 @@ export default function WalletPage() {
   const [topupAmount, setTopupAmount] = useState('');
   const [topupLoading, setTopupLoading] = useState(false);
   const [topupError, setTopupError] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Manual transfer states
+  const [topupMethod, setTopupMethod] = useState<'automatic' | 'manual'>('automatic');
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [siteSettings, setSiteSettings] = useState<{
+    manual_bank_name?: string;
+    manual_account_name?: string;
+    manual_account_number?: string;
+  } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -32,8 +44,28 @@ export default function WalletPage() {
     if (token) {
       loadTransactions();
       checkPendingPayment();
+      loadSettings();
     }
   }, [token]);
+
+  const handleRefreshBalance = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    await refreshUser();
+    setTimeout(() => setIsRefreshing(false), 500); // Give the spin animation time
+  };
+
+  const loadSettings = async () => {
+    if (!token) return;
+    try {
+      const res = await adminApi.getSiteSettings(token);
+      if (res.data) {
+        setSiteSettings(res.data as any);
+      }
+    } catch (err) {
+      console.error('Failed to load site settings', err);
+    }
+  };
 
   const checkPendingPayment = async () => {
     if (!token) return;
@@ -93,22 +125,50 @@ export default function WalletPage() {
     setTopupLoading(true);
     setTopupError('');
 
-    const callbackUrl = `${window.location.origin}/dashboard/wallet/payment-callback`;
+    if (topupMethod === 'automatic') {
+      const callbackUrl = `${window.location.origin}/dashboard/wallet/payment-callback`;
+      const result = await walletApi.initiateTopup(amount, callbackUrl, token);
 
-    const result = await walletApi.initiateTopup(amount, callbackUrl, token);
+      if (result.error) {
+        setTopupError(result.error);
+        setTopupLoading(false);
+        return;
+      }
 
-    if (result.error) {
-      setTopupError(result.error);
-      setTopupLoading(false);
-      return;
-    }
-
-    const data = result.data as { checkout_url: string; reference: string };
-    if (data?.checkout_url) {
-      window.location.href = data.checkout_url;
+      const data = result.data as { checkout_url: string; reference: string };
+      if (data?.checkout_url) {
+        window.location.href = data.checkout_url;
+      } else {
+        setTopupError('Failed to get payment link. Please try again.');
+        setTopupLoading(false);
+      }
     } else {
-      setTopupError('Failed to get payment link. Please try again.');
+      // Manual topup
+      if (!proofFile) {
+        setTopupError('Please upload a proof of payment.');
+        setTopupLoading(false);
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('amount', amount.toString());
+      formData.append('payment_proof', proofFile);
+
+      const result = await walletApi.initiateManualTopup(formData, token);
+      
       setTopupLoading(false);
+      
+      if (result.error) {
+        setTopupError(result.error);
+        return;
+      }
+
+      // Success! Reset states and refresh txs
+      setShowTopup(false);
+      setTopupAmount('');
+      setProofFile(null);
+      setTopupMethod('automatic');
+      await loadTransactions();
     }
   };
 
@@ -150,7 +210,24 @@ export default function WalletPage() {
 
       {/* Balance Card */}
       <div className="bg-gradient-to-br from-primary/20 to-primary/5 rounded-2xl border border-primary/20 p-8 mb-8">
-        <p className="text-text-secondary mb-2">Available Balance</p>
+        <div className="flex items-center gap-3 mb-2">
+          <p className="text-text-secondary">Available Balance</p>
+          <button 
+            onClick={handleRefreshBalance}
+            disabled={isRefreshing}
+            className="text-text-secondary hover:text-white transition-colors"
+            title="Refresh Balance"
+          >
+            <svg 
+              className={`w-5 h-5 ${isRefreshing ? 'animate-spin text-primary' : ''}`} 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+        </div>
         <p className="text-4xl font-bold text-white mb-6">{formatCurrency(user?.balance || '0')}</p>
         <button
           className="btn-primary"
@@ -180,8 +257,51 @@ export default function WalletPage() {
               </svg>
             </button>
 
-            <h2 className="text-xl font-bold text-white mb-1">Top Up Wallet</h2>
-            <p className="text-text-secondary text-sm mb-6">Add funds via Squad payment gateway</p>
+            <h2 className="text-xl font-bold text-white mb-4">Top Up Wallet</h2>
+            
+            {/* Method Tabs */}
+            <div className="flex bg-surface-darker p-1 rounded-xl mb-6">
+              <button
+                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  topupMethod === 'automatic'
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-text-secondary hover:text-white hover:bg-white/5'
+                }`}
+                onClick={() => setTopupMethod('automatic')}
+              >
+                Automatic (Squad)
+              </button>
+              <button
+                className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  topupMethod === 'manual'
+                    ? 'bg-primary text-white shadow-sm'
+                    : 'text-text-secondary hover:text-white hover:bg-white/5'
+                }`}
+                onClick={() => setTopupMethod('manual')}
+              >
+                Manual Transfer
+              </button>
+            </div>
+
+            {topupMethod === 'manual' && siteSettings && (
+              <div className="bg-surface-darker border border-border-dark rounded-xl p-4 mb-6">
+                <h4 className="text-sm font-medium text-white mb-3">Transfer Details</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-text-secondary">Bank Name:</span>
+                    <span className="text-white font-medium">{siteSettings.manual_bank_name || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-secondary">Account Name:</span>
+                    <span className="text-white font-medium">{siteSettings.manual_account_name || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-text-secondary">Account Number:</span>
+                    <span className="text-primary font-mono font-medium">{siteSettings.manual_account_number || 'N/A'}</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-3 gap-3 mb-4">
               {PRESET_AMOUNTS.map((amount) => (
@@ -200,13 +320,12 @@ export default function WalletPage() {
             </div>
 
             <div className="mb-4">
-              <label className="text-text-secondary text-sm mb-1.5 block">Or enter custom amount</label>
+              <label className="text-text-secondary text-sm mb-1.5 block">Amount (₦)</label>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary font-medium">₦</span>
                 <input
                   type="number"
-                  className="input w-full"
-                  style={{ paddingLeft: '2.5rem' }}
+                  className="input w-full pl-10 text-center"
                   placeholder="5000"
                   min="100"
                   max="500000"
@@ -216,6 +335,44 @@ export default function WalletPage() {
               </div>
               <p className="text-text-secondary text-xs mt-1.5">Min: ₦100 · Max: ₦500,000</p>
             </div>
+            
+            {topupMethod === 'manual' && (
+              <div className="mb-6">
+                 <label className="text-text-secondary text-sm mb-1.5 block">Payment Proof (Screenshot)</label>
+                 <input 
+                   type="file" 
+                   ref={fileInputRef}
+                   accept="image/*,application/pdf"
+                   className="hidden"
+                   onChange={(e) => {
+                     const file = e.target.files?.[0];
+                     if (file) setProofFile(file);
+                   }}
+                 />
+                 <div 
+                   onClick={() => fileInputRef.current?.click()}
+                   className="border-2 border-dashed border-border-dark rounded-xl p-4 text-center cursor-pointer hover:border-primary/50 transition-colors bg-surface-darker/50"
+                 >
+                   {proofFile ? (
+                     <div className="flex flex-col items-center">
+                       <svg className="w-8 h-8 text-emerald-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                       </svg>
+                       <span className="text-sm font-medium text-white truncate max-w-full px-4">{proofFile.name}</span>
+                       <span className="text-xs text-text-secondary mt-1">Click to change</span>
+                     </div>
+                   ) : (
+                     <div className="flex flex-col items-center py-2">
+                       <svg className="w-8 h-8 text-text-secondary mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                       </svg>
+                       <span className="text-sm text-text-secondary">Click to upload proof</span>
+                       <span className="text-xs text-text-secondary/70 mt-1">JPG, PNG, PDF up to 5MB</span>
+                     </div>
+                   )}
+                 </div>
+              </div>
+            )}
 
             {topupError && (
               <div className="bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg p-3 mb-4 text-sm">
@@ -225,30 +382,35 @@ export default function WalletPage() {
 
             <button
               onClick={handleTopup}
-              disabled={topupLoading || !topupAmount}
+              disabled={topupLoading || !topupAmount || (topupMethod === 'manual' && !proofFile)}
               className="btn-primary w-full py-3.5 text-base disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {topupLoading ? (
                 <>
                   <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Connecting to Squad...
+                  Processing...
                 </>
               ) : (
                 <>
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  Deposit{topupAmount ? ` ₦${parseFloat(topupAmount).toLocaleString()}` : ''} with Squad
+                  {topupMethod === 'automatic' 
+                    ? `Deposit${topupAmount ? ` ₦${parseFloat(topupAmount).toLocaleString()}` : ''} with Squad`
+                    : `Submit Proof to Admin`
+                  }
                 </>
               )}
             </button>
 
-            <div className="flex items-center gap-2 mt-4 justify-center">
-              <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-              <p className="text-text-secondary text-xs">Secured by Squad Payment Gateway</p>
-            </div>
+            {topupMethod === 'automatic' && (
+              <div className="flex items-center gap-2 mt-4 justify-center">
+                <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                <p className="text-text-secondary text-xs">Secured by Squad Payment Gateway</p>
+              </div>
+            )}
           </div>
         </div>
       )}

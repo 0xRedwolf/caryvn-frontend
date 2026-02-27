@@ -12,6 +12,9 @@ interface Order {
   quantity: number;
   charge: string;
   status: string;
+  start_count?: number | null;
+  remains?: number | null;
+  service_has_refill?: boolean;
   created_at: string;
 }
 
@@ -24,6 +27,10 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  
+  // Refill state
+  const [refillLoading, setRefillLoading] = useState<string | null>(null);
+  const [refillMessage, setRefillMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   useEffect(() => {
     if (token) {
@@ -59,6 +66,25 @@ export default function OrdersPage() {
     }
   };
 
+  const handleRefill = async (orderId: string) => {
+    if (!token) return;
+    setRefillLoading(orderId);
+    setRefillMessage(null);
+    
+    const result = await ordersApi.requestRefill(orderId, token);
+    setRefillLoading(null);
+    
+    if (result.data) {
+      const data = result.data as { message?: string };
+      setRefillMessage({ type: 'success', text: data.message || 'Refill requested successfully!' });
+    } else {
+      setRefillMessage({ type: 'error', text: result.error || 'Failed to request refill.' });
+    }
+    
+    // Auto-clear message after 5 seconds
+    setTimeout(() => setRefillMessage(null), 5000);
+  };
+
   return (
     <div>
       <div className="mb-8">
@@ -82,6 +108,36 @@ export default function OrdersPage() {
           </button>
         ))}
       </div>
+
+      {/* Refill Feedback Message */}
+      {refillMessage && (
+        <div className={`mb-6 p-4 rounded-lg flex items-start gap-3 border ${
+          refillMessage.type === 'success' 
+            ? 'bg-green-500/10 border-green-500/20 text-green-400' 
+            : 'bg-red-500/10 border-red-500/20 text-red-500'
+        }`}>
+          <div className="mt-0.5">
+            {refillMessage.type === 'success' ? (
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            )}
+          </div>
+          <p className="text-sm font-medium">{refillMessage.text}</p>
+          <button 
+            onClick={() => setRefillMessage(null)}
+            className="ml-auto opacity-70 hover:opacity-100 transition-opacity"
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* Orders Table */}
       <div className="bg-surface-dark rounded-xl border border-border-dark">
@@ -127,10 +183,40 @@ export default function OrdersPage() {
                       <p className="text-white font-medium text-sm">{formatCurrency(order.charge)}</p>
                       <p className="text-text-secondary text-xs">{formatDate(order.created_at)}</p>
                     </div>
+                  </div>
+                </div>
+
+                {/* Status & Actions Footer */}
+                <div className="mt-4 pt-3 border-t border-border-dark flex items-center justify-between flex-wrap gap-3">
+                  <div className="flex gap-4 items-center">
                     <span className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${getStatusColor(order.status)}`}>
                       {order.status.replace('_', ' ')}
                     </span>
+                    
+                    {order.start_count !== null && order.start_count !== undefined && (
+                      <span className="text-xs text-text-secondary">Start: <span className="text-white">{order.start_count}</span></span>
+                    )}
+                    {order.remains !== null && order.remains !== undefined && (
+                      <span className="text-xs text-text-secondary">Remains: <span className="text-white">{order.remains}</span></span>
+                    )}
                   </div>
+
+                  {order.service_has_refill && order.status.toLowerCase() === 'completed' && (
+                    <button
+                      onClick={() => handleRefill(order.id)}
+                      disabled={refillLoading === order.id}
+                      className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {refillLoading === order.id ? (
+                        <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      )}
+                      Refill
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

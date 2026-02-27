@@ -95,6 +95,10 @@ export default function NewOrderPage() {
   const [orderError, setOrderError] = useState("");
   const [orderSuccess, setOrderSuccess] = useState("");
 
+  const [providerCheckLoading, setProviderCheckLoading] = useState(false);
+  const [providerCheckError, setProviderCheckError] = useState("");
+  const [providerCanFulfill, setProviderCanFulfill] = useState(true);
+
   const { isAuthenticated, token, refreshUser } = useAuth();
   const router = useRouter();
 
@@ -164,6 +168,42 @@ export default function NewOrderPage() {
       setOrderError("");
     }
   }, [selectedService]);
+
+  // Debounced API check for mother provider capacity
+  useEffect(() => {
+    if (!selectedService || !orderQuantity || !token) {
+      setProviderCanFulfill(true);
+      setProviderCheckError("");
+      return;
+    }
+    
+    const qty = parseInt(orderQuantity);
+    if (isNaN(qty) || qty < selectedService.min_quantity) {
+      return;
+    }
+
+    setProviderCheckLoading(true);
+    setProviderCheckError("");
+
+    const timeoutId = setTimeout(async () => {
+      const { ordersApi } = await import("@/lib/api");
+      const result = await ordersApi.checkProviderBalance(
+        { service_id: selectedService.provider_id, quantity: qty },
+        token
+      );
+      
+      setProviderCheckLoading(false);
+      if (result.data) {
+        const data = result.data as { can_fulfill: boolean; message?: string };
+        setProviderCanFulfill(data.can_fulfill);
+        if (!data.can_fulfill) {
+          setProviderCheckError(data.message || "Apologies, an update is in effect. Please refresh the page or choose another service.");
+        }
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [selectedService, orderQuantity, token]);
 
   // Check if service requires custom comments
   const requiresComments = selectedService?.name.toLowerCase().includes('custom');
@@ -269,6 +309,17 @@ export default function NewOrderPage() {
 
       {/* Order Form Card */}
       <div className="bg-surface-dark rounded-2xl border border-border-dark p-6">
+        {/* Important Notice */}
+            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex gap-3 mb-6">
+              <div>
+                <h4 className="text-red-500 font-medium text-sm mb-2 text-center">Important Notice!!!</h4>
+                <ul className="text-blue-500 text-xs font-semibold leading-relaxed list-disc list-inside space-y-1">
+                  <li>For Successful orders, keep your accounts public</li>
+                  <li>Always double check your order link before placing an order</li>
+                  <li>Please be very patient, especially for followers orders, if after 48hrs you haven&apos;t received your order, please contact us</li>
+                </ul>
+              </div>
+            </div>
         {loading ? (
           <div className="py-12 text-center">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
@@ -450,13 +501,43 @@ export default function NewOrderPage() {
               </div>
             )}
 
+            {/* Duplicate Order Warning */}
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex gap-3">
+              <svg className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div>
+                <h4 className="text-amber-500 font-medium text-sm mb-1">Important Notice</h4>
+                <p className="text-amber-400/80 text-xs leading-relaxed">
+                  Please do not submit multiple orders to the exact same link 
+                  until the first order is <strong className="text-amber-400">Completed</strong>. 
+                  Doing so may cause the new order to fail and any deducted funds will be non-refundable according to our terms of service.
+                </p>
+              </div>
+            </div>
+
+            {/* Provider Balance Error Message */}
+            {!providerCanFulfill && (
+              <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex gap-3">
+                <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p>{providerCheckError}</p>
+                  <button onClick={(e) => { e.preventDefault(); window.location.reload(); }} className="underline font-medium mt-1 hover:text-red-300">
+                    Refresh the page
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={!selectedService || orderLoading}
+              disabled={!selectedService || orderLoading || providerCheckLoading || !providerCanFulfill}
               className="w-full btn-primary disabled:opacity-50"
             >
-              {orderLoading ? "Processing..." : "Submit Order"}
+              {orderLoading ? "Processing..." : providerCheckLoading ? "Verifying availability..." : "Submit Order"}
             </button>
           </form>
         )}
