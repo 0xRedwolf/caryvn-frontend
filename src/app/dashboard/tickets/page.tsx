@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { ticketsApi } from '@/lib/api';
-import { formatDate, getStatusColor } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
+import toast from 'react-hot-toast';
 
 interface Ticket {
   id: string;
@@ -15,6 +17,7 @@ interface Ticket {
 
 export default function TicketsPage() {
   const { token } = useAuth();
+  const router = useRouter();
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewTicket, setShowNewTicket] = useState(false);
@@ -22,20 +25,42 @@ export default function TicketsPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    let interval: NodeJS.Timeout;
+
     if (token) {
       loadTickets();
+      
+      // Auto-refresh tickets every 5 seconds
+      interval = setInterval(() => {
+        loadTickets(false);
+      }, 5000);
     }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
   }, [token]);
 
-  const loadTickets = async () => {
+  const loadTickets = async (showLoading = true) => {
     if (!token) return;
 
-    const result = await ticketsApi.getTickets(token);
-    if (result.data) {
-      const data = result.data as { tickets: Ticket[] };
-      setTickets(data.tickets || []);
+    if (showLoading && tickets.length === 0) {
+       setLoading(true);
     }
-    setLoading(false);
+
+    try {
+      const result = await ticketsApi.getTickets(token);
+      if (result.data) {
+        const data = result.data as { tickets: Ticket[] };
+        setTickets(data.tickets || []);
+      }
+    } catch (error) {
+      console.error("Failed to load tickets:", error);
+    } finally {
+      if (showLoading) {
+        setLoading(false);
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,14 +68,20 @@ export default function TicketsPage() {
     if (!token) return;
 
     setSubmitting(true);
-    const result = await ticketsApi.createTicket(newTicket, token);
-    
-    if (result.data) {
-      setNewTicket({ subject: '', message: '', priority: 'medium' });
-      setShowNewTicket(false);
-      loadTickets();
+    try {
+      const result = await ticketsApi.createTicket(newTicket, token);
+      
+      if (result.data) {
+        setNewTicket({ subject: '', message: '', priority: 'medium' });
+        setShowNewTicket(false);
+        toast.success('Ticket submitted successfully!');
+        loadTickets();
+      }
+    } catch (err) {
+      toast.error('Failed to submit ticket. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   const getStatusBadge = (status: string) => {
@@ -65,7 +96,7 @@ export default function TicketsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1">Support Tickets</h1>
           <p className="text-text-secondary">Get help from our support team</p>
@@ -74,6 +105,9 @@ export default function TicketsPage() {
           onClick={() => setShowNewTicket(true)}
           className="btn-primary"
         >
+          <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
           New Ticket
         </button>
       </div>
@@ -124,7 +158,7 @@ export default function TicketsPage() {
                   onChange={(e) => setNewTicket({ ...newTicket, message: e.target.value })}
                   required
                   rows={5}
-                  className="input resize-none h-auto"
+                  className="input flex-1 min-h-[120px] max-h-[250px] resize-y w-full"
                   placeholder="Describe your issue in detail..."
                 />
               </div>
@@ -151,17 +185,26 @@ export default function TicketsPage() {
         ) : tickets.length > 0 ? (
           <div className="divide-y divide-border-dark">
             {tickets.map((ticket) => (
-              <div key={ticket.id} className="p-5 hover:bg-primary/5 transition-colors">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-white font-medium mb-1">{ticket.subject}</h3>
+              <div 
+                key={ticket.id} 
+                onClick={() => router.push(`/dashboard/tickets/${ticket.id}`)}
+                className="p-5 hover:bg-surface-darker/50 transition-colors cursor-pointer group"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0 pr-4">
+                    <h3 className="text-white font-medium mb-1 truncate group-hover:text-primary transition-colors">{ticket.subject}</h3>
                     <p className="text-text-secondary text-sm">
                       Opened {formatDate(ticket.created_at)}
                     </p>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadge(ticket.status)}`}>
-                    {ticket.status}
-                  </span>
+                  <div className="flex items-center gap-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium capitalize shrink-0 ${getStatusBadge(ticket.status)}`}>
+                      {ticket.status}
+                    </span>
+                    <svg className="w-5 h-5 text-text-secondary group-hover:text-white transition-colors shrink-0 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
                 </div>
               </div>
             ))}

@@ -6,7 +6,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 interface ApiOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-  body?: Record<string, unknown>;
+  body?: Record<string, unknown> | FormData | any;
   token?: string | null;
 }
 
@@ -25,9 +25,11 @@ export async function api<T = unknown>(
 ): Promise<ApiResponse<T>> {
   const { method = 'GET', body, token } = options;
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
+  const headers: Record<string, string> = {};
+
+  if (!(body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -37,7 +39,7 @@ export async function api<T = unknown>(
     const response = await fetch(`${API_URL}${endpoint}`, {
       method,
       headers,
-      body: body ? JSON.stringify(body) : undefined,
+      body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined),
       credentials: 'include',
     });
 
@@ -108,6 +110,13 @@ export const walletApi = {
       token,
     }),
 
+  initiateManualTopup: (data: FormData, token: string) =>
+    api('/wallet/topup/manual/', {
+      method: 'POST',
+      body: data, // Note: fetch naturally handles FormData directly, 'api' utility needs to allow FormData body
+      token,
+    }),
+
   verifyTopup: (reference: string, token: string) =>
     api(`/wallet/topup/verify/?reference=${reference}`, { token }),
 
@@ -136,6 +145,9 @@ export const ordersApi = {
   createOrder: (data: { service_id: number; link: string; quantity: number; comments?: string }, token: string) =>
     api('/orders/create/', { method: 'POST', body: data, token }),
 
+  checkProviderBalance: (data: { service_id: number; quantity: number }, token: string) =>
+    api('/orders/check-provider-balance/', { method: 'POST', body: data, token }),
+
   getOrders: (token: string, params?: { status?: string; limit?: number; offset?: number }) => {
     const searchParams = new URLSearchParams();
     if (params?.status) searchParams.set('status', params.status);
@@ -147,6 +159,9 @@ export const ordersApi = {
 
   getOrder: (orderId: string, token: string) =>
     api(`/orders/${orderId}/`, { token }),
+
+  requestRefill: (orderId: string, token: string) =>
+    api(`/orders/${orderId}/refill/`, { method: 'POST', token }),
 
   hideOrder: (orderId: string, token: string) =>
     api(`/orders/${orderId}/hide/`, { method: 'POST', token }),
@@ -232,15 +247,48 @@ export const adminApi = {
   checkOrderStatus: (orderIds: string[], token: string) =>
     api('/admin/orders/check-status/', { method: 'POST', body: { order_ids: orderIds }, token }),
 
+  markOrderCompleted: (orderId: string, token: string) =>
+    api(`/admin/orders/${orderId}/mark-completed/`, { method: 'POST', token }),
+
+  refillOrder: (orderId: string, token: string) =>
+    api(`/admin/orders/${orderId}/refill/`, { method: 'POST', token }),
+
   // User management actions
   toggleUserActive: (userId: string, token: string) =>
     api(`/admin/users/${userId}/toggle-active/`, { method: 'POST', token }),
 
+  adjustUserBalance: (userId: string, action: 'credit' | 'deduct', amount: number, token: string) =>
+    api(`/admin/users/${userId}/adjust-balance/`, { method: 'POST', body: { action, amount }, token }),
+
   getUserTransactions: (userId: string, token: string) =>
     api(`/admin/users/${userId}/transactions/`, { token }),
 
+  getPendingDeposits: (token: string) =>
+    api('/admin/transactions/pending/', { token }),
+
+  getPendingDepositsCount: (token: string) =>
+    api('/admin/transactions/pending/count/', { token }),
+
+  verifyTransaction: (transactionId: string, token: string) =>
+    api(`/admin/transactions/${transactionId}/verify/`, { method: 'POST', token }),
+
+  failTransaction: (transactionId: string, token: string) =>
+    api(`/admin/transactions/${transactionId}/fail/`, { method: 'POST', token }),
+
   getUserActivity: (userId: string, token: string, limit = 100) =>
     api(`/admin/users/${userId}/activity/?limit=${limit}`, { token }),
+
+  getTickets: (token: string) =>
+    api('/admin/tickets/', { token }),
+
+  getTicket: (ticketId: string, token: string) =>
+    api(`/admin/tickets/${ticketId}/`, { token }),
+
+  getPendingTicketsCount: (token: string) =>
+    api('/admin/tickets/pending/count/', { token }),
+
+  replyTicket: (ticketId: string, action: 'reply' | 'close', message?: string, token?: string) =>
+    api(`/admin/tickets/${ticketId}/`, { method: 'POST', body: { action, message }, token }),
 
   deleteUser: (userId: string, token: string) =>
     api(`/admin/users/${userId}/delete/`, { method: 'DELETE', token }),
@@ -258,7 +306,10 @@ export const adminApi = {
     api('/services/?include_inactive=true', { token }),
 
   getSiteSettings: (token: string) =>
-    api('/admin/settings/', { token }),
+    api('/settings/', { token }),
+    
+  updateSiteSettings: (data: Record<string, any>, token: string) =>
+    api('/settings/', { method: 'POST', body: data, token }),
 
   toggleShowInactiveServices: (token: string) =>
     api('/admin/settings/toggle-show-inactive/', { method: 'POST', token }),
