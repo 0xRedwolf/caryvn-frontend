@@ -117,7 +117,7 @@ export default function DashboardPage() {
               <div ref={tickerSetRef} className="flex items-center shrink-0">
                 <span className="inline-flex items-center gap-1.5 text-text-secondary text-sm mr-8">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
-                  New services added, Buy Foreign Numbers on <a href="https://zapotp.com/login" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">zapotp.com</a> ⚡
+                  NEW!!! Binance Pay and Onchain Crypto Deposits Now Available
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-text-secondary text-sm mr-8">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
@@ -125,14 +125,14 @@ export default function DashboardPage() {
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-text-secondary text-sm mr-8">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
-                  New services added, Buy Foreign Numbers on <a href="https://zapotp.com/login" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">zapotp.com</a> ⚡
+                  New features: 24/7 Live Chat and Ticket Added
                 </span>
               </div>
               {/* Duplicate set for seamless loop */}
               <div className="flex items-center shrink-0">
                 <span className="inline-flex items-center gap-1.5 text-text-secondary text-sm mr-8">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
-                  New services added, Buy Foreign Numbers on <a href="https://zapotp.com/login" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">zapotp.com</a> ⚡
+                  NEW!!! Binance Pay and Onchain Crypto Deposits Now Available
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-text-secondary text-sm mr-8">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
@@ -140,7 +140,7 @@ export default function DashboardPage() {
                 </span>
                 <span className="inline-flex items-center gap-1.5 text-text-secondary text-sm mr-8">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
-                  New services added, Buy Foreign Numbers on <a href="https://zapotp.com/login" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">zapotp.com</a> ⚡
+                  New features: 24/7 Live Chat and Ticket Added
                 </span>
               </div>
             </div>

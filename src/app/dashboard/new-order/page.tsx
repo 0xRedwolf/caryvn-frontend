@@ -502,15 +502,15 @@ export default function NewOrderPage() {
             )}
 
             {/* Duplicate Order Warning */}
-            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex gap-3">
-              <svg className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+            <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex gap-3">
+              <svg className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               <div>
-                <h4 className="text-amber-500 font-medium text-sm mb-1">Important Notice</h4>
-                <p className="text-amber-400/80 text-xs leading-relaxed">
-                  Please do not submit multiple orders to the exact same link 
-                  until the first order is <strong className="text-amber-400">Completed</strong>. 
+                <h4 className="text-red-500 font-medium text-sm mb-1">Important Notice</h4>
+                <p className="text-red-400/80 font-bold text-xs leading-relaxed">
+                  Do not submit multiple orders to the exact same link
+                  until the first order is <strong className="text-red-400">Completed</strong>. 
                   Doing so may cause the new order to fail and any deducted funds will be non-refundable according to our terms of service.
                 </p>
               </div>

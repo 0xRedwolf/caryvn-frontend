@@ -117,6 +117,13 @@ export const walletApi = {
       token,
     }),
 
+  initiateCryptoTopup: (data: FormData, token: string) =>
+    api('/wallet/topup/crypto/', {
+      method: 'POST',
+      body: data,
+      token,
+    }),
+
   verifyTopup: (reference: string, token: string) =>
     api(`/wallet/topup/verify/?reference=${reference}`, { token }),
 
@@ -269,8 +276,12 @@ export const adminApi = {
   getPendingDepositsCount: (token: string) =>
     api('/admin/transactions/pending/count/', { token }),
 
-  verifyTransaction: (transactionId: string, token: string) =>
-    api(`/admin/transactions/${transactionId}/verify/`, { method: 'POST', token }),
+  verifyTransaction: (transactionId: string, token: string, creditAmount?: number) =>
+    api(`/admin/transactions/${transactionId}/verify/`, {
+      method: 'POST',
+      body: creditAmount !== undefined ? { credit_amount: creditAmount } : undefined,
+      token,
+    }),
 
   failTransaction: (transactionId: string, token: string) =>
     api(`/admin/transactions/${transactionId}/fail/`, { method: 'POST', token }),
@@ -313,6 +324,9 @@ export const adminApi = {
 
   toggleShowInactiveServices: (token: string) =>
     api('/admin/settings/toggle-show-inactive/', { method: 'POST', token }),
+
+  updateCryptoSettings: (data: FormData, token: string) =>
+    api('/settings/', { method: 'POST', body: data, token }),
 };
 
 // Activity Tracking API
