@@ -312,8 +312,8 @@ export default function NewOrderPage() {
         {/* Important Notice */}
             <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex gap-3 mb-6">
               <div>
-                <h4 className="text-red-500 font-medium text-sm mb-2 text-center">Important Notice!!!</h4>
-                <ul className="text-blue-500 text-xs font-semibold leading-relaxed list-disc list-inside space-y-1">
+                <h4 className="text-red-500 font-bold text-sm mb-2 text-center">PLEASE READ!!!</h4>
+                <ul className="text-blue-500 text-xs font-semibold leading-relaxed list-disc pl-4 space-y-1">
                   <li>For Successful orders, keep your accounts public</li>
                   <li>Always double check your order link before placing an order</li>
                   <li>Please be very patient, especially for followers orders, if after 48hrs you haven&apos;t received your order, please contact us</li>
@@ -507,11 +507,12 @@ export default function NewOrderPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               <div>
-                <h4 className="text-red-500 font-medium text-sm mb-1">Important Notice</h4>
+                <h4 className="text-red-500 font-medium text-sm mb-1">IMPORTANT NOTICE</h4>
                 <p className="text-red-400/80 font-bold text-xs leading-relaxed">
-                  Do not submit multiple orders to the exact same link
-                  until the first order is <strong className="text-red-400">Completed</strong>. 
-                  Doing so may cause the new order to fail and any deducted funds will be non-refundable according to our terms of service.
+                  <li>FOR FOLLOWERS: Delivery time may vary depending on volume, for the best result, place your order in batches. Eg, if you want 1000 followers, place 4 orders of 250 followers each.</li>
+                  <li>Do not submit a second order to the same link.</li>
+                  <li>WAIT until the first order is <strong className="text-red-400">COMPLETED</strong> before placing another order on that link.</li>
+                  <li>Admin is always active, if you face issues or have any questions, open the live chat or open a ticket</li>
                 </p>
               </div>
             </div>

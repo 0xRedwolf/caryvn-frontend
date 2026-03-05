@@ -165,6 +165,7 @@ export default function OrdersPage() {
                 <div style={{ paddingRight: '24px' }} className="flex items-center justify-between">
                   <div className="min-w-0 flex-1">
                     <p className="text-white font-medium text-sm truncate">{order.service_name}</p>
+                    <p className="text-text-secondary text-xs font-mono mt-0.5">ID: {String(order.id).slice(0, 8).toUpperCase()}</p>
                     <a
                       href={order.link}
                       target="_blank"

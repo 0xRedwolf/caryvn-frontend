@@ -227,9 +227,9 @@ export default function DashboardPage() {
           </div>
         </Link>
 
-        <Link
-          href="/dashboard/tickets"
-          className="bg-surface-dark rounded-xl border border-border-dark p-5 flex items-center gap-4 card-hover"
+        <button
+          onClick={() => { (window as any).Tawk_API?.toggle(); }}
+          className="bg-surface-dark rounded-xl border border-border-dark p-5 flex items-center gap-4 card-hover w-full text-left"
         >
           <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -238,9 +238,9 @@ export default function DashboardPage() {
           </div>
           <div>
             <h3 className="text-white font-medium">Get Support</h3>
-            <p className="text-text-secondary text-sm">Open a ticket</p>
+            <p className="text-text-secondary text-sm">Live chat &amp; tickets</p>
           </div>
-        </Link>
+        </button>
       </div>
 
       {/* Recent Orders */}

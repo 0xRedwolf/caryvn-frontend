@@ -270,6 +270,16 @@ export const adminApi = {
   getUserTransactions: (userId: string, token: string) =>
     api(`/admin/users/${userId}/transactions/`, { token }),
 
+  getAllTransactions: (token: string, params?: { search?: string; gateway?: string; status?: string; limit?: number; offset?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.search) qs.set('search', params.search);
+    if (params?.gateway) qs.set('gateway', params.gateway);
+    if (params?.status) qs.set('status', params.status);
+    if (params?.limit !== undefined) qs.set('limit', String(params.limit));
+    if (params?.offset !== undefined) qs.set('offset', String(params.offset));
+    return api(`/admin/transactions/?${qs.toString()}`, { token });
+  },
+
   getPendingDeposits: (token: string) =>
     api('/admin/transactions/pending/', { token }),
 
