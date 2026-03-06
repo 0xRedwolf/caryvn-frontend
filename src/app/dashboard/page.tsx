@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { walletApi, ordersApi } from '@/lib/api';
+import { ordersApi } from '@/lib/api';
 import { StatsCard, StatsCardSkeleton, OrderRow } from '@/components/Cards';
 import { formatCurrency } from '@/lib/utils';
 
@@ -58,21 +58,22 @@ export default function DashboardPage() {
     if (token) {
       loadDashboardData();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  const loadDashboardData = async () => {
+  async function loadDashboardData() {
     if (!token) return;
 
     // Load orders
     const ordersResult = await ordersApi.getOrders(token, { limit: 5 });
     if (ordersResult.data) {
-      const data = ordersResult.data as { orders: Order[]; total: number };
+      const data = ordersResult.data as { orders: Order[] };
       setOrders(data.orders || []);
       
       // Calculate stats from orders
       const allOrdersResult = await ordersApi.getOrders(token, { limit: 1000 });
       if (allOrdersResult.data) {
-        const allData = allOrdersResult.data as { orders: Order[]; total: number };
+        const allData = allOrdersResult.data as { orders: Order[] };
         const allOrders = allData.orders || [];
         setStats({
           totalOrders: allOrders.length,
@@ -93,7 +94,7 @@ export default function DashboardPage() {
           Welcome back, <span className="gradient-text">{user?.username || user?.first_name || user?.email?.split('@')[0]}</span>!
         </h1>
         <p className="text-text-secondary truncate">
-          Here's an overview of your account
+          Here&apos;s an overview of your account
         </p>
       </div>
 
@@ -228,6 +229,7 @@ export default function DashboardPage() {
         </Link>
 
         <button
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           onClick={() => { (window as any).Tawk_API?.toggle(); }}
           className="bg-surface-dark rounded-xl border border-border-dark p-5 flex items-center gap-4 card-hover w-full text-left"
         >

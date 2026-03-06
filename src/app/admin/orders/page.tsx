@@ -35,11 +35,15 @@ export default function AdminOrdersPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [completeLoading, setCompleteLoading] = useState<string | null>(null);
   const [refillLoading, setRefillLoading] = useState<string | null>(null);
+  const [refreshLoading, setRefreshLoading] = useState<string | null>(null);
+  const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   useEffect(() => {
     if (token) {
       loadOrders();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, statusFilter, search]);
 
   // Auto-dismiss action results
@@ -50,7 +54,7 @@ export default function AdminOrdersPage() {
     }
   }, [actionResult]);
 
-  const loadOrders = async () => {
+  async function loadOrders() {
     if (!token) return;
     setLoading(true);
 
@@ -66,6 +70,7 @@ export default function AdminOrdersPage() {
       setTotal(data.total || 0);
     }
     setLoading(false);
+    setSelectedOrders(new Set()); // Clear selection on reload
   };
 
   const handleDeleteOrder = async (orderId: string) => {
@@ -106,6 +111,92 @@ export default function AdminOrdersPage() {
       setActionResult({ type: 'success', message: data.message || 'Refill requested successfully' });
     } else {
       setActionResult({ type: 'error', message: result.error || 'Failed to request refill' });
+    }
+  };
+
+  const handleForceRefresh = async (orderId: string) => {
+    if (!token) return;
+    setRefreshLoading(orderId);
+    const result = await adminApi.checkOrderStatus([orderId], token);
+    setRefreshLoading(null);
+    if (result.data) {
+      const data = result.data as { updated: number, skipped: number, errors: string[] };
+      if (data.updated > 0) {
+        setActionResult({ type: 'success', message: 'Status updated from provider' });
+        loadOrders(); // Reload to get fresh data
+      } else if (data.errors && data.errors.length > 0) {
+        setActionResult({ type: 'error', message: data.errors[0] });
+      } else {
+        setActionResult({ type: 'success', message: 'Status is already up-to-date' });
+      }
+    } else {
+      setActionResult({ type: 'error', message: result.error || 'Failed to refresh status' });
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedOrders.size === orders.length) {
+      setSelectedOrders(new Set());
+    } else {
+      setSelectedOrders(new Set(orders.map(o => o.id)));
+    }
+  };
+
+  const toggleSelectOrder = (orderId: string) => {
+    const newSet = new Set(selectedOrders);
+    if (newSet.has(orderId)) {
+      newSet.delete(orderId);
+    } else {
+      newSet.add(orderId);
+    }
+    setSelectedOrders(newSet);
+  };
+
+  const handleBulkRefresh = async () => {
+    if (!token || selectedOrders.size === 0) return;
+    setBulkActionLoading(true);
+    const result = await adminApi.checkOrderStatus(Array.from(selectedOrders), token);
+    setBulkActionLoading(false);
+    
+    if (result.data) {
+      const data = result.data as { updated: number, skipped: number, errors: string[] };
+      let msg = `Updated ${data.updated} orders. Skipped ${data.skipped}.`;
+      if (data.errors && data.errors.length > 0) {
+        msg += ` (${data.errors.length} errors)`;
+      }
+      setActionResult({ type: 'success', message: msg });
+      setSelectedOrders(new Set());
+      loadOrders();
+    } else {
+      setActionResult({ type: 'error', message: result.error || 'Bulk refresh failed' });
+    }
+  };
+
+  const handleBulkMarkCompleted = async () => {
+    if (!token || selectedOrders.size === 0) return;
+    if (!confirm(`Are you sure you want to mark ${selectedOrders.size} orders as completed?`)) return;
+    
+    setBulkActionLoading(true);
+    let successCount = 0;
+    let failCount = 0;
+    
+    // Process sequentially to avoid slamming the API
+    for (const orderId of Array.from(selectedOrders)) {
+      const res = await adminApi.markOrderCompleted(orderId, token);
+      if (res.data) successCount++;
+      else failCount++;
+    }
+    
+    setBulkActionLoading(false);
+    if (successCount > 0) {
+      setActionResult({ 
+        type: 'success', 
+        message: `Marked ${successCount} as completed.` + (failCount > 0 ? ` Failed: ${failCount}` : '') 
+      });
+      setSelectedOrders(new Set());
+      loadOrders(); // Reload to reflect changes
+    } else {
+      setActionResult({ type: 'error', message: `Failed to mark orders. (${failCount} failed)` });
     }
   };
 
@@ -152,6 +243,53 @@ export default function AdminOrdersPage() {
           </button>
         ))}
       </div>
+      
+      {/* Bulk Action Bar */}
+      {selectedOrders.size > 0 && (
+        <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="text-primary font-bold">{selectedOrders.size}</span>
+            <span className="text-primary font-medium">orders selected</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={handleBulkRefresh}
+              disabled={bulkActionLoading}
+              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {bulkActionLoading ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              )}
+              Sync Status Selected
+            </button>
+            <button
+              onClick={handleBulkMarkCompleted}
+              disabled={bulkActionLoading}
+              className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              {bulkActionLoading ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+              Mark Selected Completed
+            </button>
+            <button
+              onClick={() => setSelectedOrders(new Set())}
+              disabled={bulkActionLoading}
+              className="px-4 py-2 bg-surface-dark text-text-secondary hover:text-white border border-border-dark rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="bg-surface-dark rounded-xl border border-border-dark">
         {loading ? (
@@ -163,6 +301,14 @@ export default function AdminOrdersPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border-dark text-left">
+                  <th className="py-3 px-4 w-12 text-center text-text-secondary">
+                    <input 
+                      type="checkbox" 
+                      className="rounded border-border-dark bg-surface-darker text-primary focus:ring-primary h-4 w-4"
+                      checked={orders.length > 0 && selectedOrders.size === orders.length}
+                      onChange={toggleSelectAll}
+                    />
+                  </th>
                   <th className="py-3 px-4 text-text-secondary text-sm font-medium">ID</th>
                   <th className="py-3 px-4 text-text-secondary text-sm font-medium">User</th>
                   <th className="py-3 px-4 text-text-secondary text-sm font-medium">Service</th>
@@ -177,7 +323,15 @@ export default function AdminOrdersPage() {
               </thead>
               <tbody>
                 {orders.map((order) => (
-                  <tr key={order.id} className="border-b border-border-dark hover:bg-surface-darker/50 group">
+                  <tr key={order.id} className={`border-b border-border-dark hover:bg-surface-darker/50 group ${selectedOrders.has(order.id) ? 'bg-primary/5' : ''}`}>
+                    <td className="py-4 px-4 w-12 text-center">
+                      <input 
+                        type="checkbox" 
+                        className="rounded border-border-dark bg-surface-darker text-primary focus:ring-primary h-4 w-4"
+                        checked={selectedOrders.has(order.id)}
+                        onChange={() => toggleSelectOrder(order.id)}
+                      />
+                    </td>
                     <td className="py-4 px-4">
                       <span className="text-white font-mono text-sm">{order.id.slice(0, 8)}</span>
                     </td>
@@ -223,20 +377,37 @@ export default function AdminOrdersPage() {
                       <div className="flex justify-end gap-2">
                         {/* Complete Button (if pending/processing) */}
                         {['pending', 'processing', 'in_progress'].includes(order.status) && (
-                          <button
-                            onClick={() => handleMarkCompleted(order.id)}
-                            disabled={completeLoading === order.id}
-                            className="p-1.5 rounded-lg text-emerald-400 hover:bg-emerald-500/10 transition-colors disabled:opacity-50"
-                            title="Force Mark Completed"
-                          >
-                            {completeLoading === order.id ? (
-                              <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
-                          </button>
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => handleForceRefresh(order.id)}
+                              disabled={refreshLoading === order.id}
+                              className="p-1.5 rounded-lg text-blue-400 hover:bg-blue-500/10 transition-colors disabled:opacity-50"
+                              title="Force Refresh Status"
+                            >
+                              {refreshLoading === order.id ? (
+                                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                              )}
+                            </button>
+
+                            <button
+                              onClick={() => handleMarkCompleted(order.id)}
+                              disabled={completeLoading === order.id}
+                              className="p-1.5 rounded-lg text-emerald-400 hover:bg-emerald-500/10 transition-colors disabled:opacity-50"
+                              title="Force Mark Completed"
+                            >
+                              {completeLoading === order.id ? (
+                                <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                </svg>
+                              )}
+                            </button>
+                          </div>
                         )}
                         
                         {/* Refill Button (if eligible) */}

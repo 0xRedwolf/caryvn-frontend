@@ -75,6 +75,7 @@ export default function AdminUsersPage() {
     if (token) {
       loadUsers();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, search]);
 
   useEffect(() => {
@@ -84,7 +85,7 @@ export default function AdminUsersPage() {
     }
   }, [actionResult]);
 
-  const loadUsers = async () => {
+  async function loadUsers() {
     if (!token) return;
     setLoading(true);
 
@@ -612,8 +613,8 @@ export default function AdminUsersPage() {
                 disabled={adjustLoading || !adjustAmount}
                 className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
                   adjustAction === 'credit'
-                    ? 'bg-emerald-500 text-white hover:bg-emerald-600'
-                    : 'bg-red-500 text-white hover:bg-red-600'
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20'
+                    : 'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20'
                 }`}
               >
                 {adjustLoading ? 'Applying...' : 'Apply Change'}

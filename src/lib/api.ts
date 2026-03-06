@@ -6,7 +6,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 interface ApiOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-  body?: Record<string, unknown> | FormData | any;
+  body?: Record<string, unknown> | FormData;
   token?: string | null;
 }
 
@@ -41,6 +41,7 @@ export async function api<T = unknown>(
       headers,
       body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined),
       credentials: 'include',
+      cache: 'no-store', // Fix: Prevent Next.js from caching API responses (avoids stale prices)
     });
 
     const data = await response.json().catch(() => ({}));
@@ -217,6 +218,9 @@ export const adminApi = {
   getMarkupRules: (token: string) =>
     api('/admin/markup-rules/', { token }),
 
+  getServiceCategories: (token: string) =>
+    api('/admin/service-categories/', { token }),
+
   createMarkupRule: (data: Record<string, unknown>, token: string) =>
     api('/admin/markup-rules/', { method: 'POST', body: data, token }),
 
@@ -235,11 +239,11 @@ export const adminApi = {
     return api(`/admin/logs/${query ? `?${query}` : ''}`, { token });
   },
 
-  syncServices: (token: string) =>
-    api('/admin/sync-services/', { method: 'POST', token }),
+  syncServices: (token: string, providerSlug?: string) =>
+    api('/admin/sync-services/', { method: 'POST', body: providerSlug ? { provider_slug: providerSlug } : {}, token }),
 
-  syncOrders: (token: string) =>
-    api('/admin/sync-orders/', { method: 'POST', token }),
+  syncOrders: (token: string, providerSlug?: string) =>
+    api('/admin/sync-orders/', { method: 'POST', body: providerSlug ? { provider_slug: providerSlug } : {}, token }),
 
   getAnalytics: (token: string) =>
     api('/admin/analytics/', { token }),
@@ -323,13 +327,16 @@ export const adminApi = {
   toggleServiceActive: (serviceId: number, token: string) =>
     api(`/admin/services/${serviceId}/toggle-active/`, { method: 'POST', token }),
 
+  bulkToggleServiceActive: (serviceIds: number[], isActive: boolean, token: string) =>
+    api('/admin/services/bulk-toggle-active/', { method: 'POST', body: { service_ids: serviceIds, is_active: isActive }, token }),
+
   getAllServices: (token: string) =>
     api('/services/?include_inactive=true', { token }),
 
   getSiteSettings: (token: string) =>
     api('/settings/', { token }),
     
-  updateSiteSettings: (data: Record<string, any>, token: string) =>
+  updateSiteSettings: (data: Record<string, unknown>, token: string) =>
     api('/settings/', { method: 'POST', body: data, token }),
 
   toggleShowInactiveServices: (token: string) =>
@@ -337,6 +344,20 @@ export const adminApi = {
 
   updateCryptoSettings: (data: FormData, token: string) =>
     api('/settings/', { method: 'POST', body: data, token }),
+
+  // Provider management
+  getProviders: (token: string) =>
+    api('/admin/providers/', { token }),
+
+  createProvider: (data: Record<string, unknown>, token: string) =>
+    api('/admin/providers/', { method: 'POST', body: data, token }),
+
+
+  updateProvider: (slug: string, data: Record<string, unknown>, token: string) =>
+    api(`/admin/providers/${slug}/`, { method: 'PATCH', body: data, token }),
+
+  toggleProviderShowInactive: (slug: string, token: string) =>
+    api(`/admin/providers/${slug}/toggle-show-inactive/`, { method: 'POST', token }),
 };
 
 // Activity Tracking API

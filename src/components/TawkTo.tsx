@@ -54,6 +54,7 @@ export default function TawkTo() {
     s0?.parentNode?.insertBefore(s1, s0);
 
     // No cleanup — removing Tawk after mount causes issues; it manages itself
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Re-identify if user changes (e.g. after login resolves)

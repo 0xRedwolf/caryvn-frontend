@@ -11,7 +11,7 @@ import { formatCurrency, calculatePrice, isValidUrl } from "@/lib/utils";
 
 interface Service {
   id: number;
-  provider_id: number;
+  external_id: number;
   name: string;
   category_name: string;
   user_rate: string;
@@ -19,6 +19,7 @@ interface Service {
   max_quantity: number;
   has_refill: boolean;
   has_cancel: boolean;
+  provider_name?: string;
 }
 
 // Platform SVG icons
@@ -211,7 +212,7 @@ export default function ServicesPage() {
     
     const result = await ordersApi.createOrder(
       {
-        service_id: selectedService.provider_id,
+        service_id: selectedService.id,
         link: orderLink,
         quantity,
         ...(orderComments.trim() && { comments: orderComments.trim() }),
@@ -316,7 +317,7 @@ export default function ServicesPage() {
                     <option value="">-- Select a service --</option>
                     {servicesInCategory.map((service) => (
                       <option key={service.id} value={service.id.toString()}>
-                        {service.provider_id} - {service.name} -{" "}
+                        {service.external_id} - {service.name} -{" "}
                         {formatCurrency(service.user_rate)} per 1000
                       </option>
                     ))}
@@ -385,7 +386,7 @@ export default function ServicesPage() {
                   <div className="bg-primary/10 border border-primary/20 rounded-xl p-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-primary font-medium">
-                        ID: {selectedService.provider_id}
+                        ID: {selectedService.external_id}
                       </span>
                     </div>
                     <p className="text-text-secondary text-sm mb-3">

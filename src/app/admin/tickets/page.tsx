@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { adminApi } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 interface Ticket {
@@ -37,9 +36,10 @@ export default function AdminTicketsPage() {
     return () => {
       if (interval) clearInterval(interval);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  const loadTickets = async (showLoading = true) => {
+  async function loadTickets(showLoading = true) {
     if (!token) return;
 
     if (showLoading && tickets.length === 0) {

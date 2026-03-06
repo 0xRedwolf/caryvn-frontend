@@ -15,6 +15,7 @@ interface Order {
   start_count?: number | null;
   remains?: number | null;
   service_has_refill?: boolean;
+  avg_completion_time?: string;
   created_at: string;
 }
 
@@ -25,6 +26,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('All');
+  const [search, setSearch] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   
@@ -36,9 +38,10 @@ export default function OrdersPage() {
     if (token) {
       loadOrders();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, statusFilter]);
 
-  const loadOrders = async () => {
+  async function loadOrders() {
     if (!token) return;
     setLoading(true);
 
@@ -85,11 +88,30 @@ export default function OrdersPage() {
     setTimeout(() => setRefillMessage(null), 5000);
   };
 
+  // Client-side search filter
+  const filteredOrders = search.trim()
+    ? orders.filter(o =>
+        o.service_name.toLowerCase().includes(search.toLowerCase()) ||
+        o.link.toLowerCase().includes(search.toLowerCase())
+      )
+    : orders;
+
   return (
     <div>
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white mb-1">My Orders</h1>
         <p className="text-text-secondary">View and track all your orders</p>
+      </div>
+
+      {/* Search */}
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search by service or link…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="input w-full"
+        />
       </div>
 
       {/* Filters */}
@@ -145,9 +167,17 @@ export default function OrdersPage() {
           <div className="p-8 text-center">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
           </div>
-        ) : orders.length > 0 ? (
+        ) : filteredOrders.length > 0 ? (
           <div className="divide-y divide-border-dark">
-            {orders.map((order) => (
+            {filteredOrders.map((order) => {
+              const delivered = (order.start_count != null && order.remains != null)
+                ? order.quantity - order.remains
+                : null;
+              const progress = delivered !== null
+                ? Math.min(100, Math.max(0, (delivered / order.quantity) * 100))
+                : null;
+              const showProgress = progress !== null && ['in_progress', 'processing', 'partial'].includes(order.status);
+              return (
               <div key={order.id} className="p-4 relative">
                 {/* Delete X button — top right */}
                 <button
@@ -187,6 +217,22 @@ export default function OrdersPage() {
                   </div>
                 </div>
 
+                {/* Progress Bar */}
+                {showProgress && (
+                  <div className="mt-3">
+                    <div className="flex justify-between text-xs text-text-secondary mb-1">
+                      <span>Progress</span>
+                      <span>{delivered!.toLocaleString()} / {order.quantity.toLocaleString()}</span>
+                    </div>
+                    <div className="w-full bg-surface-darker rounded-full h-1.5">
+                      <div
+                        className="bg-primary h-1.5 rounded-full transition-all"
+                        style={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* Status & Actions Footer */}
                 <div className="mt-4 pt-3 border-t border-border-dark flex items-center justify-between flex-wrap gap-3">
                   <div className="flex gap-4 items-center">
@@ -199,6 +245,9 @@ export default function OrdersPage() {
                     )}
                     {order.remains !== null && order.remains !== undefined && (
                       <span className="text-xs text-text-secondary">Remains: <span className="text-white">{order.remains}</span></span>
+                    )}
+                    {order.avg_completion_time && (
+                      <span className="text-xs text-text-secondary whitespace-nowrap">Avg Time: <span className="text-white">{order.avg_completion_time}</span></span>
                     )}
                   </div>
 
@@ -220,7 +269,8 @@ export default function OrdersPage() {
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="p-8 text-center">

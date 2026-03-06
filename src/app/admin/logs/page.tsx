@@ -8,8 +8,8 @@ import { formatDate } from '@/lib/utils';
 interface ApiLog {
   id: number;
   action: string;
-  request_data: any;
-  response_data: any;
+  request_data: unknown;
+  response_data: unknown;
   status_code: number;
   response_time: number;
   is_success: boolean;
@@ -31,9 +31,10 @@ export default function AdminLogsPage() {
     if (token) {
       loadLogs();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, actionFilter]);
 
-  const loadLogs = async () => {
+  async function loadLogs() {
     if (!token) return;
     setLoading(true);
 
@@ -60,7 +61,7 @@ export default function AdminLogsPage() {
     }
   };
 
-  const formatJson = (data: any) => {
+  const formatJson = (data: unknown) => {
     try {
       if (typeof data === 'string') {
         return JSON.stringify(JSON.parse(data), null, 2);

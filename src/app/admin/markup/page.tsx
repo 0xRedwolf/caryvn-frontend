@@ -10,6 +10,7 @@ interface MarkupRule {
   level: string;
   platform: string | null;
   category: number | null;
+  category_name: string | null;
   service: number | null;
   percentage: string;
   fixed_addition: string;
@@ -17,31 +18,44 @@ interface MarkupRule {
   priority: number;
 }
 
+interface ServiceOption {
+  id: number;
+  name: string;
+  category_name: string;
+}
+
 export default function AdminMarkupPage() {
   const { token } = useAuth();
   const [rules, setRules] = useState<MarkupRule[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [services, setServices] = useState<ServiceOption[]>([]);
+  const [serviceSearch, setServiceSearch] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     level: 'global',
     platform: '',
     category: '',
+    service_id: '',
     percentage: '20',
     fixed_addition: '0',
     priority: 0,
   });
   const [saving, setSaving] = useState(false);
+  const [toggleLoading, setToggleLoading] = useState<number | null>(null);
 
   useEffect(() => {
     if (token) {
       loadRules();
+      loadCategories();
+      loadServices();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  const loadRules = async () => {
+  async function loadRules() {
     if (!token) return;
-
     const result = await adminApi.getMarkupRules(token);
     if (result.data) {
       setRules(Array.isArray(result.data) ? result.data : []);
@@ -49,36 +63,49 @@ export default function AdminMarkupPage() {
     setLoading(false);
   };
 
+  async function loadCategories() {
+    if (!token) return;
+    const result = await adminApi.getServiceCategories(token);
+    if (result.data) {
+      const d = result.data as { categories: string[] };
+      setCategories(d.categories || []);
+    }
+  };
+
+  async function loadServices() {
+    if (!token) return;
+    const result = await adminApi.getAllServices(token);
+    if (result.data) {
+      const d = result.data as { services: ServiceOption[] };
+      setServices(d.services || []);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) return;
 
     setSaving(true);
-    
-    // Auto-generate name if not provided
+
     const ruleName = formData.name || `${formData.level} ${formData.percentage}%`;
-    
-    const result = await adminApi.createMarkupRule({
+
+    const payload: Record<string, unknown> = {
       name: ruleName,
       level: formData.level,
       platform: formData.platform || '',
+      category_name: formData.level === 'category' ? formData.category : '',
+      service: formData.level === 'service' && formData.service_id ? parseInt(formData.service_id) : null,
       percentage: parseFloat(formData.percentage) || 0,
       fixed_addition: parseFloat(formData.fixed_addition) || 0,
       priority: formData.priority,
       is_active: true,
-    }, token);
+    };
+
+    const result = await adminApi.createMarkupRule(payload, token);
 
     if (result.data) {
       setShowForm(false);
-      setFormData({
-        name: '',
-        level: 'global',
-        platform: '',
-        category: '',
-        percentage: '20',
-        fixed_addition: '0',
-        priority: 0,
-      });
+      setFormData({ name: '', level: 'global', platform: '', category: '', service_id: '', percentage: '20', fixed_addition: '0', priority: 0 });
       loadRules();
     }
     setSaving(false);
@@ -86,8 +113,15 @@ export default function AdminMarkupPage() {
 
   const handleDelete = async (ruleId: number) => {
     if (!token || !confirm('Delete this markup rule?')) return;
-
     await adminApi.deleteMarkupRule(ruleId, token);
+    loadRules();
+  };
+
+  const handleTogglePause = async (rule: MarkupRule) => {
+    if (!token) return;
+    setToggleLoading(rule.id);
+    await adminApi.updateMarkupRule(rule.id, { is_active: !rule.is_active }, token);
+    setToggleLoading(null);
     loadRules();
   };
 
@@ -100,6 +134,10 @@ export default function AdminMarkupPage() {
     };
     return colors[level] || 'bg-slate-500/10 text-slate-400';
   };
+
+  const filteredServices = serviceSearch
+    ? services.filter(s => s.name.toLowerCase().includes(serviceSearch.toLowerCase()))
+    : services.slice(0, 30);
 
   return (
     <div>
@@ -116,8 +154,8 @@ export default function AdminMarkupPage() {
       {/* Info Card */}
       <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-6">
         <p className="text-blue-400 text-sm">
-          <strong>Markup Priority:</strong> Service → Category → Platform → Global. 
-          Higher priority rules override lower ones.
+          <strong>Markup Priority:</strong> The rule with the highest <strong>Priority number</strong> always wins.
+          Set Service rules to priority 30, Category to 20, Platform to 10, Global to 0 for the standard hierarchy.
         </p>
       </div>
 
@@ -127,27 +165,39 @@ export default function AdminMarkupPage() {
           <h2 className="text-lg font-semibold text-white mb-4">New Markup Rule</h2>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
+              <label className="block text-sm font-medium text-white mb-2">Rule Name (optional)</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="input"
+                placeholder="Auto-generated if blank"
+              />
+            </div>
+
+            <div>
               <label className="block text-sm font-medium text-white mb-2">Level</label>
               <select
                 value={formData.level}
-                onChange={(e) => setFormData({ ...formData, level: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, level: e.target.value, category: '', platform: '', service_id: '' })}
                 className="select"
               >
                 <option value="global">Global (all services)</option>
                 <option value="platform">Platform (e.g., Instagram)</option>
-                <option value="category">Category</option>
+                <option value="category">Category (specific category)</option>
+                <option value="service">Service (single service)</option>
               </select>
             </div>
 
             {formData.level === 'platform' && (
               <div>
-                <label className="block text-sm font-medium text-white mb-2">Platform</label>
+                <label className="block text-sm font-medium text-white mb-2">Platform Name</label>
                 <input
                   type="text"
                   value={formData.platform}
                   onChange={(e) => setFormData({ ...formData, platform: e.target.value })}
                   className="input"
-                  placeholder="e.g., Instagram"
+                  placeholder="e.g., Instagram, TikTok"
                 />
               </div>
             )}
@@ -155,13 +205,43 @@ export default function AdminMarkupPage() {
             {formData.level === 'category' && (
               <div>
                 <label className="block text-sm font-medium text-white mb-2">Category</label>
-                <input
-                  type="text"
+                <select
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="input"
-                  placeholder="e.g., Followers"
+                  className="select"
+                  required
+                >
+                  <option value="">— Select a category —</option>
+                  {categories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+                <p className="text-text-secondary text-xs mt-1">Populated from your actual service database</p>
+              </div>
+            )}
+
+            {formData.level === 'service' && (
+              <div>
+                <label className="block text-sm font-medium text-white mb-2">Service</label>
+                <input
+                  type="text"
+                  placeholder="Search services..."
+                  value={serviceSearch}
+                  onChange={(e) => setServiceSearch(e.target.value)}
+                  className="input mb-2"
                 />
+                <select
+                  value={formData.service_id}
+                  onChange={(e) => setFormData({ ...formData, service_id: e.target.value })}
+                  className="select"
+                  required
+                  size={5}
+                >
+                  <option value="">— Select a service —</option>
+                  {filteredServices.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
               </div>
             )}
 
@@ -199,10 +279,10 @@ export default function AdminMarkupPage() {
                 onChange={(e) => setFormData({ ...formData, priority: parseInt(e.target.value) || 0 })}
                 className="input"
                 min="0"
-                max="100"
-                placeholder="0-100 (higher = more important)"
+                max="1000"
+                placeholder="0-1000 (higher = wins)"
               />
-              <p className="text-text-secondary text-xs mt-1">Higher priority rules override lower ones</p>
+              <p className="text-text-secondary text-xs mt-1">Recommended: Service=30, Category=20, Platform=10, Global=0</p>
             </div>
 
             <div className="md:col-span-2 flex gap-3">
@@ -238,7 +318,7 @@ export default function AdminMarkupPage() {
               </thead>
               <tbody>
                 {rules.map((rule) => (
-                  <tr key={rule.id} className="border-b border-border-dark hover:bg-primary/5 transition-colors">
+                  <tr key={rule.id} className={`border-b border-border-dark transition-colors ${rule.is_active ? 'hover:bg-primary/5' : 'opacity-50 hover:opacity-70'}`}>
                     <td className="py-4 px-4">
                       <span className={`px-2 py-1 rounded text-xs font-medium ${getLevelBadge(rule.level)}`}>
                         {rule.level}
@@ -246,7 +326,9 @@ export default function AdminMarkupPage() {
                     </td>
                     <td className="py-4 px-4">
                       <span className="text-white">
-                        {rule.platform || (rule.category ? `Category #${rule.category}` : 'All Services')}
+                        {rule.platform ||
+                          (rule.category_name ? `Category: ${rule.category_name}` :
+                            rule.category ? `Category #${rule.category}` : 'All Services')}
                       </span>
                     </td>
                     <td className="py-4 px-4">
@@ -262,20 +344,29 @@ export default function AdminMarkupPage() {
                     </td>
                     <td className="py-4 px-4">
                       <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        rule.is_active 
-                          ? 'bg-emerald-500/10 text-emerald-500' 
-                          : 'bg-red-500/10 text-red-500'
+                        rule.is_active
+                          ? 'bg-emerald-500/10 text-emerald-500'
+                          : 'bg-slate-500/10 text-slate-400'
                       }`}>
-                        {rule.is_active ? 'Active' : 'Inactive'}
+                        {rule.is_active ? 'Active' : 'Paused'}
                       </span>
                     </td>
                     <td className="py-4 px-4">
-                      <button
-                        onClick={() => handleDelete(rule.id)}
-                        className="text-red-400 hover:text-red-300 text-sm"
-                      >
-                        Delete
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => handleTogglePause(rule)}
+                          disabled={toggleLoading === rule.id}
+                          className={`text-xs font-medium transition-colors ${rule.is_active ? 'text-amber-400 hover:text-amber-300' : 'text-emerald-400 hover:text-emerald-300'}`}
+                        >
+                          {toggleLoading === rule.id ? '…' : rule.is_active ? 'Pause' : 'Resume'}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(rule.id)}
+                          className="text-red-400 hover:text-red-300 text-sm"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

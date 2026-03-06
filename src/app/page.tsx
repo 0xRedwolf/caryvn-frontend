@@ -3,8 +3,7 @@
 import Link from 'next/link';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { useState, useEffect } from 'react';
-import { servicesApi } from '@/lib/api';
+import { useState } from 'react';
 import { formatCurrency } from '@/lib/utils';
 
 // Demo services for landing page

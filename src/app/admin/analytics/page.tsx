@@ -37,6 +37,7 @@ interface AnalyticsData {
   user_growth_chart: { date: string; users: number }[];
   popular_services: { name: string; platform: string; orders: number; revenue: number; profit: number }[];
   order_status: Record<string, number>;
+  revenue_by_provider?: { provider: string; revenue: number; profit: number; orders: number }[];
 }
 
 
@@ -58,9 +59,10 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     if (token) loadAnalytics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  const loadAnalytics = async () => {
+  async function loadAnalytics() {
     if (!token) return;
     const result = await adminApi.getAnalytics(token);
     if (result.data) {
@@ -338,6 +340,37 @@ export default function AnalyticsPage() {
           </div>
         )}
       </div>
+
+      {/* Revenue by Provider */}
+      {data.revenue_by_provider && data.revenue_by_provider.length > 0 && (
+        <div className="bg-surface-dark rounded-xl border border-border-dark mb-6">
+          <div className="p-5 border-b border-border-dark">
+            <h2 className="text-lg font-semibold text-white">Revenue by Provider (All Time)</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="text-left text-text-secondary text-xs uppercase tracking-wider">
+                  <th className="px-5 py-3">Provider</th>
+                  <th className="px-5 py-3 text-right">Orders</th>
+                  <th className="px-5 py-3 text-right">Revenue</th>
+                  <th className="px-5 py-3 text-right">Profit</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border-dark">
+                {data.revenue_by_provider.map((prov, index) => (
+                  <tr key={index} className="hover:bg-primary/5 transition-colors">
+                    <td className="px-5 py-3 text-white text-sm font-medium">{prov.provider}</td>
+                    <td className="px-5 py-3 text-right text-white font-medium">{prov.orders.toLocaleString()}</td>
+                    <td className="px-5 py-3 text-right text-white">{formatCurrency(prov.revenue.toString())}</td>
+                    <td className="px-5 py-3 text-right text-emerald-500">{formatCurrency(prov.profit.toString())}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Extra Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

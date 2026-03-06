@@ -40,9 +40,10 @@ export default function AdminSettingsPage() {
 
   useEffect(() => {
     if (token) loadSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  const loadSettings = async () => {
+  async function loadSettings() {
     setLoading(true);
     const res = await adminApi.getSiteSettings(token!);
     if (res.data) {

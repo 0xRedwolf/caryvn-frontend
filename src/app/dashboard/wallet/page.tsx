@@ -91,6 +91,7 @@ export default function WalletPage() {
       checkPendingPayment();
       loadSettings();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const handleRefreshBalance = async () => {
@@ -100,7 +101,7 @@ export default function WalletPage() {
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
-  const loadSettings = async () => {
+  async function loadSettings() {
     if (!token) return;
     try {
       const res = await adminApi.getSiteSettings(token);
@@ -110,7 +111,7 @@ export default function WalletPage() {
     }
   };
 
-  const checkPendingPayment = async () => {
+  async function checkPendingPayment() {
     if (!token) return;
     const pendingRef = sessionStorage.getItem('pending_payment_ref');
     if (!pendingRef) return;
@@ -127,7 +128,7 @@ export default function WalletPage() {
     } catch { /* silently fail */ }
   };
 
-  const loadTransactions = async () => {
+  async function loadTransactions() {
     if (!token) return;
     const result = await walletApi.getTransactions(token, 50, 0);
     if (result.data) {

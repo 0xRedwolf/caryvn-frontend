@@ -25,7 +25,7 @@ const adminLinks = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, token, logout } = useAuth();
+  const { token, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pendingDepositsCount, setPendingDepositsCount] = useState(0);
   useActivityTracker();
@@ -36,8 +36,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const fetchPendingCounts = async () => {
       try {
         const depositsRes = await adminApi.getPendingDepositsCount(token);
-        if (depositsRes.data && typeof (depositsRes.data as any).count === 'number') {
-          setPendingDepositsCount((depositsRes.data as any).count);
+        if (depositsRes.data && typeof (depositsRes.data as { count?: number }).count === 'number') {
+          setPendingDepositsCount((depositsRes.data as { count?: number }).count as number);
         }
       } catch (error) {
         console.error('Failed to fetch pending counts:', error);

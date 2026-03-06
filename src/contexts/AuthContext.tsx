@@ -81,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // Network error — don't log out, just let the next interval try again
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /**
@@ -109,6 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Cleanup on unmount
     return () => stopRefreshTimer();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Core functions ────────────────────────────────────────────────────────
@@ -212,6 +214,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (token) {
       await fetchUser(token);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   return (

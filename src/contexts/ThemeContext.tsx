@@ -16,13 +16,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
     const stored = localStorage.getItem('caryvn_theme') as Theme;
     if (stored) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTheme(stored);
     } else if (window.matchMedia('(prefers-color-scheme: light)').matches) {
       setTheme('light');
     }
+    setMounted(true);
   }, []);
 
   useEffect(() => {

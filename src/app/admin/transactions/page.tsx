@@ -82,7 +82,8 @@ export default function AdminTransactionsPage() {
     setLoading(false);
   }, [token, search, gateway, txStatus, offset]);
 
-  useEffect(() => { load(); }, [load]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, []);
 
   // Reset to page 1 when filters change
   useEffect(() => { setOffset(0); }, [search, gateway, txStatus]);
@@ -183,8 +184,8 @@ export default function AdminTransactionsPage() {
                   <th className="text-left px-4 py-3 text-text-secondary font-medium">Method</th>
                   <th className="text-right px-4 py-3 text-text-secondary font-medium">Amount</th>
                   <th className="text-left px-4 py-3 text-text-secondary font-medium">Status</th>
-                  <th className="text-left px-4 py-3 text-text-secondary font-medium hidden md:table-cell">Reference</th>
-                  <th className="text-left px-4 py-3 text-text-secondary font-medium hidden lg:table-cell">Date</th>
+                  <th className="text-left px-4 py-3 text-text-secondary font-medium">Reference</th>
+                  <th className="text-left px-4 py-3 text-text-secondary font-medium">Date</th>
                   <th className="px-4 py-3" />
                 </tr>
               </thead>
@@ -211,7 +212,7 @@ export default function AdminTransactionsPage() {
                       <td className="px-4 py-3">
                         <Badge label={tx.status} color={sMeta} />
                       </td>
-                      <td className="px-4 py-3 hidden md:table-cell">
+                      <td className="px-4 py-3">
                         {tx.payment_reference ? (
                           <span className="font-mono text-xs text-text-secondary bg-surface-darker px-2 py-1 rounded truncate max-w-[140px] block" title={tx.payment_reference}>
                             {tx.payment_reference}
@@ -220,7 +221,7 @@ export default function AdminTransactionsPage() {
                           <span className="text-text-secondary text-xs">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 hidden lg:table-cell text-text-secondary text-xs">
+                      <td className="px-4 py-3 text-text-secondary text-xs whitespace-nowrap">
                         {formatDate(tx.created_at)}
                       </td>
                       <td className="px-4 py-3">

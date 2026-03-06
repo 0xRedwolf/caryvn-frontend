@@ -55,7 +55,6 @@ function CryptoApprovalModal({
   const impliedRate = !isNaN(nairaAmount) && nairaAmount > 0 && !isNaN(usdAmount) && usdAmount > 0
     ? (nairaAmount / usdAmount).toLocaleString('en-NG', { maximumFractionDigits: 2 })
     : null;
-  const gatewayLabel = GATEWAY_META[deposit.payment_gateway]?.label ?? deposit.payment_gateway;
 
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
@@ -160,9 +159,10 @@ export default function AdminPendingDepositsPage() {
 
   useEffect(() => {
     if (token) loadDeposits();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  const loadDeposits = async () => {
+  async function loadDeposits() {
     setLoading(true);
     const res = await adminApi.getPendingDeposits(token!);
     if (res.data) setDeposits(res.data as PendingDeposit[]);

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { ticketsApi } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
@@ -28,8 +28,7 @@ interface Ticket {
 
 export default function TicketDetailPage() {
   const params = useParams();
-  const router = useRouter();
-  const { user, token } = useAuth();
+  const { token } = useAuth();
   
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,6 +51,7 @@ export default function TicketDetailPage() {
     return () => {
       if (interval) clearInterval(interval);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, params.id]);
 
   useEffect(() => {
@@ -59,7 +59,7 @@ export default function TicketDetailPage() {
     repliesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [ticket?.replies]);
 
-  const loadTicket = async (showLoading = true) => {
+  async function loadTicket(showLoading = true) {
     try {
       if (!token || !params.id) return;
       

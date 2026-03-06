@@ -43,9 +43,10 @@ function PaymentCallbackContent() {
       setStatus('need_login');
       setMessage('Please log in to verify your payment');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, token, authLoading]);
 
-  const verifyPayment = async (reference: string) => {
+  async function verifyPayment(reference: string) {
     if (!token) return;
     setHasAttempted(true);
     setStatus('verifying');

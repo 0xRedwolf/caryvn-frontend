@@ -5,7 +5,7 @@ import { formatCurrency, getStatusColor } from '@/lib/utils';
 interface ServiceCardProps {
   service: {
     id: number;
-    provider_id: number;
+    external_id: number;
     name: string;
     category_name: string;
     user_rate: string;
@@ -14,6 +14,7 @@ interface ServiceCardProps {
     has_refill: boolean;
     has_cancel: boolean;
     is_featured?: boolean;
+    provider_name?: string;
   };
   onOrder?: (service: ServiceCardProps['service']) => void;
 }

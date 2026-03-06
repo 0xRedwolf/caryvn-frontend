@@ -24,9 +24,10 @@ export default function AdminDashboardPage() {
     if (token) {
       loadStats();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  const loadStats = async () => {
+  async function loadStats() {
     if (!token) return;
 
     const result = await adminApi.getDashboard(token);
