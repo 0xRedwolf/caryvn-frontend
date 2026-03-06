@@ -22,6 +22,7 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [savingBank, setSavingBank] = useState(false);
   const [savingCrypto, setSavingCrypto] = useState(false);
+  const [exportingUsers, setExportingUsers] = useState(false);
   const [settings, setSettings] = useState<SiteSettings>({
     show_inactive_services: false,
     manual_bank_name: '',
@@ -137,9 +138,30 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-white mb-1">Site Settings</h1>
-        <p className="text-text-secondary">Manage global application configurations</p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-2xl font-bold text-white mb-1">Site Settings</h1>
+          <p className="text-text-secondary">Manage global application configurations</p>
+        </div>
+        <button 
+          onClick={async () => {
+            if (!token) return;
+            setExportingUsers(true);
+            await adminApi.exportUsersCSV(token);
+            setExportingUsers(false);
+          }}
+          disabled={exportingUsers}
+          className="btn-primary flex items-center gap-2"
+        >
+          {exportingUsers ? (
+             <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+          )}
+          {exportingUsers ? 'Exporting...' : 'Export Users (CSV)'}
+        </button>
       </div>
 
       {/* ── Manual Bank Deposit ─────────────────────────────────────────── */}
@@ -219,7 +241,7 @@ export default function AdminSettingsPage() {
                   className="border-2 border-dashed border-border-dark rounded-xl p-3 text-center cursor-pointer hover:border-amber-500/50 transition-colors bg-surface-darker/50"
                 >
                   {qrFile ? (
-                    <p className="text-sm text-white truncate">{qrFile.name}<span className="text-text-secondary text-xs ml-2">— click to change</span></p>
+                    <p className="text-sm text-white truncate">{qrFile?.name}<span className="text-text-secondary text-xs ml-2">— click to change</span></p>
                   ) : settings.binance_pay_qr ? (
                     <p className="text-sm text-emerald-400">✓ QR uploaded<span className="text-text-secondary text-xs ml-2">— click to replace</span></p>
                   ) : (

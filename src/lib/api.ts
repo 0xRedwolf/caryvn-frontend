@@ -358,6 +358,31 @@ export const adminApi = {
 
   toggleProviderShowInactive: (slug: string, token: string) =>
     api(`/admin/providers/${slug}/toggle-show-inactive/`, { method: 'POST', token }),
+
+  exportUsersCSV: async (token: string) => {
+    try {
+      const response = await fetch(`${API_URL}/admin/users/export-csv/`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (!response.ok) throw new Error('Failed to export CSV');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'users_export.csv';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      return { success: true };
+    } catch (error) {
+      console.error('Export Error:', error);
+      return { error: 'Failed to export CSV.' };
+    }
+  },
 };
 
 // Activity Tracking API
