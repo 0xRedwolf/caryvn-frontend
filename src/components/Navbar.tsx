@@ -12,15 +12,17 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 glass-nav h-20 flex items-center justify-center">
+    <nav className="fixed top-0 left-0 right-0 z-50 glass-nav h-14 flex items-center justify-center">
       <div className="w-full max-w-7xl px-4 sm:px-6 lg:px-8 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center cursor-pointer">
-          <Logo width={240} height={56} />
-        </Link>
+        <div className="flex-none">
+          <Link href="/" className="flex items-center cursor-pointer">
+            <Logo width={130} height={36} />
+          </Link>
+        </div>
 
         {/* Desktop Nav */}
-        <div className="hidden md:flex items-center gap-8">
+        <div className="hidden md:flex items-center gap-6 ml-10 flex-1">
           <Link
             href="/"
             className="text-slate-400 hover:text-white text-sm font-medium transition-colors"
@@ -32,6 +34,24 @@ export default function Navbar() {
             className="text-slate-400 hover:text-white text-sm font-medium transition-colors"
           >
             Services
+          </Link>
+          <Link
+            href="/about"
+            className="text-slate-400 hover:text-white text-sm font-medium transition-colors"
+          >
+            About
+          </Link>
+          <Link
+            href="/faq"
+            className="text-slate-400 hover:text-white text-sm font-medium transition-colors"
+          >
+            FAQ
+          </Link>
+          <Link
+            href="/blog"
+            className="text-slate-400 hover:text-white text-sm font-medium transition-colors"
+          >
+            Blog
           </Link>
           {isAuthenticated && (
             <Link
@@ -120,6 +140,24 @@ export default function Navbar() {
               className="block px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-surface-dark transition-colors"
             >
               Services
+            </Link>
+            <Link
+              href="/about"
+              className="block px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-surface-dark transition-colors"
+            >
+              About
+            </Link>
+            <Link
+              href="/faq"
+              className="block px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-surface-dark transition-colors"
+            >
+              FAQ
+            </Link>
+            <Link
+              href="/blog"
+              className="block px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-surface-dark transition-colors"
+            >
+              Blog
             </Link>
             {isAuthenticated && (
               <Link

@@ -10,7 +10,7 @@ interface LogoProps {
   style?: React.CSSProperties;
 }
 
-export default function Logo({ width = 240, height = 56, className = '', style }: LogoProps) {
+export default function Logo({ width = 200, height = 40, className = '', style }: LogoProps) {
   const { theme } = useTheme();
 
   return (

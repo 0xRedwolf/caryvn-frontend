@@ -11,8 +11,8 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.caryvn.com'),
-  title: "Caryvn - Premium Social Media Boosting Panel",
-  description: "Boost your social media accounts with Caryvn. Cheap, fast, and reliable SMM services for Instagram, TikTok, YouTube, Twitter, Facebook, Audiomack, and more. Over 80 countries supported with instant delivery and 24/7 support.",
+  title: "Caryvn - Buy Instagram & Tiktok Followers, Views & Likes",
+  description: "Boost your social media accounts with Caryvn. Safe, fast, and reliable SMM services for Instagram, TikTok, YouTube, Twitter, Facebook, Audiomack, and more. Over 80 countries supported with instant delivery and 24/7 support.",
   keywords: [
     "SMM Panel", 
     "Social Media Marketing", 
@@ -34,8 +34,8 @@ export const metadata: Metadata = {
     "Caryvn"
   ],
   openGraph: {
-    title: "Caryvn - Premium Social Media Boosting Panel",
-    description: "Boost your social media accounts with Caryvn. Cheap, fast, and reliable SMM services. Over 80 countries supported with instant delivery and 24/7 support.",
+    title: "Caryvn - Buy Instagram & Tiktok Followers, Views & Likes",
+    description: "Boost your social media accounts with Caryvn. Safe, fast, and reliable SMM services. Over 80 countries supported with instant delivery and 24/7 support.",
     url: "https://www.caryvn.com",
     siteName: "Caryvn",
     images: [
@@ -51,8 +51,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Caryvn - Premium Social Media Boosting Panel",
-    description: "Boost your social media accounts with Caryvn. Cheap, fast, and reliable SMM services. Over 80 countries supported with instant delivery and 24/7 support.",
+    title: "Caryvn - Buy Instagram & Tiktok Followers, Views & Likes",
+    description: "Boost your social media accounts with Caryvn. Safe, fast, and reliable SMM services. Over 80 countries supported with instant delivery and 24/7 support.",
     images: ["/logo-full.png"],
   },
   icons: {
