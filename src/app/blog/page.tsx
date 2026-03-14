@@ -100,7 +100,7 @@ export default function BlogPage() {
 
   const getCategoryThumb = (category: string) => {
     switch(category.toLowerCase()) {
-      case 'strategy': return '/cat-strategy.svg';
+      case 'strategy': return '/cat-strategy.png';
       case 'tools': return '/cat-tools.png';
       case 'trends': return '/cat-trends.png';
       case 'guides': return '/cat-guides.png';
@@ -136,7 +136,7 @@ export default function BlogPage() {
           <div className="w-full lg:w-[55%] aspect-video lg:aspect-auto bg-primary/5 relative flex items-center justify-center overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 to-transparent pointer-events-none"></div>
             <Image 
-              src="/blog-hero.svg" 
+              src="/blog-hero.png" 
               alt="Top SMM Panels 2026 Visualization" 
               width={800}
               height={500}
