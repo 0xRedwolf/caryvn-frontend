@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { ordersApi } from '@/lib/api';
 import { StatsCard, StatsCardSkeleton, OrderRow } from '@/components/Cards';
+import DashboardPopup from '@/components/DashboardPopup';
 import { formatCurrency } from '@/lib/utils';
+
 
 interface Order {
   id: string;
@@ -88,6 +90,7 @@ export default function DashboardPage() {
 
   return (
     <div>
+      <DashboardPopup />
       {/* Header */}
       <div className="mb-4 min-w-0 overflow-hidden">
         <h1 className="text-2xl font-bold text-white mb-1 truncate break-words">

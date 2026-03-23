@@ -383,10 +383,29 @@ export const adminApi = {
       return { error: 'Failed to export CSV.' };
     }
   },
+
+  // Popup Management
+  getPopups: (token: string) =>
+    api('/admin/popups/', { token }),
+
+  createPopup: (data: FormData, token: string) =>
+    api('/admin/popups/', { method: 'POST', body: data, token }),
+
+  updatePopup: (popupId: number, data: FormData, token: string) =>
+    api(`/admin/popups/${popupId}/`, { method: 'PATCH', body: data, token }),
+
+  deletePopup: (popupId: number, token: string) =>
+    api(`/admin/popups/${popupId}/`, { method: 'DELETE', token }),
 };
 
 // Activity Tracking API
 export const activityApi = {
   logPageVisit: (page: string, token: string) =>
     api('/activity/', { method: 'POST', body: { page, action: 'page_visit' }, token }),
+};
+
+// Popups API
+export const popupsApi = {
+  getActivePopups: (token: string) =>
+    api('/popups/active/', { token }),
 };
