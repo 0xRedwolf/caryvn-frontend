@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { ordersApi } from '@/lib/api';
 import { formatCurrency, formatDate, getStatusColor } from '@/lib/utils';
+import TrustpilotPopup, { shouldShowReviewPopup } from '@/components/TrustpilotPopup';
 
 interface Order {
   id: string;
@@ -23,12 +25,15 @@ const statusFilters = ['All', 'pending', 'processing', 'in_progress', 'completed
 
 export default function OrdersPage() {
   const { token } = useAuth();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('All');
   const [search, setSearch] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [showReviewPopup, setShowReviewPopup] = useState(false);
   
   // Refill state
   const [refillLoading, setRefillLoading] = useState<string | null>(null);
@@ -40,6 +45,22 @@ export default function OrdersPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, statusFilter]);
+
+  // Trustpilot review popup: trigger 3s after landing from a fresh purchase
+  useEffect(() => {
+    if (searchParams.get('review') === '1') {
+      // Clean the URL param without re-triggering navigate
+      router.replace('/dashboard/orders', { scroll: false });
+      // Wait 3 seconds then show (only if cooldown allows)
+      const t = setTimeout(() => {
+        if (shouldShowReviewPopup()) {
+          setShowReviewPopup(true);
+        }
+      }, 3000);
+      return () => clearTimeout(t);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function loadOrders() {
     if (!token) return;
@@ -304,6 +325,11 @@ export default function OrdersPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Trustpilot Review Popup */}
+      {showReviewPopup && (
+        <TrustpilotPopup onClose={() => setShowReviewPopup(false)} />
       )}
     </div>
   );

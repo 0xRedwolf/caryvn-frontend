@@ -46,6 +46,8 @@ export default function AdminUsersPage() {
   const [actionResult, setActionResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<User | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [offset, setOffset] = useState(0);
+  const PAGE_SIZE = 25;
   
   // Transaction modal state
   const [txModalUser, setTxModalUser] = useState<string | null>(null);
@@ -76,7 +78,10 @@ export default function AdminUsersPage() {
       loadUsers();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, search]);
+  }, [token, search, offset]);
+
+  // Reset to page 1 when search changes
+  useEffect(() => { setOffset(0); }, [search]);
 
   useEffect(() => {
     if (actionResult) {
@@ -91,7 +96,8 @@ export default function AdminUsersPage() {
 
     const result = await adminApi.getUsers(token, {
       search: search || undefined,
-      limit: 50,
+      limit: PAGE_SIZE,
+      offset,
     });
 
     if (result.data) {
@@ -379,6 +385,31 @@ export default function AdminUsersPage() {
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {Math.ceil(total / PAGE_SIZE) > 1 && (
+        <div className="flex items-center justify-between mt-4">
+          <p className="text-text-secondary text-sm">
+            Page {Math.floor(offset / PAGE_SIZE) + 1} of {Math.ceil(total / PAGE_SIZE)} &middot; {total} users
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+              disabled={offset === 0}
+              className="px-4 py-2 rounded-lg border border-border-dark text-text-secondary hover:text-white text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              &larr; Previous
+            </button>
+            <button
+              onClick={() => setOffset(offset + PAGE_SIZE)}
+              disabled={offset + PAGE_SIZE >= total}
+              className="px-4 py-2 rounded-lg border border-border-dark text-text-secondary hover:text-white text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Next &rarr;
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Transaction Modal */}
       {txModalUser && (

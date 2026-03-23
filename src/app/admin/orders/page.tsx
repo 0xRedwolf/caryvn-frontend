@@ -30,6 +30,8 @@ export default function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [search, setSearch] = useState('');
   const [total, setTotal] = useState(0);
+  const [offset, setOffset] = useState(0);
+  const PAGE_SIZE = 50;
   const [actionResult, setActionResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -44,7 +46,10 @@ export default function AdminOrdersPage() {
       loadOrders();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, statusFilter, search]);
+  }, [token, statusFilter, search, offset]);
+
+  // Reset to page 1 when filters change
+  useEffect(() => { setOffset(0); }, [statusFilter, search]);
 
   // Auto-dismiss action results
   useEffect(() => {
@@ -61,7 +66,8 @@ export default function AdminOrdersPage() {
     const result = await adminApi.getOrders(token, {
       status: statusFilter === 'All' ? undefined : statusFilter,
       search: search || undefined,
-      limit: 100,
+      limit: PAGE_SIZE,
+      offset,
     });
 
     if (result.data) {
@@ -333,7 +339,12 @@ export default function AdminOrdersPage() {
                       />
                     </td>
                     <td className="py-4 px-4">
-                      <span className="text-white font-mono text-sm">{order.id.slice(0, 8)}</span>
+                      <span
+                        className="text-white font-mono text-sm cursor-default"
+                        title={order.id}
+                      >
+                        {order.id.slice(0, 8).toUpperCase()}
+                      </span>
                     </td>
                     <td className="py-4 px-4">
                       <span className="text-text-secondary text-sm truncate max-w-[120px] md:max-w-xs block">{order.user_email}</span>
@@ -462,6 +473,31 @@ export default function AdminOrdersPage() {
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {Math.ceil(total / PAGE_SIZE) > 1 && (
+        <div className="flex items-center justify-between mt-4">
+          <p className="text-text-secondary text-sm">
+            Page {Math.floor(offset / PAGE_SIZE) + 1} of {Math.ceil(total / PAGE_SIZE)} &middot; {total} orders
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+              disabled={offset === 0}
+              className="px-4 py-2 rounded-lg border border-border-dark text-text-secondary hover:text-white text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              &larr; Previous
+            </button>
+            <button
+              onClick={() => setOffset(offset + PAGE_SIZE)}
+              disabled={offset + PAGE_SIZE >= total}
+              className="px-4 py-2 rounded-lg border border-border-dark text-text-secondary hover:text-white text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Next &rarr;
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm !== null && (

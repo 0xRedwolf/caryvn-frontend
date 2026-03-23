@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { servicesApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -85,6 +85,147 @@ const platformConfig = [
   { name: "Spotify", dark: "bg-green-500 text-white", light: "bg-green-500 text-white" },
   { name: "WhatsApp", dark: "bg-green-600 text-white", light: "bg-green-600 text-white" },
 ];
+
+// ----- Custom Searchable Dropdown -----
+interface DropdownOption {
+  value: string;
+  label: string;
+  sublabel?: string;
+}
+
+function SearchableDropdown({
+  options,
+  value,
+  onChange,
+  placeholder,
+  disabled,
+  searchPlaceholder,
+}: {
+  options: DropdownOption[];
+  value: string;
+  onChange: (val: string) => void;
+  placeholder: string;
+  disabled?: boolean;
+  searchPlaceholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const selected = options.find((o) => o.value === value);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return options;
+    const q = search.toLowerCase();
+    return options.filter(
+      (o) =>
+        o.label.toLowerCase().includes(q) ||
+        (o.sublabel && o.sublabel.toLowerCase().includes(q))
+    );
+  }, [options, search]);
+
+  // Close on outside click
+  useEffect(() => {
+    function onOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    if (open) document.addEventListener("mousedown", onOutside);
+    return () => document.removeEventListener("mousedown", onOutside);
+  }, [open]);
+
+  // Reset search when closed
+  useEffect(() => {
+    if (!open) setSearch("");
+  }, [open]);
+
+  return (
+    <div ref={containerRef} className="relative w-full" style={{ zIndex: open ? 50 : "auto" }}>
+      {/* Trigger button */}
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen((p) => !p)}
+        className={`w-full flex items-center justify-between gap-2 rounded-lg border px-4 h-12 text-sm transition-all ${
+          disabled
+            ? "opacity-40 cursor-not-allowed bg-surface-darker border-border-dark text-text-secondary"
+            : open
+            ? "border-primary bg-surface-darker text-white shadow-[0_0_0_2px_rgba(59,130,246,0.3)]"
+            : "border-border-dark bg-surface-darker text-white hover:border-primary/50"
+        }`}
+      >
+        <span className={`truncate text-left flex-1 ${!selected ? "text-text-secondary" : ""}`}>
+          {selected ? selected.label : placeholder}
+        </span>
+        <svg
+          className={`w-4 h-4 text-text-secondary flex-shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {/* Dropdown panel */}
+      {open && !disabled && (
+        <div
+          className="absolute left-0 right-0 top-[calc(100%+6px)] bg-surface-dark border border-border-dark rounded-xl shadow-2xl overflow-hidden"
+          style={{ zIndex: 9999 }}
+        >
+          {/* Search box */}
+          <div className="p-2 border-b border-border-dark">
+            <div className="relative">
+              <svg
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-secondary"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+              </svg>
+              <input
+                type="text"
+                autoFocus
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={searchPlaceholder || "Search…"}
+                className="w-full bg-surface-darker border border-border-dark rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder-text-secondary focus:outline-none focus:border-primary transition-colors"
+              />
+            </div>
+          </div>
+
+          {/* Options list */}
+          <div className="overflow-y-auto" style={{ maxHeight: "380px" }}>
+            {filtered.length === 0 ? (
+              <p className="text-text-secondary text-sm text-center py-6">No results found</p>
+            ) : (
+              filtered.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(opt.value);
+                    setOpen(false);
+                  }}
+                  className={`w-full text-left px-4 py-3 hover:bg-primary/10 transition-colors border-b border-border-dark/50 last:border-0 ${
+                    opt.value === value ? "bg-primary/15 text-primary" : "text-white"
+                  }`}
+                >
+                  <span className="block text-sm leading-snug">{opt.label}</span>
+                  {opt.sublabel && (
+                    <span className="block text-xs text-text-secondary mt-0.5">{opt.sublabel}</span>
+                  )}
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function NewOrderPage() {
   const { theme } = useTheme();
@@ -272,7 +413,7 @@ export default function NewOrderPage() {
       // Refresh user profile to update sidebar balance
       refreshUser();
       setTimeout(() => {
-        router.push("/dashboard/orders");
+        router.push("/dashboard/orders?review=1");
       }, 1500);
     } else {
       setOrderError(result.error || "Failed to create order");
@@ -287,6 +428,18 @@ export default function NewOrderPage() {
         parseInt(orderQuantity) || 0,
       )
     : 0;
+
+  // Build dropdown options
+  const categoryOptions: DropdownOption[] = categories.map((cat) => ({
+    value: cat,
+    label: cat,
+  }));
+
+  const serviceOptions: DropdownOption[] = servicesInCategory.map((service) => ({
+    value: service.id.toString(),
+    label: `${service.name} — ${formatCurrency(service.user_rate)}/1000`,
+    sublabel: `ID: ${service.external_id} · Min: ${service.min_quantity.toLocaleString()} · Max: ${service.max_quantity.toLocaleString()}`,
+  }));
 
   return (
     <div>
@@ -317,16 +470,17 @@ export default function NewOrderPage() {
       {/* Order Form Card */}
       <div className="bg-surface-dark rounded-2xl border border-border-dark p-6">
         {/* Important Notice */}
-            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex gap-3 mb-6">
-              <div>
-                <h4 className="text-red-500 font-bold text-sm mb-2 text-center">PLEASE READ!!!</h4>
-                <ul className="text-blue-500 text-xs font-semibold leading-relaxed list-disc pl-4 space-y-1">
-                  <li>For Successful orders, keep your accounts public</li>
-                  <li>Always double check your order link before placing an order</li>
-                  <li>Please be very patient, especially for followers orders, if after 48hrs you haven&apos;t received your order, please contact us</li>
-                </ul>
-              </div>
-            </div>
+        <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 flex gap-3 mb-6">
+          <div>
+            <h4 className="text-red-500 font-bold text-sm mb-2 text-center">PLEASE READ!!!</h4>
+            <ul className="text-blue-500 text-xs font-semibold leading-relaxed list-disc pl-4 space-y-1">
+              <li>For Successful orders, keep your accounts public</li>
+              <li>Always double check your order link before placing an order</li>
+              <li>Please be very patient, especially for followers orders, if after 48hrs you haven&apos;t received your order, please contact us</li>
+            </ul>
+          </div>
+        </div>
+
         {loading ? (
           <div className="py-12 text-center">
             <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
@@ -339,18 +493,18 @@ export default function NewOrderPage() {
               <label className="block text-sm font-medium text-white mb-2">
                 Category
               </label>
-              <select
+              <SearchableDropdown
+                options={categoryOptions}
                 value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="select"
-              >
-                <option value="">-- Select a category --</option>
-                {categories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
-                  </option>
-                ))}
-              </select>
+                onChange={setSelectedCategory}
+                placeholder="— Select a category —"
+                searchPlaceholder="Search categories…"
+              />
+              {categories.length > 0 && (
+                <p className="text-text-secondary text-xs mt-1.5">
+                  {categories.length} categories available
+                </p>
+              )}
             </div>
 
             {/* Service Dropdown */}
@@ -358,20 +512,19 @@ export default function NewOrderPage() {
               <label className="block text-sm font-medium text-white mb-2">
                 Service
               </label>
-              <select
+              <SearchableDropdown
+                options={serviceOptions}
                 value={selectedServiceId}
-                onChange={(e) => setSelectedServiceId(e.target.value)}
-                className="select"
+                onChange={setSelectedServiceId}
+                placeholder="— Select a service —"
                 disabled={!selectedCategory}
-              >
-                <option value="">-- Select a service --</option>
-                {servicesInCategory.map((service) => (
-                  <option key={service.id} value={service.id.toString()}>
-                    {service.external_id} - {service.name} -{" "}
-                    {formatCurrency(service.user_rate)} per 1000
-                  </option>
-                ))}
-              </select>
+                searchPlaceholder="Search services by name or ID…"
+              />
+              {selectedCategory && servicesInCategory.length > 0 && (
+                <p className="text-text-secondary text-xs mt-1.5">
+                  {servicesInCategory.length} services in this category
+                </p>
+              )}
             </div>
 
             {/* Link Input */}
