@@ -8,8 +8,9 @@ interface PopupCardData {
   id: number;
   title: string;
   description: string;
-  image: string | null;
-  action_url: string;
+  image?: string;
+  action_url?: string;
+  action_text?: string;
 }
 
 export default function DashboardPopup() {
@@ -132,9 +133,9 @@ export default function DashboardPopup() {
                       href={popup.action_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-2 inline-flex items-center justify-center px-4 py-2 rounded-full bg-primary text-white font-medium hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
+                      className="inline-block mt-4 px-8 py-3 bg-white text-black font-bold text-sm uppercase rounded-full shadow-lg hover:bg-gray-200 transition-colors pointer-events-auto"
                     >
-                      Learn More
+                      {popup.action_text || 'Learn More'}
                     </a>
                   )}
                 </div>

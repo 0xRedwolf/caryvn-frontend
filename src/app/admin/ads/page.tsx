@@ -8,8 +8,9 @@ interface PopupCard {
   id: number;
   title: string;
   description: string;
-  image: string | null;
-  action_url: string;
+  image?: string;
+  action_url?: string;
+  action_text?: string;
   is_active: boolean;
   order: number;
 }
@@ -27,6 +28,7 @@ export default function AdminAdsPage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [actionUrl, setActionUrl] = useState('');
+  const [actionText, setActionText] = useState('Learn More');
   const [order, setOrder] = useState(0);
   const [isActive, setIsActive] = useState(true);
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -54,6 +56,7 @@ export default function AdminAdsPage() {
     setTitle(card.title || '');
     setDescription(card.description || '');
     setActionUrl(card.action_url || '');
+    setActionText(card.action_text || 'Learn More');
     setOrder(card.order || 0);
     setIsActive(card.is_active ?? true);
     setImageFile(null);
@@ -65,6 +68,7 @@ export default function AdminAdsPage() {
     setTitle('');
     setDescription('');
     setActionUrl('');
+    setActionText('Learn More');
     setOrder(0);
     setIsActive(true);
     setImageFile(null);
@@ -93,6 +97,7 @@ export default function AdminAdsPage() {
     formData.append('title', title);
     formData.append('description', description);
     formData.append('action_url', actionUrl);
+    formData.append('action_text', actionText || 'Learn More');
     formData.append('order', order.toString());
     formData.append('is_active', isActive.toString());
     
@@ -240,6 +245,17 @@ export default function AdminAdsPage() {
                     value={actionUrl} 
                     onChange={e => setActionUrl(e.target.value)} 
                     className="input-field border border-border-dark focus:border-primary" 
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1">Action Button Text</label>
+                  <input 
+                    type="text" 
+                    value={actionText} 
+                    onChange={e => setActionText(e.target.value)} 
+                    className="input-field border border-border-dark focus:border-primary" 
+                    placeholder="e.g., Learn More, Buy Now"
                   />
                 </div>
                 
