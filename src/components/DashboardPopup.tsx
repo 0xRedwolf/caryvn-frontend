@@ -20,21 +20,25 @@ export default function DashboardPopup() {
   const [isVisible, setIsVisible] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   
-  // Only show X button if user has seen the last card
-  const [canClose, setCanClose] = useState(false);
-
   useEffect(() => {
     if (!token) return;
+
+    // Check if 1 hour has passed since last shown
+    const lastShownStr = localStorage.getItem('dashboardPopupLastShown');
+    if (lastShownStr) {
+      const lastShown = parseInt(lastShownStr, 10);
+      const oneHourMs = 60 * 60 * 1000;
+      if (!isNaN(lastShown) && Date.now() - lastShown < oneHourMs) {
+        return; // Hasn't been an hour yet
+      }
+    }
 
     // Fetch popups
     popupsApi.getActivePopups(token).then((res) => {
       if (res.data && Array.isArray(res.data) && res.data.length > 0) {
         setPopups(res.data);
         setIsVisible(true);
-        // If there's only 1 card, they can immediately close it
-        if (res.data.length === 1) {
-          setCanClose(true);
-        }
+        localStorage.setItem('dashboardPopupLastShown', Date.now().toString());
       }
     });
   }, [token]);
@@ -46,10 +50,6 @@ export default function DashboardPopup() {
     const timer = setInterval(() => {
       setCurrentIndex((prev) => {
         const nextIndex = prev + 1;
-        // If we reach the last card, enable the close button
-        if (nextIndex >= popups.length - 1) {
-          setCanClose(true);
-        }
         
         if (nextIndex >= popups.length) {
           return 0; // Loop back
@@ -68,7 +68,6 @@ export default function DashboardPopup() {
   const handleNext = () => {
     setIsPaused(true);
     const nextIndex = currentIndex + 1;
-    if (nextIndex >= popups.length - 1) setCanClose(true);
     setCurrentIndex(nextIndex >= popups.length ? 0 : nextIndex);
   };
 
@@ -86,19 +85,17 @@ export default function DashboardPopup() {
         onMouseEnter={() => setIsPaused(true)}
         onMouseLeave={() => setIsPaused(false)}
       >
-        {/* Close Button - conditionally rendered based on canClose */}
-        {canClose && (
-          <button 
-            type="button"
-            onClick={handleClose}
-            className="absolute top-3 right-3 z-[100] w-8 h-8 flex items-center justify-center rounded-full bg-black/50 text-white hover:text-white hover:bg-black/80 transition-all backdrop-blur-md cursor-pointer"
-            aria-label="Close popup"
-          >
-            <svg className="w-5 h-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        )}
+        {/* Close Button - Now always visible */}
+        <button 
+          type="button"
+          onClick={handleClose}
+          className="absolute top-3 right-3 z-[100] w-8 h-8 flex items-center justify-center rounded-full bg-black/50 text-white hover:text-white hover:bg-black/80 transition-all backdrop-blur-md cursor-pointer"
+          aria-label="Close popup"
+        >
+          <svg className="w-5 h-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
 
         {/* Carousel Container */}
         <div className="relative w-full aspect-square bg-surface-dark overflow-hidden group">
@@ -176,7 +173,6 @@ export default function DashboardPopup() {
                 key={idx}
                 onClick={() => {
                   setIsPaused(true);
-                  if (idx === popups.length - 1) setCanClose(true);
                   setCurrentIndex(idx);
                 }}
                 className={`w-2 h-2 rounded-full transition-all ${idx === currentIndex ? 'bg-primary w-4' : 'bg-white/30 hover:bg-white/50'}`}
