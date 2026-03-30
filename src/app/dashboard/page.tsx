@@ -120,6 +120,10 @@ export default function DashboardPage() {
             <div ref={tickerRef} className="flex items-center py-2.5 whitespace-nowrap" style={{ willChange: 'transform' }}>
               <div ref={tickerSetRef} className="flex items-center shrink-0">
                 <span className="inline-flex items-center gap-1.5 text-text-secondary text-sm mr-8">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                  You can now chat an admin on WhatsaApp 24/7
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-text-secondary text-sm mr-8">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
                   Kindly leave a review on <a href="https://www.trustpilot.com/evaluate/caryvn.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Trustpilot</a> it helps us a lot
                 </span>
@@ -131,13 +135,13 @@ export default function DashboardPage() {
                   <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
                   Buy Foreign Numbers on <a href="https://zapotp.com/login" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">zapotp.com</a> ⚡
                 </span>
-                <span className="inline-flex items-center gap-1.5 text-text-secondary text-sm mr-8">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
-                  New features: 24/7 Live Chat and Ticket Added
-                </span>
               </div>
               {/* Duplicate set for seamless loop */}
               <div className="flex items-center shrink-0">
+                <span className="inline-flex items-center gap-1.5 text-text-secondary text-sm mr-8">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 flex-shrink-0" />
+                  You can now chat an admin on WhatsaApp 24/7
+                </span>
                 <span className="inline-flex items-center gap-1.5 text-text-secondary text-sm mr-8">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
                   Kindly leave a review on <a href="https://www.trustpilot.com/evaluate/caryvn.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Trustpilot</a> it helps us a lot
@@ -149,10 +153,6 @@ export default function DashboardPage() {
                 <span className="inline-flex items-center gap-1.5 text-text-secondary text-sm mr-8">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary flex-shrink-0" />
                   New services added, Buy Foreign Numbers on <a href="https://zapotp.com/login" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">zapotp.com</a> ⚡
-                </span>
-                <span className="inline-flex items-center gap-1.5 text-text-secondary text-sm mr-8">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 flex-shrink-0" />
-                  New features: 24/7 Live Chat and Ticket Added
                 </span>
               </div>
             </div>
