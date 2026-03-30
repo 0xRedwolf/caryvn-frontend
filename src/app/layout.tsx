@@ -11,6 +11,9 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.caryvn.com'),
+  alternates: {
+    canonical: '/',
+  },
   title: "Caryvn - Buy Instagram & Tiktok Followers, Views & Likes",
   description: "Boost your social media accounts with Caryvn. Safe, fast, and reliable SMM services for Instagram, TikTok, YouTube, Twitter, Facebook, Audiomack, and more. Over 80 countries supported with instant delivery and 24/7 support.",
   keywords: [

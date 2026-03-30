@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import Footer from '@/components/Footer';
+import type { Metadata } from 'next';
 
 const blogPosts = {
   'what-is-an-smm-panel': {

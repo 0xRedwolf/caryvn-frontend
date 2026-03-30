@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: ['/dashboard/', '/admin/', '/api/'],
     },
-    sitemap: 'https://www.caryvn.com/sitemap.xml',
+    sitemap: 'https://caryvn.com/sitemap.xml',
   };
 }
