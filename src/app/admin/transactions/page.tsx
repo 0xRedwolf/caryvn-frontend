@@ -20,7 +20,8 @@ interface AdminTransaction {
 }
 
 const GATEWAY_META: Record<string, { label: string; color: string }> = {
-  squad:               { label: 'Squad',       color: 'bg-violet-500/10 text-violet-400 border-violet-500/20' },
+  paystack:            { label: 'Paystack',     color: 'bg-violet-500/10 text-violet-400 border-violet-500/20' },
+  squad:               { label: 'Squad (Legacy)', color: 'bg-gray-500/10 text-gray-400 border-gray-500/20' },
   manual:              { label: 'Bank',         color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
   binance_pay:         { label: 'Binance Pay',  color: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
   on_chain_usdt_trc20: { label: 'USDT-TRC20',  color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
@@ -35,7 +36,7 @@ const STATUS_COLOR: Record<string, string> = {
   failed:  'bg-red-500/10 text-red-400 border-red-500/20',
 };
 
-const GATEWAYS = ['', 'squad', 'manual', 'binance_pay', 'on_chain_usdt_trc20', 'on_chain_usdt_bep20', 'on_chain_sol'];
+const GATEWAYS = ['', 'paystack', 'squad', 'manual', 'binance_pay', 'on_chain_usdt_trc20', 'on_chain_usdt_bep20', 'on_chain_sol'];
 const STATUSES = ['', 'pending', 'success', 'failed'];
 const PAGE_SIZE = 50;
 
@@ -193,7 +194,7 @@ export default function AdminTransactionsPage() {
                 {transactions.map(tx => {
                   const gMeta = GATEWAY_META[tx.payment_gateway] ?? { label: tx.payment_gateway || 'Internal', color: 'bg-surface-darker text-text-secondary border-border-dark' };
                   const sMeta = STATUS_COLOR[tx.status] ?? 'bg-surface-darker text-text-secondary border-border-dark';
-                  const isSquad = tx.payment_gateway === 'squad';
+                  const isPaystack = tx.payment_gateway === 'paystack';
                   const isPending = tx.status === 'pending';
                   return (
                     <tr key={tx.id} className="hover:bg-surface-darker/30 transition-colors">
@@ -226,14 +227,14 @@ export default function AdminTransactionsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2 justify-end">
-                          {/* Squad: re-query and auto-approve */}
-                          {isSquad && isPending && (
+                          {/* Paystack: re-query and auto-approve */}
+                          {isPaystack && isPending && (
                             <button
                               onClick={() => handleVerify(tx)}
                               disabled={actionLoading === `verify-${tx.id}`}
                               className="px-3 py-1.5 rounded-lg text-xs font-medium bg-violet-500/10 text-violet-400 border border-violet-500/20 hover:bg-violet-500/20 transition-colors disabled:opacity-50"
                             >
-                              {actionLoading === `verify-${tx.id}` ? '…' : 'Query Squad'}
+                              {actionLoading === `verify-${tx.id}` ? '…' : 'Query Paystack'}
                             </button>
                           )}
                           {/* Any pending: mark as failed */}

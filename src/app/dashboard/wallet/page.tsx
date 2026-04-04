@@ -27,6 +27,7 @@ interface SiteSettings {
 }
 
 const PRESET_AMOUNTS = [1000, 2000, 5000, 10000, 20000, 50000];
+const TX_PAGE_SIZE = 20;
 
 type TopupMethod = 'automatic' | 'manual' | 'crypto';
 type CryptoMethod = 'binance_pay' | 'on_chain';
@@ -63,6 +64,8 @@ export default function WalletPage() {
   const [topupError, setTopupError] = useState('');
   const [topupSuccess, setTopupSuccess] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [txOffset, setTxOffset] = useState(0);
+  const [txTotal, setTxTotal] = useState(0);
 
   // Method tabs
   const [topupMethod, setTopupMethod] = useState<TopupMethod>('automatic');
@@ -128,12 +131,14 @@ export default function WalletPage() {
     } catch { /* silently fail */ }
   };
 
-  async function loadTransactions() {
+  async function loadTransactions(offset = 0) {
     if (!token) return;
-    const result = await walletApi.getTransactions(token, 50, 0);
+    const result = await walletApi.getTransactions(token, TX_PAGE_SIZE, offset);
     if (result.data) {
-      const data = result.data as { transactions: Transaction[] };
+      const data = result.data as { transactions: Transaction[]; total: number };
       setTransactions(data.transactions || []);
+      setTxTotal(data.total || 0);
+      setTxOffset(offset);
     }
     setLoading(false);
   };
@@ -162,11 +167,11 @@ export default function WalletPage() {
     setShowConfirmModal(false);
   };
 
-  // ── Automatic (Squad) topup ──────────────────────────────────────────────
+  // ── Automatic (Paystack) topup ──────────────────────────────────────────────
   const handleAutomaticTopup = async () => {
     if (!token || !topupAmount) return;
     const amount = parseFloat(topupAmount);
-    if (isNaN(amount) || amount < 100) { setTopupError('Minimum top-up amount is ₦100'); return; }
+    if (isNaN(amount) || amount < 500) { setTopupError('Minimum top-up amount is ₦500'); return; }
     if (amount > 500000) { setTopupError('Maximum top-up amount is ₦500,000'); return; }
     setTopupLoading(true);
     setTopupError('');
@@ -182,7 +187,7 @@ export default function WalletPage() {
   const handleManualTopup = async () => {
     if (!token || !topupAmount || !proofFile) return;
     const amount = parseFloat(topupAmount);
-    if (isNaN(amount) || amount < 100) { setTopupError('Minimum top-up amount is ₦100'); return; }
+    if (isNaN(amount) || amount < 500) { setTopupError('Minimum deposit is ₦500'); return; }
     setTopupLoading(true);
     setTopupError('');
     const formData = new FormData();
@@ -310,7 +315,7 @@ export default function WalletPage() {
 
             {/* Method Tabs */}
             <div className="flex bg-surface-darker p-1 rounded-xl mb-5 gap-1">
-              <TabBtn id="automatic" label="Auto (Squad)" />
+              <TabBtn id="automatic" label="Auto (Paystack)" />
               <TabBtn id="manual"    label="Bank Transfer" />
               <TabBtn id="crypto"    label="Crypto" />
             </div>
@@ -343,22 +348,22 @@ export default function WalletPage() {
                   <label className="text-text-secondary text-sm mb-1.5 block">Amount (₦)</label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary font-medium">₦</span>
-                    <input type="number" className="input w-full pl-10 text-center" placeholder="5000" min="100" max="500000"
+                    <input type="number" className="input w-full pl-10 text-center" placeholder="5000" min="500" max="500000"
                       value={topupAmount} onChange={(e) => { setTopupAmount(e.target.value); setTopupError(''); }} />
                   </div>
-                  <p className="text-text-secondary text-xs mt-1.5">Min: ₦100 · Max: ₦500,000</p>
+                  <p className="text-text-secondary text-xs mt-1.5">Min: ₦500 · Max: ₦500,000</p>
                 </div>
                 {topupError && <div className="bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg p-3 mb-4 text-sm">{topupError}</div>}
                 <button onClick={handleAutomaticTopup} disabled={topupLoading || !topupAmount}
                   className="btn-primary w-full py-3.5 text-base disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                   {topupLoading ? <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Processing...</>
-                    : `Deposit${topupAmount ? ` ₦${parseFloat(topupAmount).toLocaleString()}` : ''} with Squad`}
+                    : `Deposit${topupAmount ? ` ₦${parseFloat(topupAmount).toLocaleString()}` : ''} with Paystack`}
                 </button>
                 <div className="flex items-center gap-2 mt-4 justify-center">
                   <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
-                  <p className="text-text-secondary text-xs">Secured by Squad Payment Gateway</p>
+                  <p className="text-text-secondary text-xs">Secured by Paystack</p>
                 </div>
               </>
             )}
@@ -393,7 +398,7 @@ export default function WalletPage() {
                   <label className="text-text-secondary text-sm mb-1.5 block">Amount (₦)</label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary font-medium">₦</span>
-                    <input type="number" className="input w-full pl-10 text-center" placeholder="5000" min="100"
+                    <input type="number" className="input w-full pl-10 text-center" placeholder="5000" min="500"
                       value={topupAmount} onChange={(e) => { setTopupAmount(e.target.value); setTopupError(''); }} />
                   </div>
                 </div>
@@ -693,6 +698,31 @@ export default function WalletPage() {
           <div className="p-8 text-center"><p className="text-text-secondary">No transactions yet</p></div>
         )}
       </div>
+
+      {/* Pagination */}
+      {txTotal > TX_PAGE_SIZE && (
+        <div className="flex items-center justify-between mt-4 px-1">
+          <p className="text-text-secondary text-sm">
+            Page {Math.floor(txOffset / TX_PAGE_SIZE) + 1} of {Math.ceil(txTotal / TX_PAGE_SIZE)} &middot; {txTotal} transactions
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => loadTransactions(Math.max(0, txOffset - TX_PAGE_SIZE))}
+              disabled={txOffset === 0}
+              className="px-4 py-2 rounded-lg border border-border-dark text-text-secondary hover:text-white text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              &larr; Previous
+            </button>
+            <button
+              onClick={() => loadTransactions(txOffset + TX_PAGE_SIZE)}
+              disabled={txOffset + TX_PAGE_SIZE >= txTotal}
+              className="px-4 py-2 rounded-lg border border-border-dark text-text-secondary hover:text-white text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              Next &rarr;
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm !== null && (

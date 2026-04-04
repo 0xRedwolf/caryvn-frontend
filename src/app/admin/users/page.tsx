@@ -143,14 +143,14 @@ export default function AdminUsersPage() {
     setTxActionLoading(null);
     if (result.data) {
       const data = result.data as { message: string; new_balance: string };
-      setFeedbackModal({ title: 'Squad Verification Success', message: data.message, visible: true });
+      setFeedbackModal({ title: 'Paystack Verification Success', message: data.message, visible: true });
       // Update balance globally if possible, but simplest is to just refresh tx list
       handleViewTransactions(txModalUser, txModalEmail);
       if (data.new_balance) {
         setUsers(prev => prev.map(u => u.id === txModalUser ? { ...u, balance: data.new_balance } : u));
       }
     } else {
-      setFeedbackModal({ title: 'Squad Verification Failed', message: result.error || 'Verification failed', visible: true });
+      setFeedbackModal({ title: 'Paystack Verification Failed', message: result.error || 'Verification failed', visible: true });
     }
   };
 
@@ -461,7 +461,7 @@ export default function AdminUsersPage() {
                                disabled={txActionLoading === tx.id}
                                className="text-[10px] font-medium px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
                              >
-                               {txActionLoading === tx.id ? '...' : 'Verify Squad'}
+                               {txActionLoading === tx.id ? '...' : 'Verify Paystack'}
                              </button>
                              <button
                                onClick={() => handleFailTx(tx.id)}
