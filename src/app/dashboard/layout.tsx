@@ -7,7 +7,7 @@ import { ThemeToggle } from '@/contexts/ThemeContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Logo from '@/components/Logo';
 import TawkTo from '@/components/TawkTo';
-import WhatsAppButton from '@/components/WhatsAppButton';
+import FloatingChatMenu from '@/components/FloatingChatMenu';
 import { formatCurrency } from '@/lib/utils';
 import { useState } from 'react';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
@@ -223,9 +223,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </main>
 
       </div>
-      {/* Floating WhatsApp DM button */}
-      <WhatsAppButton />
-      {/* Tawk.to live chat widget; loads once for the whole dashboard */}
+      {/* Unified Floating Chat Menu for WhatsApp & Live Chat */}
+      <FloatingChatMenu />
+      {/* Tawk.to live chat widget script logic; loads once for the whole dashboard */}
       <TawkTo />
     </ProtectedRoute>
   );

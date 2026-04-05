@@ -11,6 +11,9 @@ declare global {
       setAttributes?: (attrs: Record<string, string>, cb?: (err: unknown) => void) => void;
       hideWidget?: () => void;
       showWidget?: () => void;
+      onChatMinimized?: () => void;
+      onChatEnded?: () => void;
+      onChatHidden?: () => void;
     };
     Tawk_LoadStart: Date;
   }
@@ -30,8 +33,24 @@ export default function TawkTo() {
     window.Tawk_API = window.Tawk_API || {};
     window.Tawk_LoadStart = new Date();
 
+    // Auto-hide Tawk.to when user minimizes or ends chat
+    window.Tawk_API.onChatMinimized = () => {
+      if (window.Tawk_API.hideWidget) window.Tawk_API.hideWidget();
+    };
+    window.Tawk_API.onChatEnded = () => {
+      if (window.Tawk_API.hideWidget) window.Tawk_API.hideWidget();
+    };
+    window.Tawk_API.onChatHidden = () => {
+      if (window.Tawk_API.hideWidget) window.Tawk_API.hideWidget();
+    };
+
     // Pre-identify the logged-in user as soon as Tawk.to widget is ready
     window.Tawk_API.onLoad = () => {
+      // Hide the widget on initial load so it sits quietly behind our custom menu
+      if (window.Tawk_API.hideWidget) {
+        window.Tawk_API.hideWidget();
+      }
+
       if (user && window.Tawk_API.setAttributes) {
         window.Tawk_API.setAttributes(
           {
