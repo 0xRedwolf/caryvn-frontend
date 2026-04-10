@@ -157,12 +157,12 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex justify-between items-start">
+      <div className="flex justify-between items-start gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1">Site Settings</h1>
           <p className="text-text-secondary">Manage global application configurations</p>
         </div>
-        <button 
+        <button
           onClick={async () => {
             if (!token) return;
             setExportingUsers(true);
@@ -170,16 +170,19 @@ export default function AdminSettingsPage() {
             setExportingUsers(false);
           }}
           disabled={exportingUsers}
-          className="btn-primary flex items-center gap-2"
+          className="btn-primary flex-shrink-0 flex items-center gap-2"
+          title="Export Users (CSV)"
         >
           {exportingUsers ? (
-             <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
           ) : (
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
           )}
-          {exportingUsers ? 'Exporting...' : 'Export Users (CSV)'}
+          <span className="hidden sm:inline">
+            {exportingUsers ? 'Exporting...' : 'Export Users (CSV)'}
+          </span>
         </button>
       </div>
 
@@ -316,7 +319,7 @@ export default function AdminSettingsPage() {
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" className="sr-only peer" checked={settings.show_inactive_services} onChange={toggleShowInactive} />
-            <div className="w-11 h-6 bg-surface-darker peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary peer-checked:after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary border border-border-dark"></div>
+            <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:shadow-sm after:transition-all peer-checked:after:translate-x-full peer-focus:outline-none"></div>
           </label>
         </div>
       </div>
@@ -340,7 +343,7 @@ export default function AdminSettingsPage() {
               </span>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" className="sr-only peer" checked={settings.squad_enabled} onChange={() => togglePaymentMethod('squad_enabled')} />
-                <div className="w-11 h-6 bg-surface-darker peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary peer-checked:after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary border border-border-dark"></div>
+                <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:shadow-sm after:transition-all peer-checked:after:translate-x-full peer-focus:outline-none"></div>
               </label>
             </div>
           </div>
@@ -356,7 +359,7 @@ export default function AdminSettingsPage() {
               </span>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" className="sr-only peer" checked={settings.manual_bank_enabled} onChange={() => togglePaymentMethod('manual_bank_enabled')} />
-                <div className="w-11 h-6 bg-surface-darker peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary peer-checked:after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary border border-border-dark"></div>
+                <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:shadow-sm after:transition-all peer-checked:after:translate-x-full peer-focus:outline-none"></div>
               </label>
             </div>
           </div>
@@ -372,7 +375,7 @@ export default function AdminSettingsPage() {
               </span>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" className="sr-only peer" checked={settings.crypto_enabled} onChange={() => togglePaymentMethod('crypto_enabled')} />
-                <div className="w-11 h-6 bg-surface-darker peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary peer-checked:after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary border border-border-dark"></div>
+                <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:shadow-sm after:transition-all peer-checked:after:translate-x-full peer-focus:outline-none"></div>
               </label>
             </div>
           </div>

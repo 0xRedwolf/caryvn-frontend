@@ -409,7 +409,7 @@ export default function WalletPage() {
                   <label className="text-text-secondary text-sm mb-1.5 block">Amount (₦)</label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-text-secondary font-medium">₦</span>
-                    <input type="number" className="input w-full pl-10 text-center" placeholder="5000" min="500"
+                    <input type="number" className="input w-full pl-10 text-center" placeholder="Minimum 500" min="500"
                       value={topupAmount} onChange={(e) => { setTopupAmount(e.target.value); setTopupError(''); }} />
                   </div>
                 </div>
