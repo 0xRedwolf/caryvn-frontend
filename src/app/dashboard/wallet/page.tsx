@@ -24,6 +24,10 @@ interface SiteSettings {
   crypto_usdt_trc20?: string;
   crypto_usdt_bep20?: string;
   crypto_sol?: string;
+  // Payment method toggles
+  squad_enabled?: boolean;
+  manual_bank_enabled?: boolean;
+  crypto_enabled?: boolean;
 }
 
 const PRESET_AMOUNTS = [1000, 2000, 5000, 10000, 20000, 50000];
@@ -152,6 +156,13 @@ export default function WalletPage() {
     if (result.data) setTransactions(prev => prev.filter(tx => tx.id !== txId));
   };
 
+  /** Return the first payment method that is currently enabled in settings. */
+  const firstEnabledMethod = (s: SiteSettings | null): TopupMethod => {
+    if (!s || s.squad_enabled !== false) return 'automatic';
+    if (s.manual_bank_enabled !== false) return 'manual';
+    return 'crypto';
+  };
+
   const resetTopup = () => {
     setShowTopup(false);
     setTopupLoading(false);
@@ -159,7 +170,7 @@ export default function WalletPage() {
     setTopupError('');
     setTopupSuccess('');
     setProofFile(null);
-    setTopupMethod('automatic');
+    setTopupMethod(firstEnabledMethod(siteSettings));
     setCryptoMethod('binance_pay');
     setCryptoStep(1);
     setCryptoReferenceId('');
@@ -167,7 +178,7 @@ export default function WalletPage() {
     setShowConfirmModal(false);
   };
 
-  // ── Automatic (Paystack) topup ──────────────────────────────────────────────
+  // ── Automatic (Squad) topup ──────────────────────────────────────────────
   const handleAutomaticTopup = async () => {
     if (!token || !topupAmount) return;
     const amount = parseFloat(topupAmount);
@@ -293,7 +304,7 @@ export default function WalletPage() {
           </button>
         </div>
         <p className="text-4xl font-bold text-white mb-6">{formatCurrency(user?.balance || '0')}</p>
-        <button className="btn-primary" onClick={() => { setShowTopup(true); setTopupError(''); setTopupAmount(''); }}>
+        <button className="btn-primary" onClick={() => { setTopupMethod(firstEnabledMethod(siteSettings)); setShowTopup(true); setTopupError(''); setTopupAmount(''); }}>
           <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
@@ -313,11 +324,11 @@ export default function WalletPage() {
 
             <h2 className="text-xl font-bold text-white mb-4">Top Up Wallet</h2>
 
-            {/* Method Tabs */}
+            {/* Method Tabs — only show enabled methods */}
             <div className="flex bg-surface-darker p-1 rounded-xl mb-5 gap-1">
-              <TabBtn id="automatic" label="Auto (Paystack)" />
-              <TabBtn id="manual"    label="Bank Transfer" />
-              <TabBtn id="crypto"    label="Crypto" />
+              {siteSettings?.squad_enabled !== false && <TabBtn id="automatic" label="Auto (Squad)" />}
+              {siteSettings?.manual_bank_enabled !== false && <TabBtn id="manual"    label="Bank Transfer" />}
+              {siteSettings?.crypto_enabled !== false && <TabBtn id="crypto"    label="Crypto" />}
             </div>
 
             {/* ── Success Banner ───────────────────────── */}
@@ -334,7 +345,7 @@ export default function WalletPage() {
             )}
 
             {/* ── AUTOMATIC TAB ───────────────────────── */}
-            {topupMethod === 'automatic' && !topupSuccess && (
+            {topupMethod === 'automatic' && siteSettings?.squad_enabled !== false && !topupSuccess && (
               <>
                 <div className="grid grid-cols-3 gap-3 mb-4">
                   {PRESET_AMOUNTS.map(a => (
@@ -357,19 +368,19 @@ export default function WalletPage() {
                 <button onClick={handleAutomaticTopup} disabled={topupLoading || !topupAmount}
                   className="btn-primary w-full py-3.5 text-base disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                   {topupLoading ? <><span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />Processing...</>
-                    : `Deposit${topupAmount ? ` ₦${parseFloat(topupAmount).toLocaleString()}` : ''} with Paystack`}
+                    : `Deposit${topupAmount ? ` ₦${parseFloat(topupAmount).toLocaleString()}` : ''} with Squad`}
                 </button>
                 <div className="flex items-center gap-2 mt-4 justify-center">
                   <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
-                  <p className="text-text-secondary text-xs">Secured by Paystack</p>
+                  <p className="text-text-secondary text-xs">Secured by Squad Payment Gateway</p>
                 </div>
               </>
             )}
 
             {/* ── MANUAL BANK TAB ─────────────────────── */}
-            {topupMethod === 'manual' && !topupSuccess && (
+            {topupMethod === 'manual' && siteSettings?.manual_bank_enabled !== false && !topupSuccess && (
               <>
                 {siteSettings && (
                   <div className="bg-surface-darker border border-border-dark rounded-xl p-4 mb-5">
@@ -432,7 +443,7 @@ export default function WalletPage() {
             )}
 
             {/* ── CRYPTO TAB ──────────────────────────── */}
-            {topupMethod === 'crypto' && !topupSuccess && (
+            {topupMethod === 'crypto' && siteSettings?.crypto_enabled !== false && !topupSuccess && (
               <>
                 {/* Crypto sub-method buttons */}
                 <div className="grid grid-cols-2 gap-3 mb-5">

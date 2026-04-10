@@ -15,6 +15,10 @@ interface SiteSettings {
   crypto_usdt_trc20: string;
   crypto_usdt_bep20: string;
   crypto_sol: string;
+  // Payment method toggles
+  squad_enabled: boolean;
+  manual_bank_enabled: boolean;
+  crypto_enabled: boolean;
 }
 
 export default function AdminSettingsPage() {
@@ -33,6 +37,9 @@ export default function AdminSettingsPage() {
     crypto_usdt_trc20: '',
     crypto_usdt_bep20: '',
     crypto_sol: '',
+    squad_enabled: true,
+    manual_bank_enabled: true,
+    crypto_enabled: true,
   });
   const [bankMessage, setBankMessage] = useState({ type: '', text: '' });
   const [cryptoMessage, setCryptoMessage] = useState({ type: '', text: '' });
@@ -59,6 +66,9 @@ export default function AdminSettingsPage() {
         crypto_usdt_trc20: data.crypto_usdt_trc20 || '',
         crypto_usdt_bep20: data.crypto_usdt_bep20 || '',
         crypto_sol: data.crypto_sol || '',
+        squad_enabled: data.squad_enabled !== false,
+        manual_bank_enabled: data.manual_bank_enabled !== false,
+        crypto_enabled: data.crypto_enabled !== false,
       });
     }
     setLoading(false);
@@ -119,6 +129,15 @@ export default function AdminSettingsPage() {
     const res = await adminApi.toggleShowInactiveServices(token);
     if (!res.error) {
       setSettings({ ...settings, show_inactive_services: !settings.show_inactive_services });
+    }
+  };
+
+  const togglePaymentMethod = async (field: 'squad_enabled' | 'manual_bank_enabled' | 'crypto_enabled') => {
+    if (!token) return;
+    const newValue = !settings[field];
+    const res = await adminApi.updateSiteSettings({ [field]: newValue }, token);
+    if (!res.error) {
+      setSettings(prev => ({ ...prev, [field]: newValue }));
     }
   };
 
@@ -299,6 +318,64 @@ export default function AdminSettingsPage() {
             <input type="checkbox" className="sr-only peer" checked={settings.show_inactive_services} onChange={toggleShowInactive} />
             <div className="w-11 h-6 bg-surface-darker peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary peer-checked:after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary border border-border-dark"></div>
           </label>
+        </div>
+      </div>
+
+      {/* ── Payment Methods ───────────────────────────────────────────────── */}
+      <div className="bg-surface-dark rounded-xl border border-border-dark overflow-hidden">
+        <div className="px-6 py-4 border-b border-border-dark bg-surface-darker/50">
+          <h2 className="text-lg font-semibold text-white">Payment Methods</h2>
+          <p className="text-text-secondary text-sm">Enable or disable payment methods available to users on the wallet top-up page.</p>
+        </div>
+        <div className="divide-y divide-border-dark">
+          {/* Squad */}
+          <div className="px-6 py-4 flex items-center justify-between">
+            <div>
+              <p className="text-white font-medium">Squad (Automatic / Card)</p>
+              <p className="text-text-secondary text-sm">Online card payments processed instantly via Squad.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${settings.squad_enabled ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                {settings.squad_enabled ? 'Enabled' : 'Disabled'}
+              </span>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" className="sr-only peer" checked={settings.squad_enabled} onChange={() => togglePaymentMethod('squad_enabled')} />
+                <div className="w-11 h-6 bg-surface-darker peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary peer-checked:after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary border border-border-dark"></div>
+              </label>
+            </div>
+          </div>
+          {/* Manual Bank */}
+          <div className="px-6 py-4 flex items-center justify-between">
+            <div>
+              <p className="text-white font-medium">Manual Bank Transfer</p>
+              <p className="text-text-secondary text-sm">Users transfer manually and upload a payment proof for admin review.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${settings.manual_bank_enabled ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                {settings.manual_bank_enabled ? 'Enabled' : 'Disabled'}
+              </span>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" className="sr-only peer" checked={settings.manual_bank_enabled} onChange={() => togglePaymentMethod('manual_bank_enabled')} />
+                <div className="w-11 h-6 bg-surface-darker peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary peer-checked:after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary border border-border-dark"></div>
+              </label>
+            </div>
+          </div>
+          {/* Crypto */}
+          <div className="px-6 py-4 flex items-center justify-between">
+            <div>
+              <p className="text-white font-medium">Crypto (Binance Pay / On-Chain)</p>
+              <p className="text-text-secondary text-sm">Users deposit using Binance Pay or on-chain wallets (USDT, SOL).</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${settings.crypto_enabled ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                {settings.crypto_enabled ? 'Enabled' : 'Disabled'}
+              </span>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" className="sr-only peer" checked={settings.crypto_enabled} onChange={() => togglePaymentMethod('crypto_enabled')} />
+                <div className="w-11 h-6 bg-surface-darker peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-secondary peer-checked:after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary border border-border-dark"></div>
+              </label>
+            </div>
+          </div>
         </div>
       </div>
 
