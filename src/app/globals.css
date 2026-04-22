@@ -526,3 +526,62 @@ html.light .ad-banner:hover .ad-banner-glow-tr {
 html.light .ad-banner-glow-bl {
   background: rgb(34 211 238 / 0.08);
 }
+
+/* ── Reseller API docs — theme-aware classes ───────────────────────────── */
+
+/* Code block / pre background */
+.api-code {
+  background-color: #020617;
+  border: 1px solid #1f2937;
+  color: #94a3b8;
+}
+
+html.light .api-code {
+  background-color: #f8fafc !important;
+  border-color: #e5e7eb !important;
+  color: #334155 !important;
+}
+
+/* Inline code token (e.g. content-type) */
+.api-inline-code {
+  background-color: rgb(37 99 235 / 0.12);
+  color: #93c5fd;
+}
+
+html.light .api-inline-code {
+  background-color: #eff6ff !important;
+  color: #2563eb !important;
+}
+
+/* Table header row background */
+.api-table-header {
+  background-color: #0b1220;
+}
+
+html.light .api-table-header {
+  background-color: #f8fafc !important;
+}
+
+/* SMM Panel API v2 badge */
+.api-badge {
+  background-color: rgb(34 197 94 / 0.1);
+  color: #4ade80;
+  border-color: rgb(34 197 94 / 0.2);
+}
+
+html.light .api-badge {
+  background-color: #f0fdf4 !important;
+  color: #16a34a !important;
+  border-color: #bbf7d0 !important;
+}
+
+/* Action name badge (services, add, status…) */
+.api-action-badge {
+  background-color: rgb(34 197 94 / 0.1);
+  color: #4ade80;
+}
+
+html.light .api-action-badge {
+  background-color: #f0fdf4 !important;
+  color: #16a34a !important;
+}

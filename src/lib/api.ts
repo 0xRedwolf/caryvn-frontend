@@ -245,8 +245,8 @@ export const adminApi = {
   syncOrders: (token: string, providerSlug?: string) =>
     api('/admin/sync-orders/', { method: 'POST', body: providerSlug ? { provider_slug: providerSlug } : {}, token }),
 
-  getAnalytics: (token: string) =>
-    api('/admin/analytics/', { token }),
+  getAnalytics: (token: string, days: number = 30) =>
+    api(`/admin/analytics/?days=${days}`, { token }),
 
   // Order management actions
   cancelRefundOrders: (orderIds: string[], token: string) =>

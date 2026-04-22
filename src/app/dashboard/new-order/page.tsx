@@ -129,15 +129,11 @@ function SearchableDropdown({
     function onOutside(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false);
+        setSearch("");
       }
     }
     if (open) document.addEventListener("mousedown", onOutside);
     return () => document.removeEventListener("mousedown", onOutside);
-  }, [open]);
-
-  // Reset search when closed
-  useEffect(() => {
-    if (!open) setSearch("");
   }, [open]);
 
   return (
@@ -146,7 +142,7 @@ function SearchableDropdown({
       <button
         type="button"
         disabled={disabled}
-        onClick={() => setOpen((p) => !p)}
+        onClick={() => { if (open) setSearch(""); setOpen((p) => !p); }}
         className={`w-full flex items-center justify-between gap-2 rounded-lg border px-4 h-12 text-sm transition-all ${
           disabled
             ? "opacity-40 cursor-not-allowed bg-surface-darker border-border-dark text-text-secondary"
@@ -159,7 +155,7 @@ function SearchableDropdown({
           {selected ? selected.label : placeholder}
         </span>
         <svg
-          className={`w-4 h-4 text-text-secondary flex-shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          className={`w-4 h-4 text-text-secondary shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -208,6 +204,7 @@ function SearchableDropdown({
                   onClick={() => {
                     onChange(opt.value);
                     setOpen(false);
+                    setSearch("");
                   }}
                   className={`w-full text-left px-4 py-3 hover:bg-primary/10 transition-colors border-b border-border-dark/50 last:border-0 ${
                     opt.value === value ? "bg-primary/15 text-primary" : "text-white"
@@ -608,7 +605,7 @@ export default function NewOrderPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-2 pt-2 border-t border-primary/10">
-                  <svg className="w-4 h-4 text-primary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <svg className="w-4 h-4 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span className="text-text-secondary text-sm">Average time:</span>
@@ -663,7 +660,7 @@ export default function NewOrderPage() {
 
             {/* Duplicate Order Warning */}
             <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex gap-3">
-              <svg className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+              <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               <div>
@@ -680,7 +677,7 @@ export default function NewOrderPage() {
             {/* Provider Balance Error Message */}
             {!providerCanFulfill && (
               <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex gap-3">
-                <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div>

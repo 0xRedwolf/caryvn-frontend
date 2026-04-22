@@ -6,6 +6,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useState, useEffect } from 'react';
 import { formatCurrency } from '@/lib/utils';
+
 import { useAuth } from '@/contexts/AuthContext';
 
 // Comprehensive service data for tabbed section
@@ -189,12 +190,6 @@ const features = [
   },
 ];
 
-const steps = [
-  { step: '01', title: 'Choose Service', description: 'Browse our catalog and select the service you need.' },
-  { step: '02', title: 'Enter Details', description: 'Provide your link and quantity. See the price instantly.' },
-  { step: '03', title: 'Get Results', description: 'Watch your order complete in real-time. Track progress.' },
-];
-
 const faqs = [
   { q: 'How fast is delivery?', a: 'Most services start within 0-15 minutes. Delivery speed varies by service type and quantity.' },
   { q: 'Is it safe to use?', a: 'Yes! We never ask for passwords. All services are delivered through official APIs and safe methods.' },
@@ -246,13 +241,7 @@ const blogPosts = [
 ];
 
 export default function Home() {
-  const { isLoading } = useAuth();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    const timeout = setTimeout(() => setMounted(true), 0);
-    return () => clearTimeout(timeout);
-  }, []);
+  useAuth();
 
   const faqSchema = {
     "@context": "https://schema.org",
@@ -335,7 +324,7 @@ function HomeContent() {
             
             <div className="relative group">
               <div className="absolute -inset-4 bg-primary/20 rounded-[3rem] blur-3xl"></div>
-              <div className="relative aspect-[4/3] w-full rounded-[2.5rem] overflow-hidden">
+              <div className="relative aspect-4/3 w-full rounded-[2.5rem] overflow-hidden">
                 <Image 
                   src="/landing-hero.png" 
                   alt="SMM Panel Analytics Dashboard" 
@@ -373,7 +362,7 @@ function HomeContent() {
           
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((feature, i) => (
-              <div key={i} className="group flex flex-col gap-6 rounded-[2rem] border border-border-dark bg-surface-dark p-8 hover:border-primary/30 hover:shadow-glow transition-all duration-300">
+              <div key={i} className="group flex flex-col gap-6 rounded-4xl border border-border-dark bg-surface-dark p-8 hover:border-primary/30 hover:shadow-glow transition-all duration-300">
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-colors">
                   {feature.icon}
                 </div>
@@ -417,13 +406,13 @@ function HomeContent() {
                   )}
                   {service.icon}
                 </div>
-                <div className="p-6 flex flex-col gap-4 flex-grow">
+                <div className="p-6 flex flex-col gap-4 grow">
                    <h3 className="font-bold text-xl text-text-primary group-hover:text-primary transition-colors">{service.name.split(' ').slice(1).join(' ')}</h3>
-                   <p className="text-sm text-text-secondary leading-relaxed flex-grow">{service.desc}</p>
+                   <p className="text-sm text-text-secondary leading-relaxed grow">{service.desc}</p>
                    
                    <div className="flex flex-col gap-4 mt-2">
                      <div className="flex flex-col">
-                       <span className="text-[11px] font-bold text-white text-text-secondary/60 uppercase tracking-widest mb-1">Starting At</span>
+                       <span className="text-[11px] font-bold text-text-secondary uppercase tracking-widest mb-1">Starting At</span>
                        <span className="text-3xl font-black text-primary">{formatCurrency(service.price)}</span>
                      </div>
                      <Link 
@@ -487,7 +476,7 @@ function HomeContent() {
                 ].map((item, i) => (
                   <li key={i} className="flex items-center gap-4 text-white font-bold text-lg">
                     <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary shrink-0">
-                      <svg className="w-5 h-5 stroke-[3]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                      <svg className="w-5 h-5 stroke-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                     </div>
                     {item}
                   </li>
@@ -518,7 +507,7 @@ function HomeContent() {
             <div className="ad-banner-glow-bl" />
 
             <div className="relative flex flex-col md:flex-row items-center gap-10">
-              <div className="flex-shrink-0 w-20 h-20 rounded-3xl bg-primary/20 border-2 border-primary/30 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+              <div className="shrink-0 w-20 h-20 rounded-3xl bg-primary/20 border-2 border-primary/30 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
                 <svg className="w-10 h-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
                 </svg>
@@ -533,7 +522,7 @@ function HomeContent() {
                 </p>
               </div>
 
-              <div className="flex-shrink-0">
+              <div className="shrink-0">
                 <span className="btn-primary inline-flex h-14 px-10 rounded-2xl items-center gap-3 whitespace-nowrap shadow-glow">
                   Visit ZapOTP
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
@@ -565,7 +554,7 @@ function HomeContent() {
                 ].map((item, i) => (
                   <div key={i} className="flex gap-4">
                     <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-primary mt-1 shrink-0">
-                       <svg className="w-4 h-4 stroke-[3]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                       <svg className="w-4 h-4 stroke-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                     </div>
                     <div>
                       <h4 className="text-white font-bold">{item.title}</h4>
@@ -730,7 +719,7 @@ function HomeContent() {
                     {post.title}
                   </h3>
                   
-                  <p className="text-white/80 leading-relaxed mb-8 flex-grow">
+                  <p className="text-white/80 leading-relaxed mb-8 grow">
                     {post.excerpt}
                   </p>
                   
@@ -753,14 +742,14 @@ function HomeContent() {
       <section className="py-8 bg-primary/20">
         <div className="container mx-auto px-4 lg:px-8">
           <div className="rounded-2xl bg-surface-dark p-6 lg:p-10 text-center text-white relative overflow-hidden shadow-lg border border-border-dark">
-            <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary via-transparent to-transparent scale-150"></div>
+            <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,var(--tw-gradient-stops))] from-primary via-transparent to-transparent scale-150"></div>
             <div className="relative z-10 flex flex-col items-center gap-8">
               <h2 className="text-3xl md:text-5xl font-black leading-tight tracking-tighter">Ready to Take Your Social Media<br/><span className="text-primary">To the Next Level?</span></h2>
               <p className="max-w-xl text-lg opacity-80 leading-relaxed font-medium">Join 50,000+ creators and businesses already using <span className="text-primary font-black">Caryvn</span> to dominate every social dashboard in 2026.</p>
               <div className="flex flex-wrap justify-center gap-4">
                 <Link href="/register" className="h-12 px-8 rounded-xl bg-primary text-base font-black shadow-glow hover:shadow-glow-lg transition-all flex items-center gap-2">
                   Start Boosting Now
-                  <svg className="w-5 h-5 stroke-[3]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+                  <svg className="w-5 h-5 stroke-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
                 </Link>
                 <Link href="/services" className="h-12 px-8 rounded-xl bg-primary text-base font-black shadow-glow hover:shadow-glow-lg transition-all flex items-center gap-2">
                   View Service List

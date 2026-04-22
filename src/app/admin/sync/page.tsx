@@ -128,7 +128,7 @@ export default function AdminSyncPage() {
     }
 
     return filtered;
-  }, [services, currentProvider, activeTab, serviceSearch]);
+  }, [services, currentProvider, activeTab, serviceSearch, showOnlyAvailableUpstream]);
 
   const activeCount = useMemo(
     () => services.filter(s => s.provider_name === currentProvider?.name && s.is_active).length,
@@ -494,7 +494,7 @@ export default function AdminSyncPage() {
                   <span className="text-[10px] uppercase tracking-wider text-text-secondary font-bold">Available Upstream</span>
                   <button
                     onClick={() => setShowOnlyAvailableUpstream(!showOnlyAvailableUpstream)}
-                    className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 ${
+                    className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${
                       showOnlyAvailableUpstream ? 'bg-emerald-500' : 'bg-surface-darker border border-border-dark'
                     }`}
                   >
@@ -555,7 +555,7 @@ export default function AdminSyncPage() {
                   key={service.id}
                   className={`bg-surface-dark rounded-xl border p-4 flex items-center justify-between gap-4 transition-colors ${selectedServices.has(service.id) ? 'border-primary/50 bg-primary/5' : 'border-border-dark hover:border-primary/20'}`}
                 >
-                  <div className="flex-shrink-0">
+                  <div className="shrink-0">
                     <input 
                       type="checkbox" 
                       className="rounded border-border-dark bg-surface-darker text-primary focus:ring-primary h-4 w-4 cursor-pointer"
@@ -592,7 +592,7 @@ export default function AdminSyncPage() {
                   <button
                     onClick={() => handleToggleService(service.id)}
                     disabled={togglingId === service.id}
-                    className={`px-4 py-2 rounded-lg text-xs font-medium transition-all flex-shrink-0 ${
+                    className={`px-4 py-2 rounded-lg text-xs font-medium transition-all shrink-0 ${
                       service.is_active
                         ? 'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20'
                         : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20'

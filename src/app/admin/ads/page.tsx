@@ -33,12 +33,6 @@ export default function AdminAdsPage() {
   const [isActive, setIsActive] = useState(true);
   const [imageFile, setImageFile] = useState<File | null>(null);
 
-  useEffect(() => {
-    if (token) {
-      loadPopups();
-    }
-  }, [token]);
-
   const loadPopups = async () => {
     if (!token) return;
     setLoading(true);
@@ -50,6 +44,13 @@ export default function AdminAdsPage() {
     }
     setLoading(false);
   };
+
+  useEffect(() => {
+    if (token) {
+      loadPopups();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   const handleEdit = (card: PopupCard) => {
     setEditingCard(card);
@@ -204,7 +205,7 @@ export default function AdminAdsPage() {
 
       {/* Editor Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in">
+        <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in">
           <div className="bg-surface-dark w-full max-w-lg rounded-2xl border border-border-dark shadow-xl flex flex-col max-h-[90vh]">
             <div className="flex justify-between items-center p-6 border-b border-border-dark">
               <h2 className="text-xl font-bold text-white">
