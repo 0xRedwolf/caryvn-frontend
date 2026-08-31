@@ -33,9 +33,9 @@ interface UserActivity {
 interface UserItem {
   id: string;
   email: string;
-  username: string;
-  first_name: string;
-  last_name: string;
+  username?: string;
+  first_name?: string;
+  last_name?: string;
 }
 
 export default function SecurityAuditHubPage() {
@@ -140,11 +140,22 @@ export default function SecurityAuditHubPage() {
     fetchSingleUserAudit(userId);
   };
 
-  const filteredUsers = usersList.filter(
-    (u) =>
-      u.email.toLowerCase().includes(userSearch.toLowerCase()) ||
-      u.username.toLowerCase().includes(userSearch.toLowerCase())
-  );
+  const filteredUsers = usersList.filter((u) => {
+    const q = (userSearch || '').toLowerCase().trim();
+    if (!q) return true;
+    const email = (u.email || '').toLowerCase();
+    const username = (u.username || '').toLowerCase();
+    const firstName = (u.first_name || '').toLowerCase();
+    const lastName = (u.last_name || '').toLowerCase();
+    const fullName = `${firstName} ${lastName}`.trim();
+    return (
+      email.includes(q) ||
+      username.includes(q) ||
+      firstName.includes(q) ||
+      lastName.includes(q) ||
+      fullName.includes(q)
+    );
+  });
 
   return (
     <div className="space-y-6 text-slate-900">
@@ -423,7 +434,7 @@ export default function SecurityAuditHubPage() {
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             <span className={`truncate ${selectedUserId === u.id ? 'text-primary font-semibold' : 'text-slate-700'}`}>
-                              {u.first_name ? `${u.first_name} ${u.last_name || ''}`.trim() : u.username} ({u.email})
+                              {u.first_name ? `${u.first_name} ${u.last_name || ''}`.trim() : (u.username || u.email)} ({u.email})
                             </span>
                           </div>
                           {selectedUserId === u.id && (
