@@ -47,8 +47,17 @@ export async function api<T = unknown>(
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
+      let errorMessage = data.error || data.detail;
+      if (!errorMessage && typeof data === 'object' && data !== null) {
+        const entries = Object.entries(data);
+        if (entries.length > 0) {
+          const [field, errorVal] = entries[0];
+          const msg = Array.isArray(errorVal) ? errorVal[0] : String(errorVal);
+          errorMessage = field === 'non_field_errors' ? msg : `${field}: ${msg}`;
+        }
+      }
       return {
-        error: data.error || data.detail || 'An error occurred',
+        error: errorMessage || 'An error occurred',
         status: response.status,
       };
     }

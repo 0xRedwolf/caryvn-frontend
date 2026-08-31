@@ -55,13 +55,14 @@ const STATUS_COLORS: Record<string, string> = {
   failed:      '#f43f5e',
 };
 
-// Tooltip style matches card background exactly
+// Tooltip style matches light card background
 const TT_STYLE = {
-  backgroundColor: 'var(--color-surface-dark, #141417)',
-  border: '1px solid var(--color-border-dark, #232326)',
+  backgroundColor: '#ffffff',
+  border: '1px solid #e2e8f0',
   borderRadius: '8px',
-  color: '#e5e1e4',
+  color: '#0f172a',
   fontSize: '12px',
+  boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
 };
 
 // ─── Sparkline paths — one per card, purely decorative ───────────────────────
@@ -89,28 +90,28 @@ interface KpiProps {
 function KpiCard({ label, value, trend, trendLabel = 'vs last month', iconBg, iconColor, icon, sparkColor, sparkPath }: KpiProps) {
   const positive = (trend ?? 0) >= 0;
   return (
-    <div className="bg-surface-dark border border-border-dark rounded-xl p-6 relative overflow-hidden group transition-all duration-200 hover:border-primary/30">
+    <div className="bg-white border border-slate-200 rounded-2xl p-6 relative overflow-hidden group transition-all duration-200 hover:border-primary/30 shadow-xs">
       {/* Label + Icon row */}
       <div className="flex justify-between items-start mb-4">
-        <span className="text-xs font-semibold uppercase tracking-widest text-text-secondary">{label}</span>
+        <span className="text-xs font-bold uppercase tracking-widest text-slate-500">{label}</span>
         <div className={`${iconBg} p-1.5 rounded-lg ${iconColor}`}>{icon}</div>
       </div>
 
       {/* Big number */}
-      <div className="text-4xl font-bold tracking-tight text-white mb-3 leading-none">{value}</div>
+      <div className="text-4xl font-black tracking-tight text-slate-900 mb-3 leading-none">{value}</div>
 
       {/* Trend badge */}
       {trend !== undefined && (
         <div className="flex items-center gap-2">
           <span className={`inline-flex items-center gap-0.5 text-xs font-semibold px-2 py-0.5 rounded ${
-            positive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+            positive ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
           }`}>
             <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
               <path strokeLinecap="round" strokeLinejoin="round" d={positive ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'} />
             </svg>
             {Math.abs(trend)}%
           </span>
-          <span className="text-xs text-text-secondary">{trendLabel}</span>
+          <span className="text-xs text-slate-400">{trendLabel}</span>
         </div>
       )}
 
@@ -169,18 +170,18 @@ export default function AnalyticsPage() {
       <div className="space-y-6 animate-pulse">
         <div className="flex justify-between items-center">
           <div>
-            <div className="h-8 w-56 bg-border-dark rounded mb-2" />
-            <div className="h-4 w-72 bg-border-dark rounded" />
+            <div className="h-8 w-56 bg-slate-200 rounded mb-2" />
+            <div className="h-4 w-72 bg-slate-100 rounded" />
           </div>
-          <div className="h-9 w-36 bg-border-dark rounded" />
+          <div className="h-9 w-36 bg-slate-200 rounded" />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {[...Array(4)].map((_, i) => <div key={i} className="h-40 bg-surface-dark border border-border-dark rounded-xl" />)}
+          {[...Array(4)].map((_, i) => <div key={i} className="h-40 bg-slate-100 border border-slate-200 rounded-2xl" />)}
         </div>
-        <div className="h-80 bg-surface-dark border border-border-dark rounded-xl" />
+        <div className="h-80 bg-slate-100 border border-slate-200 rounded-2xl" />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-          <div className="h-72 bg-surface-dark border border-border-dark rounded-xl" />
-          <div className="h-72 bg-surface-dark border border-border-dark rounded-xl" />
+          <div className="h-72 bg-slate-100 border border-slate-200 rounded-2xl" />
+          <div className="h-72 bg-slate-100 border border-slate-200 rounded-2xl" />
         </div>
       </div>
     );
@@ -189,10 +190,10 @@ export default function AnalyticsPage() {
   if (!data) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
-        <svg className="w-12 h-12 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="w-12 h-12 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
         </svg>
-        <p className="text-text-secondary">Failed to load analytics data.</p>
+        <p className="text-slate-500">Failed to load analytics data.</p>
         <button onClick={() => load(days)} className="btn-primary px-5 py-2 text-sm">Retry</button>
       </div>
     );
@@ -213,7 +214,7 @@ export default function AnalyticsPage() {
   });
   const conicGradient = conicParts.length > 0
     ? `conic-gradient(${conicParts.map(p => `${p.color} ${p.start.toFixed(1)}% ${(p.start + p.pct).toFixed(1)}%`).join(', ')})`
-    : 'conic-gradient(var(--color-border-dark) 0% 100%)';
+    : 'conic-gradient(#e2e8f0 0% 100%)';
 
   // Service icon colors cycling
   const SERVICE_ICON_COLORS = [
@@ -230,8 +231,8 @@ export default function AnalyticsPage() {
       {/* ─── Header ──────────────────────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white leading-tight">Analytics Overview</h1>
-          <p className="text-text-secondary text-sm mt-1">Detailed performance metrics for your SMM operations.</p>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 leading-tight">Analytics Overview</h1>
+          <p className="text-slate-500 text-sm mt-1">Detailed performance metrics for your SMM operations.</p>
         </div>
         <div className="flex items-center gap-3">
 
@@ -239,13 +240,13 @@ export default function AnalyticsPage() {
           <div className="relative">
             <button
               onClick={() => setRangeOpen(o => !o)}
-              className="flex items-center gap-2 bg-surface-dark border border-border-dark hover:border-primary/40 rounded-lg px-3 py-2 text-sm text-white transition-colors"
+              className="flex items-center gap-2 bg-white border border-slate-200 hover:border-primary/40 rounded-xl px-4 py-2.5 text-sm text-slate-700 font-semibold transition-colors shadow-xs"
             >
-              <svg className="w-4 h-4 text-text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
               {currentRange.label}
-              <svg className={`w-3.5 h-3.5 text-text-secondary transition-transform ${rangeOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <svg className={`w-3.5 h-3.5 text-slate-400 transition-transform ${rangeOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
             </button>
@@ -255,15 +256,15 @@ export default function AnalyticsPage() {
                 {/* Backdrop */}
                 <div className="fixed inset-0 z-10" onClick={() => setRangeOpen(false)} />
                 {/* Dropdown */}
-                <div className="absolute right-0 top-full mt-1.5 z-20 bg-surface-dark border border-border-dark rounded-xl overflow-hidden shadow-xl min-w-[160px]">
+                <div className="absolute right-0 top-full mt-1.5 z-20 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xl min-w-[160px] py-1">
                   {RANGE_OPTIONS.map(opt => (
                     <button
                       key={opt.days}
                       onClick={() => selectRange(opt.days)}
-                      className={`w-full text-left px-4 py-2.5 text-sm transition-colors flex items-center justify-between ${
+                      className={`w-full text-left px-4 py-2.5 text-xs font-semibold transition-colors flex items-center justify-between ${
                         opt.days === days
-                          ? 'bg-primary/10 text-primary font-semibold'
-                          : 'text-white hover:bg-primary/5'
+                          ? 'bg-primary/5 text-primary'
+                          : 'text-slate-700 hover:bg-slate-50'
                       }`}
                     >
                       {opt.label}
@@ -352,17 +353,16 @@ export default function AnalyticsPage() {
       </div>
 
       {/* ─── Revenue vs Profit Area Chart ────────────────────────────────────── */}
-      <div className="bg-surface-dark border border-border-dark rounded-xl p-6">
-        {/* Header with border-bottom — same as Stitch */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-6 border-b border-border-dark">
-          <h2 className="text-lg font-semibold text-white">Revenue vs Profit</h2>
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-6 border-b border-slate-100">
+          <h2 className="text-base font-black text-slate-900">Revenue vs Profit</h2>
           <div className="flex items-center gap-5">
-            <span className="flex items-center gap-2 text-sm text-text-secondary">
+            <span className="flex items-center gap-2 text-sm text-slate-500">
               <span className="w-3 h-3 rounded-full bg-primary inline-block" />
               Revenue
             </span>
-            <span className="flex items-center gap-2 text-sm text-text-secondary">
-              <span className="w-3 h-3 rounded-full bg-emerald-400 inline-block" />
+            <span className="flex items-center gap-2 text-sm text-slate-500">
+              <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block" />
               Profit
             </span>
           </div>
@@ -374,25 +374,25 @@ export default function AnalyticsPage() {
               <AreaChart data={data.revenue_chart} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="gRev" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%"   stopColor="#2563eb" stopOpacity={0.25} />
+                    <stop offset="0%"   stopColor="#2563eb" stopOpacity={0.15} />
                     <stop offset="100%" stopColor="#2563eb" stopOpacity={0}    />
                   </linearGradient>
                   <linearGradient id="gProf" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%"   stopColor="#10b981" stopOpacity={0.2}  />
+                    <stop offset="0%"   stopColor="#10b981" stopOpacity={0.12}  />
                     <stop offset="100%" stopColor="#10b981" stopOpacity={0}    />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="0" stroke="rgba(255,255,255,0.04)" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis
                   dataKey="date"
-                  stroke="#4b5563"
+                  stroke="#94a3b8"
                   fontSize={11}
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={v => new Date(String(v)).toLocaleDateString('en', { day: 'numeric', month: 'short' })}
                 />
                 <YAxis
-                  stroke="#4b5563"
+                  stroke="#94a3b8"
                   fontSize={11}
                   tickLine={false}
                   axisLine={false}
@@ -409,7 +409,7 @@ export default function AnalyticsPage() {
             </ResponsiveContainer>
           ) : (
             <div className="h-full flex items-center justify-center">
-              <p className="text-text-secondary text-sm">No revenue data for the last 30 days</p>
+              <p className="text-slate-400 text-sm">No revenue data for the last 30 days</p>
             </div>
           )}
         </div>
@@ -418,11 +418,11 @@ export default function AnalyticsPage() {
       {/* ─── Bottom 2-col: Top Services + Order Status Donut ─────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-        {/* Top Services — list style, exactly like Stitch */}
-        <div className="bg-surface-dark border border-border-dark rounded-xl p-6">
-          <div className="flex items-center justify-between pb-4 mb-5 border-b border-border-dark">
-            <h2 className="text-lg font-semibold text-white">Top Services Growth</h2>
-            <span className="text-xs text-text-secondary bg-background-dark border border-border-dark rounded-full px-2.5 py-1">
+        {/* Top Services */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
+          <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-100">
+            <h2 className="text-base font-black text-slate-900">Top Services Growth</h2>
+            <span className="text-xs text-slate-500 bg-slate-100 border border-slate-200 rounded-full px-2.5 py-1 font-medium">
               Last 30 days
             </span>
           </div>
@@ -430,60 +430,59 @@ export default function AnalyticsPage() {
             {data.popular_services.length > 0 ? data.popular_services.slice(0, 6).map((svc, i) => {
               const col = SERVICE_ICON_COLORS[i % SERVICE_ICON_COLORS.length];
               return (
-                <div key={i} className="flex items-center justify-between p-2 rounded-lg hover:bg-primary/5 transition-colors group">
+                <div key={i} className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 transition-colors">
                   <div className="flex items-center gap-3 min-w-0">
-                    {/* Coloured square icon */}
-                    <div className={`w-10 h-10 rounded-lg ${col.bg} flex items-center justify-center shrink-0 ${col.text}`}>
+                    <div className={`w-10 h-10 rounded-xl ${col.bg} flex items-center justify-center shrink-0 ${col.text}`}>
                       <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                       </svg>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-white truncate max-w-[190px]">{svc.name}</p>
-                      <p className="text-xs text-text-secondary">{svc.orders.toLocaleString()} orders · {svc.platform}</p>
+                      <p className="text-sm font-semibold text-slate-900 truncate max-w-[190px]">{svc.name}</p>
+                      <p className="text-xs text-slate-500">{svc.orders.toLocaleString()} orders · {svc.platform}</p>
                     </div>
                   </div>
                   <div className="text-right shrink-0 ml-3">
-                    <p className="text-sm font-semibold text-white">{formatCurrency(svc.revenue.toString())}</p>
-                    <p className="text-xs text-emerald-400 font-medium">{formatCurrency(svc.profit.toString())} profit</p>
+                    <p className="text-sm font-bold text-slate-900">{formatCurrency(svc.revenue.toString())}</p>
+                    <p className="text-xs text-emerald-600 font-medium">{formatCurrency(svc.profit.toString())} profit</p>
                   </div>
                 </div>
               );
             }) : (
-              <p className="text-text-secondary text-sm py-6 text-center">No service data for the last 30 days</p>
+              <p className="text-slate-400 text-sm py-6 text-center">No service data for the last 30 days</p>
             )}
           </div>
         </div>
 
-        {/* Order Status Donut — CSS conic-gradient, same as Stitch */}
-        <div className="bg-surface-dark border border-border-dark rounded-xl p-6 flex flex-col">
-          <div className="flex items-center justify-between pb-4 mb-5 border-b border-border-dark">
-            <h2 className="text-lg font-semibold text-white">Order Status Distribution</h2>
-            <span className="text-text-secondary text-xs">{totalOrders.toLocaleString()} total</span>
+        {/* Order Status Donut */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col shadow-xs">
+          <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-100">
+            <h2 className="text-base font-black text-slate-900">Order Status Distribution</h2>
+            <span className="text-slate-500 text-xs font-medium">{totalOrders.toLocaleString()} total</span>
           </div>
 
-          {/* Donut + center label — rounded square, not a circle (matches Stitch) */}
+          {/* Donut */}
           <div className="flex-1 flex items-center justify-center py-4">
             <div
               className="relative w-48 h-48 rounded-[2.5rem] flex items-center justify-center"
               style={{ background: conicGradient }}
             >
-              {/* Inner cutout — also a rounded square */}
-              <div className="w-36 h-36 bg-surface-dark rounded-[1.75rem] flex flex-col items-center justify-center z-10">
-                <span className="text-2xl font-bold text-white leading-none">
+              {/* Inner cutout */}
+              <div className="w-36 h-36 bg-white rounded-[1.75rem] flex flex-col items-center justify-center z-10 shadow-sm">
+                <span className="text-2xl font-black text-slate-900 leading-none">
                   {totalOrders >= 1000 ? `${(totalOrders / 1000).toFixed(1)}k` : totalOrders}
                 </span>
-                <span className="text-xs text-text-secondary mt-1">Total Orders</span>
+                <span className="text-xs text-slate-500 mt-1">Total Orders</span>
               </div>
             </div>
           </div>
 
-          {/* 2×2 legend — same layout as Stitch */}
+          {/* Legend */}
           <div className="grid grid-cols-2 gap-x-6 gap-y-3 mt-2">
             {conicParts.map(p => (
               <div key={p.key} className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: p.color }} />
-                <span className="text-text-secondary text-sm capitalize truncate">
+                <span className="text-slate-500 text-xs capitalize truncate">
                   {p.key.replace(/_/g, ' ')} ({p.pct.toFixed(0)}%)
                 </span>
               </div>
@@ -495,23 +494,23 @@ export default function AnalyticsPage() {
 
       {/* ─── Web vs API Source Breakdown ─────────────────────────────────────── */}
       {((summary.web_orders ?? 0) + (summary.api_orders ?? 0)) > 0 && (
-        <div className="bg-surface-dark border border-border-dark rounded-xl p-6">
-          <div className="flex items-center justify-between pb-4 mb-5 border-b border-border-dark">
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs">
+          <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-100">
             <div>
-              <h2 className="text-lg font-semibold text-white">Order Source</h2>
-              <p className="text-text-secondary text-xs mt-0.5">Web dashboard vs API resellers (all-time)</p>
+              <h2 className="text-base font-black text-slate-900">Order Source</h2>
+              <p className="text-slate-500 text-xs mt-0.5">Web dashboard vs API resellers (all-time)</p>
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
             {/* Web */}
-            <div className="bg-primary/5 border border-primary/20 rounded-xl p-5 relative overflow-hidden">
+            <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5 relative overflow-hidden">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-primary" />
-                <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Web</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-slate-500">Web</span>
               </div>
-              <p className="text-3xl font-bold text-white">{(summary.web_orders ?? 0).toLocaleString()}</p>
-              <p className="text-xs text-text-secondary mt-1 mb-3">orders placed via dashboard</p>
-              <p className="text-primary font-semibold">{formatCurrency((summary.web_revenue ?? 0).toString())}</p>
+              <p className="text-3xl font-black text-slate-900">{(summary.web_orders ?? 0).toLocaleString()}</p>
+              <p className="text-xs text-slate-500 mt-1 mb-3">orders placed via dashboard</p>
+              <p className="text-primary font-bold">{formatCurrency((summary.web_revenue ?? 0).toString())}</p>
               {/* Decorative sparkline */}
               <div className="absolute bottom-0 right-0 w-24 h-10 opacity-20 pointer-events-none">
                 <svg viewBox="0 0 100 30" className="w-full h-full" fill="none" stroke="#2563eb" preserveAspectRatio="none">
@@ -520,14 +519,14 @@ export default function AnalyticsPage() {
               </div>
             </div>
             {/* API */}
-            <div className="bg-violet-500/5 border border-violet-500/20 rounded-xl p-5 relative overflow-hidden">
+            <div className="bg-violet-50 border border-violet-200 rounded-2xl p-5 relative overflow-hidden">
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-violet-500" />
-                <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">API</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-slate-500">API</span>
               </div>
-              <p className="text-3xl font-bold text-white">{(summary.api_orders ?? 0).toLocaleString()}</p>
-              <p className="text-xs text-text-secondary mt-1 mb-3">orders placed via reseller API</p>
-              <p className="text-violet-400 font-semibold">{formatCurrency((summary.api_revenue ?? 0).toString())}</p>
+              <p className="text-3xl font-black text-slate-900">{(summary.api_orders ?? 0).toLocaleString()}</p>
+              <p className="text-xs text-slate-500 mt-1 mb-3">orders placed via reseller API</p>
+              <p className="text-violet-600 font-bold">{formatCurrency((summary.api_revenue ?? 0).toString())}</p>
               <div className="absolute bottom-0 right-0 w-24 h-10 opacity-20 pointer-events-none">
                 <svg viewBox="0 0 100 30" className="w-full h-full" fill="none" stroke="#8b5cf6" preserveAspectRatio="none">
                   <path d={SPARKLINES.users} strokeWidth="2" strokeLinecap="round" />
@@ -541,11 +540,11 @@ export default function AnalyticsPage() {
             const wp  = tot > 0 ? Math.round(((summary.web_orders ?? 0) / tot) * 100) : 50;
             return (
               <div>
-                <div className="flex rounded-full overflow-hidden h-2.5 mb-2 bg-border-dark">
+                <div className="flex rounded-full overflow-hidden h-2.5 mb-2 bg-slate-100">
                   <div className="bg-primary transition-all duration-700" style={{ width: `${wp}%` }} />
                   <div className="bg-violet-500 transition-all duration-700" style={{ width: `${100 - wp}%` }} />
                 </div>
-                <div className="flex justify-between text-xs text-text-secondary">
+                <div className="flex justify-between text-xs text-slate-400 font-medium">
                   <span>Web {wp}%</span>
                   <span>API {100 - wp}%</span>
                 </div>
@@ -557,28 +556,28 @@ export default function AnalyticsPage() {
 
       {/* ─── Revenue by Provider ─────────────────────────────────────────────── */}
       {data.revenue_by_provider && data.revenue_by_provider.length > 0 && (
-        <div className="bg-surface-dark border border-border-dark rounded-xl overflow-hidden">
-          <div className="px-6 py-5 border-b border-border-dark">
-            <h2 className="text-lg font-semibold text-white">Revenue by Provider</h2>
-            <p className="text-xs text-text-secondary mt-0.5">All-time upstream provider performance</p>
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+          <div className="px-6 py-5 border-b border-slate-100">
+            <h2 className="text-base font-black text-slate-900">Revenue by Provider</h2>
+            <p className="text-xs text-slate-500 mt-0.5">All-time upstream provider performance</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border-dark text-left">
-                  <th className="px-6 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wide">Provider</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wide text-right">Orders</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wide text-right">Revenue</th>
-                  <th className="px-6 py-3 text-xs font-semibold text-text-secondary uppercase tracking-wide text-right">Profit</th>
+                <tr className="border-b border-slate-100 bg-slate-50">
+                  <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide text-left">Provider</th>
+                  <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide text-right">Orders</th>
+                  <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide text-right">Revenue</th>
+                  <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide text-right">Profit</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border-dark">
+              <tbody className="divide-y divide-slate-100">
                 {data.revenue_by_provider.map((p, i) => (
-                  <tr key={i} className="hover:bg-primary/5 transition-colors">
-                    <td className="px-6 py-3.5 text-white font-medium">{p.provider}</td>
-                    <td className="px-6 py-3.5 text-white text-right font-semibold">{p.orders.toLocaleString()}</td>
-                    <td className="px-6 py-3.5 text-white text-right">{formatCurrency(p.revenue.toString())}</td>
-                    <td className="px-6 py-3.5 text-emerald-400 text-right font-semibold">{formatCurrency(p.profit.toString())}</td>
+                  <tr key={i} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-6 py-3.5 text-slate-900 font-semibold">{p.provider}</td>
+                    <td className="px-6 py-3.5 text-slate-800 text-right font-semibold">{p.orders.toLocaleString()}</td>
+                    <td className="px-6 py-3.5 text-primary text-right font-semibold">{formatCurrency(p.revenue.toString())}</td>
+                    <td className="px-6 py-3.5 text-emerald-700 text-right font-bold">{formatCurrency(p.profit.toString())}</td>
                   </tr>
                 ))}
               </tbody>
@@ -590,19 +589,19 @@ export default function AnalyticsPage() {
       {/* ─── Bottom Stat Pills (Active Orders / Avg Value / Deposits) ────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { label: 'Active Orders',    value: summary.active_orders.toLocaleString(),              color: 'text-primary',    path: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
-          { label: 'Avg Order Value',  value: formatCurrency(summary.avg_order_value.toString()),  color: 'text-amber-400',  path: 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z' },
-          { label: 'Total Deposits',   value: formatCurrency(summary.total_deposits.toString()),   color: 'text-emerald-400',path: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
+          { label: 'Active Orders',    value: summary.active_orders.toLocaleString(),             color: 'text-primary',   path: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z' },
+          { label: 'Avg Order Value',  value: formatCurrency(summary.avg_order_value.toString()), color: 'text-amber-600', path: 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z' },
+          { label: 'Total Deposits',   value: formatCurrency(summary.total_deposits.toString()),  color: 'text-emerald-600', path: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z' },
         ].map(c => (
-          <div key={c.label} className="bg-surface-dark border border-border-dark rounded-xl p-5 flex items-center gap-4">
-            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+          <div key={c.label} className="bg-white border border-slate-200 rounded-2xl p-5 flex items-center gap-4 shadow-xs">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
               <svg className={`w-5 h-5 ${c.color}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d={c.path} />
               </svg>
             </div>
             <div>
-              <p className="text-xs text-text-secondary uppercase tracking-wide font-semibold">{c.label}</p>
-              <p className={`text-2xl font-bold ${c.color} leading-tight mt-0.5`}>{c.value}</p>
+              <p className="text-xs text-slate-500 uppercase tracking-wide font-bold">{c.label}</p>
+              <p className={`text-2xl font-black ${c.color} leading-tight mt-0.5`}>{c.value}</p>
             </div>
           </div>
         ))}

@@ -1,33 +1,34 @@
 @import "tailwindcss";
 
-/* Caryvn Design Tokens - Blue SaaS Theme */
+/* Caryvn Design Tokens - Strictly Clean Light Theme */
 @theme {
   /* Core Brand Blue */
   --color-primary: #2563eb;
   --color-primary-hover: #1d4ed8;
   --color-primary-soft: #dbeafe;
-  --color-accent-cyan: #22d3ee;
+  --color-accent-cyan: #06b6d4;
 
-  /* Dark Mode (Default) */
-  --color-background-dark: #0b1220;
-  --color-surface-dark: #0f172a;
-  --color-surface-darker: #020617;
-  --color-border-dark: #1f2937;
-  --color-text-primary-dark: #e5e7eb;
-  --color-text-secondary: #94a3b8;
+  /* Surfaces & Backgrounds */
+  --color-background-dark: #f8fafc;
+  --color-surface-dark: #ffffff;
+  --color-surface-darker: #ffffff;
+  --color-border-dark: #e2e8f0;
+  --color-text-primary-dark: #0f172a;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #64748b;
 
-  /* Light Mode */
+  /* Light Tokens */
   --color-background-light: #f8fafc;
   --color-surface-light: #ffffff;
-  --color-border-light: #e5e7eb;
+  --color-border-light: #e2e8f0;
   --color-text-primary-light: #0f172a;
-  --color-text-secondary-light: #475569;
+  --color-text-secondary-light: #64748b;
 
   /* States */
-  --color-success: #22c55e;
-  --color-warning: #f59e0b;
-  --color-error: #f87171;
-  --color-info: #38bdf8;
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+  --color-error: #dc2626;
+  --color-info: #0284c7;
 
   --font-family-display: "Inter", system-ui, sans-serif;
   --font-family-mono: ui-monospace, SFMono-Regular, monospace;
@@ -40,24 +41,24 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #020617;
+  background: #f8fafc;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1f2937;
+  background: #cbd5e1;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #374151;
+  background: #94a3b8;
 }
 
 /* Glass effect for navbar */
 .glass-nav {
-  background: rgba(11, 18, 32, 0.85);
+  background: rgba(255, 255, 255, 0.9);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid #e2e8f0;
 }
 
 /* Gradient text */
@@ -584,4 +585,74 @@ html.light .api-badge {
 html.light .api-action-badge {
   background-color: #f0fdf4 !important;
   color: #16a34a !important;
+}
+
+/* ── Bento Grid & Component Styling (Strictly Light Theme) ────────── */
+
+/* Bento Card */
+.bento-card {
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 1.25rem;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  color: #0f172a;
+}
+
+.bento-card:hover {
+  border-color: #93c5fd;
+  box-shadow: 0 12px 28px -4px rgba(37, 99, 235, 0.12);
+  transform: translateY(-2px);
+}
+
+.bento-sub-card {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+/* Active Yellow Navigation Pill */
+.drawer-active-pill {
+  background: #fbbf24 !important;
+  color: #0f172a !important;
+  font-weight: 700 !important;
+  box-shadow: 0 4px 16px rgba(251, 191, 36, 0.35);
+}
+
+.drawer-active-pill svg {
+  color: #0f172a !important;
+}
+
+/* Fixed Mobile Bottom Navigation Bar */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid #e2e8f0;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.05);
+  z-index: 40;
+}
+
+/* Smooth Horizontal Snap Scroll for Mobile Sections */
+.carousel-snap {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.carousel-snap::-webkit-scrollbar {
+  display: none;
+}
+
+.carousel-item-snap {
+  scroll-snap-align: start;
+  flex-shrink: 0;
 }

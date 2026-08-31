@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { adminApi } from '@/lib/api';
 import { formatCurrency, formatDate, getStatusColor } from '@/lib/utils';
@@ -21,7 +21,53 @@ interface Order {
   created_at: string;
 }
 
-const statusFilters = ['All', 'pending', 'processing', 'in_progress', 'completed', 'partial', 'canceled', 'failed'];
+const STATUS_LIST = ['All', 'pending', 'processing', 'in_progress', 'completed', 'partial', 'canceled', 'failed'];
+
+// Custom dropdown component
+function StatusDropdown({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handle = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-sm font-semibold text-slate-700 hover:border-primary/40 transition-all shadow-xs min-w-[140px] justify-between"
+      >
+        <span className="capitalize">{value === 'All' ? 'All Statuses' : value.replace('_', ' ')}</span>
+        <svg className={`w-4 h-4 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 mt-1.5 w-48 bg-white rounded-2xl border border-slate-200 shadow-xl z-30 overflow-hidden py-1">
+          {STATUS_LIST.map((s) => (
+            <button
+              key={s}
+              onClick={() => { onChange(s); setOpen(false); }}
+              className={`w-full px-4 py-2.5 text-left text-xs font-semibold capitalize transition-colors ${
+                value === s
+                  ? 'bg-primary/5 text-primary'
+                  : 'text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              {s === 'All' ? 'All Statuses' : s.replace('_', ' ')}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AdminOrdersPage() {
   const { token } = useAuth();
@@ -42,16 +88,12 @@ export default function AdminOrdersPage() {
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   useEffect(() => {
-    if (token) {
-      loadOrders();
-    }
+    if (token) loadOrders();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, statusFilter, search, offset]);
 
-  // Reset to page 1 when filters change
   useEffect(() => { setOffset(0); }, [statusFilter, search]);
 
-  // Auto-dismiss action results
   useEffect(() => {
     if (actionResult) {
       const timer = setTimeout(() => setActionResult(null), 5000);
@@ -62,22 +104,20 @@ export default function AdminOrdersPage() {
   async function loadOrders() {
     if (!token) return;
     setLoading(true);
-
     const result = await adminApi.getOrders(token, {
       status: statusFilter === 'All' ? undefined : statusFilter,
       search: search || undefined,
       limit: PAGE_SIZE,
       offset,
     });
-
     if (result.data) {
       const data = result.data as { orders: Order[]; total: number };
       setOrders(data.orders || []);
       setTotal(data.total || 0);
     }
     setLoading(false);
-    setSelectedOrders(new Set()); // Clear selection on reload
-  };
+    setSelectedOrders(new Set());
+  }
 
   const handleDeleteOrder = async (orderId: string) => {
     if (!token) return;
@@ -114,9 +154,9 @@ export default function AdminOrdersPage() {
     setRefillLoading(null);
     if (result.data) {
       const data = result.data as { message?: string };
-      setActionResult({ type: 'success', message: data.message || 'Refill requested successfully' });
+      setActionResult({ type: 'success', message: data.message || 'Refill requested' });
     } else {
-      setActionResult({ type: 'error', message: result.error || 'Failed to request refill' });
+      setActionResult({ type: 'error', message: result.error || 'Failed to refill' });
     }
   };
 
@@ -126,36 +166,28 @@ export default function AdminOrdersPage() {
     const result = await adminApi.checkOrderStatus([orderId], token);
     setRefreshLoading(null);
     if (result.data) {
-      const data = result.data as { updated: number, skipped: number, errors: string[] };
+      const data = result.data as { updated: number; skipped: number; errors: string[] };
       if (data.updated > 0) {
         setActionResult({ type: 'success', message: 'Status updated from provider' });
-        loadOrders(); // Reload to get fresh data
-      } else if (data.errors && data.errors.length > 0) {
+        loadOrders();
+      } else if (data.errors?.length > 0) {
         setActionResult({ type: 'error', message: data.errors[0] });
       } else {
-        setActionResult({ type: 'success', message: 'Status is already up-to-date' });
+        setActionResult({ type: 'success', message: 'Status already up-to-date' });
       }
     } else {
-      setActionResult({ type: 'error', message: result.error || 'Failed to refresh status' });
+      setActionResult({ type: 'error', message: result.error || 'Failed to refresh' });
     }
   };
 
   const toggleSelectAll = () => {
-    if (selectedOrders.size === orders.length) {
-      setSelectedOrders(new Set());
-    } else {
-      setSelectedOrders(new Set(orders.map(o => o.id)));
-    }
+    setSelectedOrders(selectedOrders.size === orders.length ? new Set() : new Set(orders.map(o => o.id)));
   };
 
-  const toggleSelectOrder = (orderId: string) => {
-    const newSet = new Set(selectedOrders);
-    if (newSet.has(orderId)) {
-      newSet.delete(orderId);
-    } else {
-      newSet.add(orderId);
-    }
-    setSelectedOrders(newSet);
+  const toggleSelectOrder = (id: string) => {
+    const s = new Set(selectedOrders);
+    s.has(id) ? s.delete(id) : s.add(id);
+    setSelectedOrders(s);
   };
 
   const handleBulkRefresh = async () => {
@@ -163,14 +195,9 @@ export default function AdminOrdersPage() {
     setBulkActionLoading(true);
     const result = await adminApi.checkOrderStatus(Array.from(selectedOrders), token);
     setBulkActionLoading(false);
-    
     if (result.data) {
-      const data = result.data as { updated: number, skipped: number, errors: string[] };
-      let msg = `Updated ${data.updated} orders. Skipped ${data.skipped}.`;
-      if (data.errors && data.errors.length > 0) {
-        msg += ` (${data.errors.length} errors)`;
-      }
-      setActionResult({ type: 'success', message: msg });
+      const data = result.data as { updated: number; skipped: number; errors: string[] };
+      setActionResult({ type: 'success', message: `Updated ${data.updated} orders. Skipped ${data.skipped}.` + (data.errors?.length ? ` (${data.errors.length} errors)` : '') });
       setSelectedOrders(new Set());
       loadOrders();
     } else {
@@ -180,116 +207,106 @@ export default function AdminOrdersPage() {
 
   const handleBulkMarkCompleted = async () => {
     if (!token || selectedOrders.size === 0) return;
-    if (!confirm(`Are you sure you want to mark ${selectedOrders.size} orders as completed?`)) return;
-    
+    if (!confirm(`Mark ${selectedOrders.size} orders as completed?`)) return;
     setBulkActionLoading(true);
-    let successCount = 0;
-    let failCount = 0;
-    
-    // Process sequentially to avoid slamming the API
-    for (const orderId of Array.from(selectedOrders)) {
-      const res = await adminApi.markOrderCompleted(orderId, token);
-      if (res.data) successCount++;
-      else failCount++;
+    let ok = 0, fail = 0;
+    for (const id of Array.from(selectedOrders)) {
+      const res = await adminApi.markOrderCompleted(id, token);
+      res.data ? ok++ : fail++;
     }
-    
     setBulkActionLoading(false);
-    if (successCount > 0) {
-      setActionResult({ 
-        type: 'success', 
-        message: `Marked ${successCount} as completed.` + (failCount > 0 ? ` Failed: ${failCount}` : '') 
-      });
+    if (ok > 0) {
+      setActionResult({ type: 'success', message: `Marked ${ok} completed.${fail > 0 ? ` Failed: ${fail}` : ''}` });
       setSelectedOrders(new Set());
-      loadOrders(); // Reload to reflect changes
+      loadOrders();
     } else {
-      setActionResult({ type: 'error', message: `Failed to mark orders. (${failCount} failed)` });
+      setActionResult({ type: 'error', message: `Failed to mark orders (${fail} failed)` });
     }
   };
 
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
+
   return (
-    <div>
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white mb-1">Orders</h1>
-          <p className="text-text-secondary">{total} total orders</p>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Orders</h1>
+          <p className="text-slate-500 text-sm mt-0.5">{total.toLocaleString()} total orders</p>
         </div>
-        <input
-          type="text"
-          placeholder="Search orders..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="input w-full sm:max-w-xs"
-        />
+        <button
+          onClick={loadOrders}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-sm font-semibold text-slate-700 hover:border-primary/40 hover:text-primary transition-all shadow-xs"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Refresh
+        </button>
       </div>
 
-      {/* Action Result Banner */}
+      {/* Filters Row */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Search by user, service, or order ID..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 shadow-xs transition"
+          />
+        </div>
+        <StatusDropdown value={statusFilter} onChange={setStatusFilter} />
+      </div>
+
+      {/* Toast */}
       {actionResult && (
-        <div className={`mb-4 p-3 rounded-lg text-sm font-medium ${
+        <div className={`p-4 rounded-xl text-sm font-medium border ${
           actionResult.type === 'success'
-            ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
-            : 'bg-red-500/10 border border-red-500/20 text-red-400'
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+            : 'bg-red-50 border-red-200 text-red-700'
         }`}>
           {actionResult.message}
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        {statusFilters.map((s) => (
-          <button
-            key={s}
-            onClick={() => setStatusFilter(s)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              statusFilter === s
-                ? 'bg-primary text-white'
-                : 'bg-surface-dark text-text-secondary hover:text-white border border-border-dark'
-            }`}
-          >
-            {s === 'All' ? 'All' : s.replace('_', ' ')}
-          </button>
-        ))}
-      </div>
-      
       {/* Bulk Action Bar */}
       {selectedOrders.size > 0 && (
-        <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 mb-6 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span className="text-primary font-bold">{selectedOrders.size}</span>
-            <span className="text-primary font-medium">orders selected</span>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-primary font-bold text-sm">{selectedOrders.size} orders selected</p>
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={handleBulkRefresh}
               disabled={bulkActionLoading}
-              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-colors disabled:opacity-50"
             >
-              {bulkActionLoading ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
+              {bulkActionLoading ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : (
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               )}
-              Sync Status Selected
+              Sync Status
             </button>
             <button
               onClick={handleBulkMarkCompleted}
               disabled={bulkActionLoading}
-              className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition-colors disabled:opacity-50"
             >
-              {bulkActionLoading ? (
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              ) : (
+              {bulkActionLoading ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : (
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               )}
-              Mark Selected Completed
+              Mark Completed
             </button>
             <button
               onClick={() => setSelectedOrders(new Set())}
               disabled={bulkActionLoading}
-              className="px-4 py-2 bg-surface-dark text-text-secondary hover:text-white border border-border-dark rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+              className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold hover:bg-slate-200 transition-colors"
             >
               Cancel
             </button>
@@ -297,165 +314,245 @@ export default function AdminOrdersPage() {
         </div>
       )}
 
-      <div className="bg-surface-dark rounded-xl border border-border-dark">
-        {loading ? (
-          <div className="p-8 text-center">
-            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+      {/* Select All row (visible only on desktop, for mobile cards we handle per-card) */}
+      {!loading && orders.length > 0 && (
+        <div className="hidden sm:flex items-center gap-3 px-1">
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
+              checked={orders.length > 0 && selectedOrders.size === orders.length}
+              onChange={toggleSelectAll}
+            />
+            <span className="text-xs text-slate-500 font-medium">Select all on page</span>
+          </label>
+        </div>
+      )}
+
+      {/* Orders — Mobile cards / Desktop table */}
+      {loading ? (
+        <div className="bento-card p-12 bg-white border border-slate-200 text-center">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+        </div>
+      ) : orders.length === 0 ? (
+        <div className="bento-card p-12 bg-white border border-slate-200 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-3">
+            <svg className="w-7 h-7 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
           </div>
-        ) : orders.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <p className="text-slate-500 text-sm">No orders found for these filters</p>
+        </div>
+      ) : (
+        <>
+          {/* Mobile: Cards */}
+          <div className="sm:hidden space-y-3">
+            {orders.map((order) => (
+              <div
+                key={order.id}
+                className={`bento-card p-4 bg-white border transition-all ${selectedOrders.has(order.id) ? 'border-primary/30 bg-primary/5' : 'border-slate-200'}`}
+              >
+                {/* Card Top Row */}
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <input
+                      type="checkbox"
+                      className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4 shrink-0"
+                      checked={selectedOrders.has(order.id)}
+                      onChange={() => toggleSelectOrder(order.id)}
+                    />
+                    <div className="min-w-0">
+                      <p className="font-black text-slate-900 font-mono text-sm">{order.id.slice(0, 8).toUpperCase()}</p>
+                      <p className="text-[11px] text-slate-500 truncate">{order.user_email}</p>
+                    </div>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold shrink-0 ${getStatusColor(order.status)}`}>
+                    {order.status.replace('_', ' ')}
+                  </span>
+                </div>
+
+                {/* Service name */}
+                <p className="text-xs text-slate-700 font-medium mb-3 leading-snug line-clamp-2">{order.service_name}</p>
+
+                {/* Stats grid */}
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  <div className="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
+                    <p className="text-[10px] text-slate-500 mb-0.5">Qty</p>
+                    <p className="text-xs font-black text-slate-900">{order.quantity.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-blue-50 rounded-xl p-2.5 text-center border border-blue-100">
+                    <p className="text-[10px] text-slate-500 mb-0.5">Charge</p>
+                    <p className="text-xs font-black text-primary">{formatCurrency(order.charge)}</p>
+                  </div>
+                  <div className="bg-emerald-50 rounded-xl p-2.5 text-center border border-emerald-100">
+                    <p className="text-[10px] text-slate-500 mb-0.5">Profit</p>
+                    <p className="text-xs font-black text-emerald-700">{formatCurrency(order.profit)}</p>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                  <span className="text-[10px] text-slate-400">{formatDate(order.created_at)}</span>
+                  <div className="flex items-center gap-1.5">
+                    {['pending', 'processing', 'in_progress'].includes(order.status) && (
+                      <>
+                        <button
+                          onClick={() => handleForceRefresh(order.id)}
+                          disabled={refreshLoading === order.id}
+                          className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors border border-blue-200 disabled:opacity-50"
+                          title="Force Refresh"
+                        >
+                          {refreshLoading === order.id
+                            ? <span className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin block" />
+                            : <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                          }
+                        </button>
+                        <button
+                          onClick={() => handleMarkCompleted(order.id)}
+                          disabled={completeLoading === order.id}
+                          className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors border border-emerald-200 disabled:opacity-50"
+                          title="Mark Completed"
+                        >
+                          {completeLoading === order.id
+                            ? <span className="w-3.5 h-3.5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin block" />
+                            : <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                          }
+                        </button>
+                      </>
+                    )}
+                    {order.service_has_refill && order.status === 'completed' && (
+                      <button
+                        onClick={() => handleRefill(order.id)}
+                        disabled={refillLoading === order.id}
+                        className="p-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors border border-primary/20 disabled:opacity-50"
+                        title="Refill"
+                      >
+                        {refillLoading === order.id
+                          ? <span className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin block" />
+                          : <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                        }
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setDeleteConfirm(order.id)}
+                      className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors border border-red-200"
+                      title="Delete"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop: Table */}
+          <div className="hidden sm:block bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border-dark text-left">
-                  <th className="py-3 px-4 w-12 text-center text-text-secondary">
-                    <input 
-                      type="checkbox" 
-                      className="rounded border-border-dark bg-surface-darker text-primary focus:ring-primary h-4 w-4"
+                <tr className="border-b border-slate-100 bg-slate-50">
+                  <th className="py-3 px-4 w-12">
+                    <input
+                      type="checkbox"
+                      className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
                       checked={orders.length > 0 && selectedOrders.size === orders.length}
                       onChange={toggleSelectAll}
                     />
                   </th>
-                  <th className="py-3 px-4 text-text-secondary text-sm font-medium">ID</th>
-                  <th className="py-3 px-4 text-text-secondary text-sm font-medium">User</th>
-                  <th className="py-3 px-4 text-text-secondary text-sm font-medium">Service</th>
-                  <th className="py-3 px-4 text-text-secondary text-sm font-medium">Qty</th>
-                  <th className="py-3 px-4 text-text-secondary text-sm font-medium">Charge</th>
-                  <th className="py-3 px-4 text-text-secondary text-sm font-medium">Profit</th>
-                  <th className="py-3 px-4 text-text-secondary text-sm font-medium">Status / Stats</th>
-                  <th className="py-3 px-4 text-text-secondary text-sm font-medium">Provider</th>
-                  <th className="py-3 px-4 text-text-secondary text-sm font-medium">Date</th>
-                  <th className="py-3 px-4 text-text-secondary text-sm font-medium w-10"></th>
+                  <th className="py-3 px-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wide">ID</th>
+                  <th className="py-3 px-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wide">User</th>
+                  <th className="py-3 px-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wide">Service</th>
+                  <th className="py-3 px-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wide">Qty</th>
+                  <th className="py-3 px-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wide">Charge</th>
+                  <th className="py-3 px-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wide">Profit</th>
+                  <th className="py-3 px-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wide">Status</th>
+                  <th className="py-3 px-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wide">Provider</th>
+                  <th className="py-3 px-4 text-left text-xs font-bold text-slate-500 uppercase tracking-wide">Date</th>
+                  <th className="py-3 px-4 w-10" />
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-100">
                 {orders.map((order) => (
-                  <tr key={order.id} className={`border-b border-border-dark hover:bg-surface-darker/50 group ${selectedOrders.has(order.id) ? 'bg-primary/5' : ''}`}>
-                    <td className="py-4 px-4 w-12 text-center">
-                      <input 
-                        type="checkbox" 
-                        className="rounded border-border-dark bg-surface-darker text-primary focus:ring-primary h-4 w-4"
+                  <tr key={order.id} className={`hover:bg-slate-50 group transition-colors ${selectedOrders.has(order.id) ? 'bg-primary/5' : ''}`}>
+                    <td className="py-3.5 px-4">
+                      <input
+                        type="checkbox"
+                        className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4"
                         checked={selectedOrders.has(order.id)}
                         onChange={() => toggleSelectOrder(order.id)}
                       />
                     </td>
-                    <td className="py-4 px-4">
-                      <span
-                        className="text-white font-mono text-sm cursor-default"
-                        title={order.id}
-                      >
+                    <td className="py-3.5 px-4">
+                      <span className="font-mono text-xs font-bold text-slate-700" title={order.id}>
                         {order.id.slice(0, 8).toUpperCase()}
                       </span>
                     </td>
-                    <td className="py-4 px-4">
-                      <span className="text-text-secondary text-sm truncate max-w-[120px] md:max-w-xs block">{order.user_email}</span>
+                    <td className="py-3.5 px-4">
+                      <span className="text-xs text-slate-600 truncate max-w-32 block">{order.user_email}</span>
                     </td>
-                    <td className="py-4 px-4">
-                      <span className="text-white text-sm truncate max-w-[200px] block">{order.service_name}</span>
+                    <td className="py-3.5 px-4">
+                      <span className="text-xs text-slate-800 font-medium truncate max-w-48 block">{order.service_name}</span>
                     </td>
-                    <td className="py-4 px-4">
-                      <span className="text-white">{order.quantity.toLocaleString()}</span>
+                    <td className="py-3.5 px-4">
+                      <span className="text-xs text-slate-800 font-semibold">{order.quantity.toLocaleString()}</span>
                     </td>
-                    <td className="py-4 px-4">
-                      <span className="text-white">{formatCurrency(order.charge)}</span>
+                    <td className="py-3.5 px-4">
+                      <span className="text-xs text-primary font-semibold">{formatCurrency(order.charge)}</span>
                     </td>
-                    <td className="py-4 px-4">
-                      <span className="text-emerald-500 font-medium">{formatCurrency(order.profit)}</span>
+                    <td className="py-3.5 px-4">
+                      <span className="text-xs text-emerald-700 font-bold">{formatCurrency(order.profit)}</span>
                     </td>
-                    <td className="py-4 px-4">
+                    <td className="py-3.5 px-4">
                       <div className="flex flex-col gap-1">
-                        <span className={`px-2 py-1 rounded text-xs font-medium w-fit ${getStatusColor(order.status)}`}>
+                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold w-fit ${getStatusColor(order.status)}`}>
                           {order.status.replace('_', ' ')}
                         </span>
-                        {(order.start_count !== null || order.remains !== null) && (
-                          <div className="flex gap-2 text-[10px] text-text-secondary mt-1">
-                            {order.start_count !== null && <span>S: <span className="text-white">{order.start_count}</span></span>}
-                            {order.remains !== null && <span>R: <span className="text-white">{order.remains}</span></span>}
+                        {(order.start_count !== null && order.start_count !== undefined || order.remains !== null && order.remains !== undefined) && (
+                          <div className="flex gap-2 text-[10px] text-slate-400">
+                            {order.start_count !== null && order.start_count !== undefined && <span>S: <span className="text-slate-700 font-medium">{order.start_count}</span></span>}
+                            {order.remains !== null && order.remains !== undefined && <span>R: <span className="text-slate-700 font-medium">{order.remains}</span></span>}
                           </div>
                         )}
                       </div>
                     </td>
-                    <td className="py-4 px-4">
-                      {order.provider_order_id ? (
-                        <span className="text-emerald-500 text-xs">✓ {order.provider_order_id}</span>
-                      ) : (
-                        <span className="text-amber-500 text-xs">⚠ None</span>
-                      )}
+                    <td className="py-3.5 px-4">
+                      {order.provider_order_id
+                        ? <span className="text-emerald-600 text-xs font-medium">✓ {order.provider_order_id}</span>
+                        : <span className="text-amber-500 text-xs">⚠ None</span>
+                      }
                     </td>
-                    <td className="py-4 px-4">
-                      <span className="text-text-secondary text-sm">{formatDate(order.created_at)}</span>
+                    <td className="py-3.5 px-4">
+                      <span className="text-xs text-slate-500">{formatDate(order.created_at)}</span>
                     </td>
-                    <td className="py-4 px-4">
-                      <div className="flex justify-end gap-2">
-                        {/* Complete Button (if pending/processing) */}
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center justify-end gap-1">
                         {['pending', 'processing', 'in_progress'].includes(order.status) && (
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() => handleForceRefresh(order.id)}
-                              disabled={refreshLoading === order.id}
-                              className="p-1.5 rounded-lg text-blue-400 hover:bg-blue-500/10 transition-colors disabled:opacity-50"
-                              title="Force Refresh Status"
-                            >
-                              {refreshLoading === order.id ? (
-                                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                              ) : (
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                </svg>
-                              )}
+                          <>
+                            <button onClick={() => handleForceRefresh(order.id)} disabled={refreshLoading === order.id} className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 transition-colors disabled:opacity-50" title="Force Refresh">
+                              {refreshLoading === order.id
+                                ? <span className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin block" />
+                                : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                              }
                             </button>
-
-                            <button
-                              onClick={() => handleMarkCompleted(order.id)}
-                              disabled={completeLoading === order.id}
-                              className="p-1.5 rounded-lg text-emerald-400 hover:bg-emerald-500/10 transition-colors disabled:opacity-50"
-                              title="Force Mark Completed"
-                            >
-                              {completeLoading === order.id ? (
-                                <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-                              ) : (
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                              )}
+                            <button onClick={() => handleMarkCompleted(order.id)} disabled={completeLoading === order.id} className="p-1.5 rounded-lg text-emerald-500 hover:bg-emerald-50 transition-colors disabled:opacity-50" title="Mark Completed">
+                              {completeLoading === order.id
+                                ? <span className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin block" />
+                                : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                              }
                             </button>
-                          </div>
+                          </>
                         )}
-                        
-                        {/* Refill Button (if eligible) */}
-                        {order.service_has_refill && order.status.toLowerCase() === 'completed' && (
-                          <button
-                            onClick={() => handleRefill(order.id)}
-                            disabled={refillLoading === order.id}
-                            className="p-1.5 rounded-lg text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
-                            title="Request Refill"
-                          >
-                            {refillLoading === order.id ? (
-                              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                            ) : (
-                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                              </svg>
-                            )}
+                        {order.service_has_refill && order.status === 'completed' && (
+                          <button onClick={() => handleRefill(order.id)} disabled={refillLoading === order.id} className="p-1.5 rounded-lg text-primary hover:bg-primary/10 transition-colors disabled:opacity-50" title="Refill">
+                            {refillLoading === order.id
+                              ? <span className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin block" />
+                              : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                            }
                           </button>
                         )}
-                        
-                        {/* Desktop Delete: icon on hover */}
-                        <button
-                          onClick={() => setDeleteConfirm(order.id)}
-                          className="hidden lg:block opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg text-red-400 hover:bg-red-500/10"
-                          title="Delete order"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                        
-                        {/* Mobile Delete: always visible */}
-                        <button
-                          onClick={() => setDeleteConfirm(order.id)}
-                          className="lg:hidden p-1.5 rounded-lg text-red-400 hover:bg-red-500/10"
-                          title="Delete order"
-                        >
+                        <button onClick={() => setDeleteConfirm(order.id)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-all" title="Delete">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
@@ -467,33 +564,29 @@ export default function AdminOrdersPage() {
               </tbody>
             </table>
           </div>
-        ) : (
-          <div className="p-8 text-center">
-            <p className="text-text-secondary">No orders found</p>
-          </div>
-        )}
-      </div>
+        </>
+      )}
 
       {/* Pagination */}
-      {Math.ceil(total / PAGE_SIZE) > 1 && (
-        <div className="flex items-center justify-between mt-4">
-          <p className="text-text-secondary text-sm">
-            Page {Math.floor(offset / PAGE_SIZE) + 1} of {Math.ceil(total / PAGE_SIZE)} &middot; {total} orders
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-slate-500 text-sm">
+            Page {currentPage} of {totalPages} · {total.toLocaleString()} orders
           </p>
           <div className="flex gap-2">
             <button
               onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
               disabled={offset === 0}
-              className="px-4 py-2 rounded-lg border border-border-dark text-text-secondary hover:text-white text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              &larr; Previous
+              ← Previous
             </button>
             <button
               onClick={() => setOffset(offset + PAGE_SIZE)}
               disabled={offset + PAGE_SIZE >= total}
-              className="px-4 py-2 rounded-lg border border-border-dark text-text-secondary hover:text-white text-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              Next &rarr;
+              Next →
             </button>
           </div>
         </div>
@@ -501,23 +594,28 @@ export default function AdminOrdersPage() {
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-          <div className="bg-surface-dark rounded-2xl border border-border-dark p-6 mx-4 max-w-sm w-full">
-            <h3 className="text-lg font-bold text-white mb-2">Delete Order</h3>
-            <p className="text-text-secondary text-sm mb-6">
-              Are you sure you want to permanently delete this order? This action cannot be undone.
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl p-6 w-full max-w-sm">
+            <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-black text-slate-900 text-center mb-2">Delete Order</h3>
+            <p className="text-slate-500 text-sm text-center mb-6">
+              This action is permanent and cannot be undone.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-surface-darker text-text-secondary border border-border-dark hover:text-white transition-colors"
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={() => handleDeleteOrder(deleteConfirm)}
                 disabled={deleteLoading}
-                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                className="flex-1 px-4 py-2.5 rounded-xl text-sm font-bold bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50"
               >
                 {deleteLoading ? 'Deleting...' : 'Delete'}
               </button>
