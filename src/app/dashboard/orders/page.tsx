@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { ordersApi } from '@/lib/api';
@@ -23,7 +23,7 @@ interface Order {
 
 const statusFilters = ['All', 'pending', 'processing', 'in_progress', 'completed', 'partial', 'canceled'];
 
-export default function OrdersPage() {
+function OrdersContent() {
   const { token } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -332,5 +332,19 @@ export default function OrdersPage() {
         <TrustpilotPopup onClose={() => setShowReviewPopup(false)} />
       )}
     </div>
+  );
+}
+
+export default function OrdersPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="py-12 text-center">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+        </div>
+      }
+    >
+      <OrdersContent />
+    </Suspense>
   );
 }
