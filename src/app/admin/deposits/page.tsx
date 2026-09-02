@@ -22,6 +22,7 @@ const CRYPTO_GATEWAYS = new Set([
 
 const GATEWAY_META: Record<string, { label: string; color: string; isCrypto: boolean }> = {
   manual:              { label: 'Bank Transfer',  color: 'bg-blue-500/10 text-blue-400 border-blue-500/20',    isCrypto: false },
+  nexapay:             { label: 'NexaPay',        color: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20', isCrypto: false },
   binance_pay:         { label: 'Binance Pay',    color: 'bg-amber-500/10 text-amber-400 border-amber-500/20', isCrypto: true  },
   on_chain_usdt_trc20: { label: 'USDT-TRC20',     color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', isCrypto: true },
   on_chain_usdt_bep20: { label: 'USDT-BEP20',     color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20', isCrypto: true },

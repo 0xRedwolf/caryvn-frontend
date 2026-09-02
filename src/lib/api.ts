@@ -16,6 +16,56 @@ interface ApiResponse<T> {
   status: number;
 }
 
+export const SESSION_EXPIRED_EVENT = 'caryvn_session_expired';
+export const TOKEN_REFRESHED_EVENT = 'caryvn_token_refreshed';
+
+// Singleton promise to prevent parallel refresh race condition with token rotation
+let isRefreshingPromise: Promise<string | null> | null = null;
+
+async function getNewAccessToken(): Promise<string | null> {
+  if (isRefreshingPromise) {
+    return isRefreshingPromise;
+  }
+
+  isRefreshingPromise = (async () => {
+    try {
+      if (typeof window === 'undefined') return null;
+      const storedRefresh = localStorage.getItem('caryvn_refresh');
+      if (!storedRefresh) return null;
+
+      const res = await fetch(`${API_URL}/token/refresh/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh: storedRefresh }),
+        credentials: 'include',
+      });
+
+      if (!res.ok) {
+        // Refresh token failed or expired — notify session expired
+        window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT, { detail: { reason: 'token_expired' } }));
+        return null;
+      }
+
+      const data = await res.json().catch(() => ({}));
+      if (data?.access) {
+        localStorage.setItem('caryvn_token', data.access);
+        if (data.refresh) {
+          localStorage.setItem('caryvn_refresh', data.refresh);
+        }
+        window.dispatchEvent(new CustomEvent(TOKEN_REFRESHED_EVENT, { detail: { access: data.access } }));
+        return data.access as string;
+      }
+      return null;
+    } catch {
+      return null;
+    } finally {
+      isRefreshingPromise = null;
+    }
+  })();
+
+  return isRefreshingPromise;
+}
+
 /**
  * Make an API request to the Django backend.
  */
@@ -45,6 +95,23 @@ export async function api<T = unknown>(
     });
 
     const data = await response.json().catch(() => ({}));
+
+    // If 401 Unauthorized due to expired access token, attempt transparent silent refresh
+    const isTokenError = response.status === 401 && (
+      data.code === 'token_not_valid' ||
+      (typeof data.detail === 'string' && data.detail.toLowerCase().includes('token'))
+    );
+
+    if (isTokenError && endpoint !== '/token/refresh/' && endpoint !== '/auth/login/' && endpoint !== '/auth/register/') {
+      const newAccessToken = await getNewAccessToken();
+      if (newAccessToken) {
+        // Re-execute original request with new access token
+        return api<T>(endpoint, {
+          ...options,
+          token: newAccessToken,
+        });
+      }
+    }
 
     if (!response.ok) {
       let errorMessage = data.error || data.detail;
@@ -136,6 +203,16 @@ export const walletApi = {
 
   verifyTopup: (reference: string, token: string) =>
     api(`/wallet/topup/verify/?reference=${reference}`, { token }),
+
+  initiateNexaPayTopup: (amount: number | string, token: string) =>
+    api('/wallet/topup/nexapay/initiate/', {
+      method: 'POST',
+      body: { amount },
+      token,
+    }),
+
+  checkNexaPayStatus: (reference: string, token: string) =>
+    api(`/wallet/topup/nexapay/status/?reference=${encodeURIComponent(reference)}`, { token }),
 
   hideTransaction: (transactionId: string, token: string) =>
     api(`/wallet/transactions/${transactionId}/hide/`, { method: 'POST', token }),
@@ -306,6 +383,9 @@ export const adminApi = {
       token,
     }),
 
+  requeryTransaction: (transactionId: string, token: string) =>
+    api(`/admin/transactions/${transactionId}/requery/`, { token }),
+
   failTransaction: (transactionId: string, token: string) =>
     api(`/admin/transactions/${transactionId}/fail/`, { method: 'POST', token }),
 
@@ -405,6 +485,20 @@ export const adminApi = {
 
   deletePopup: (popupId: number, token: string) =>
     api(`/admin/popups/${popupId}/`, { method: 'DELETE', token }),
+
+  // Notifications API
+  getNotifications: (token: string) =>
+    api('/admin/notifications/', { token }),
+
+  markNotificationRead: (token: string, notificationId?: string, markAll: boolean = false) =>
+    api('/admin/notifications/', {
+      method: 'POST',
+      body: markAll ? { all: true } : { notification_id: notificationId },
+      token,
+    }),
+
+  triggerTestNotification: (token: string) =>
+    api('/admin/notifications/test/', { method: 'POST', token }),
 };
 
 // Activity Tracking API

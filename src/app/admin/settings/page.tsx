@@ -17,8 +17,10 @@ interface SiteSettings {
   crypto_sol: string;
   // Payment method toggles
   squad_enabled: boolean;
+  nexapay_enabled: boolean;
   manual_bank_enabled: boolean;
   crypto_enabled: boolean;
+  provider_balance_alert_threshold: string;
 }
 
 export default function AdminSettingsPage() {
@@ -26,6 +28,9 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [savingBank, setSavingBank] = useState(false);
   const [savingCrypto, setSavingCrypto] = useState(false);
+  const [savingAlerts, setSavingAlerts] = useState(false);
+  const [testingAlert, setTestingAlert] = useState(false);
+  const [alertMessage, setAlertMessage] = useState({ type: '', text: '' });
   const [exportingUsers, setExportingUsers] = useState(false);
   const [settings, setSettings] = useState<SiteSettings>({
     show_inactive_services: false,
@@ -38,8 +43,10 @@ export default function AdminSettingsPage() {
     crypto_usdt_bep20: '',
     crypto_sol: '',
     squad_enabled: true,
+    nexapay_enabled: true,
     manual_bank_enabled: true,
     crypto_enabled: true,
+    provider_balance_alert_threshold: '15.00',
   });
   const [bankMessage, setBankMessage] = useState({ type: '', text: '' });
   const [cryptoMessage, setCryptoMessage] = useState({ type: '', text: '' });
@@ -67,8 +74,10 @@ export default function AdminSettingsPage() {
         crypto_usdt_bep20: data.crypto_usdt_bep20 || '',
         crypto_sol: data.crypto_sol || '',
         squad_enabled: data.squad_enabled !== false,
+        nexapay_enabled: data.nexapay_enabled !== false,
         manual_bank_enabled: data.manual_bank_enabled !== false,
         crypto_enabled: data.crypto_enabled !== false,
+        provider_balance_alert_threshold: (data as unknown as { provider_balance_alert_threshold?: string }).provider_balance_alert_threshold || '15.00',
       });
     }
     setLoading(false);
@@ -132,13 +141,56 @@ export default function AdminSettingsPage() {
     }
   };
 
-  const togglePaymentMethod = async (field: 'squad_enabled' | 'manual_bank_enabled' | 'crypto_enabled') => {
+  const togglePaymentMethod = async (field: 'squad_enabled' | 'nexapay_enabled' | 'manual_bank_enabled' | 'crypto_enabled') => {
     if (!token) return;
     const newValue = !settings[field];
     const res = await adminApi.updateSiteSettings({ [field]: newValue }, token);
     if (!res.error) {
       setSettings(prev => ({ ...prev, [field]: newValue }));
     }
+  };
+
+  const handleSaveAlertThreshold = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token) return;
+    setSavingAlerts(true);
+    setAlertMessage({ type: '', text: '' });
+    const res = await adminApi.updateSiteSettings(
+      { provider_balance_alert_threshold: settings.provider_balance_alert_threshold },
+      token
+    );
+    setSavingAlerts(false);
+    if (res.error) {
+      setAlertMessage({ type: 'error', text: res.error });
+    } else {
+      setAlertMessage({ type: 'success', text: 'Alert threshold updated successfully!' });
+      setTimeout(() => setAlertMessage({ type: '', text: '' }), 4000);
+    }
+  };
+
+  const handleTriggerTestAlert = async () => {
+    if (!token) return;
+    setTestingAlert(true);
+    try {
+      const res = await adminApi.triggerTestNotification(token);
+      if (res.data) {
+        if (typeof window !== 'undefined' && 'Notification' in window) {
+          if (Notification.permission === 'granted') {
+            new Notification('Test Alert: Low Balance at Provider', {
+              body: 'Test notification triggered successfully! Browser desktop alerts are functioning properly.',
+              icon: '/favicon.ico',
+            });
+          } else if (Notification.permission === 'default') {
+            await Notification.requestPermission();
+          }
+        }
+        setAlertMessage({ type: 'success', text: 'Test alert generated! Check the top bell icon or desktop notifications.' });
+        setTimeout(() => setAlertMessage({ type: '', text: '' }), 5000);
+      }
+    } catch {
+      setAlertMessage({ type: 'error', text: 'Failed to generate test notification.' });
+    }
+    setTestingAlert(false);
   };
 
   const alertClass = (type: string) =>
@@ -170,7 +222,7 @@ export default function AdminSettingsPage() {
             setExportingUsers(false);
           }}
           disabled={exportingUsers}
-          className="btn-primary flex-shrink-0 flex items-center gap-2"
+          className="btn-primary shrink-0 flex items-center gap-2"
           title="Export Users (CSV)"
         >
           {exportingUsers ? (
@@ -226,7 +278,7 @@ export default function AdminSettingsPage() {
       <div className="bg-surface-dark rounded-xl border border-border-dark overflow-hidden">
         <div className="px-6 py-4 border-b border-border-dark bg-surface-darker/50 flex items-center gap-3">
           {/* Bitcoin icon */}
-          <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center shrink-0">
             <svg className="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="currentColor">
               <path d="M11.5 2C6.26 2 2 6.26 2 11.5S6.26 21 11.5 21 21 16.74 21 11.5 16.74 2 11.5 2zm.75 13.5h-1.5v-1.5H9.25v1.5h-1.5V9.25h1.5v1.5h1.5V9.25h1.5a2.25 2.25 0 0 1 0 4.5h-.75v.75h.75v1zm0-4.5H9.25V9.25h3a.75.75 0 0 1 0 1.75z"/>
             </svg>
@@ -319,7 +371,7 @@ export default function AdminSettingsPage() {
           </div>
           <label className="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" className="sr-only peer" checked={settings.show_inactive_services} onChange={toggleShowInactive} />
-            <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:shadow-sm after:transition-all peer-checked:after:translate-x-full peer-focus:outline-none"></div>
+            <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:shadow-sm after:transition-all peer-checked:after:translate-x-full peer-focus:outline-none"></div>
           </label>
         </div>
       </div>
@@ -343,7 +395,23 @@ export default function AdminSettingsPage() {
               </span>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" className="sr-only peer" checked={settings.squad_enabled} onChange={() => togglePaymentMethod('squad_enabled')} />
-                <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:shadow-sm after:transition-all peer-checked:after:translate-x-full peer-focus:outline-none"></div>
+                <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:shadow-sm after:transition-all peer-checked:after:translate-x-full peer-focus:outline-none"></div>
+              </label>
+            </div>
+          </div>
+          {/* NexaPay */}
+          <div className="px-6 py-4 flex items-center justify-between">
+            <div>
+              <p className="text-white font-medium">NexaPay (Automatic / Virtual Bank Account)</p>
+              <p className="text-text-secondary text-sm">Automated bank transfer with dynamic virtual accounts via NexaPay.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${settings.nexapay_enabled ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                {settings.nexapay_enabled ? 'Enabled' : 'Disabled'}
+              </span>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" className="sr-only peer" checked={settings.nexapay_enabled} onChange={() => togglePaymentMethod('nexapay_enabled')} />
+                <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:shadow-sm after:transition-all peer-checked:after:translate-x-full peer-focus:outline-none"></div>
               </label>
             </div>
           </div>
@@ -359,7 +427,7 @@ export default function AdminSettingsPage() {
               </span>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" className="sr-only peer" checked={settings.manual_bank_enabled} onChange={() => togglePaymentMethod('manual_bank_enabled')} />
-                <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:shadow-sm after:transition-all peer-checked:after:translate-x-full peer-focus:outline-none"></div>
+                <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:shadow-sm after:transition-all peer-checked:after:translate-x-full peer-focus:outline-none"></div>
               </label>
             </div>
           </div>
@@ -375,11 +443,73 @@ export default function AdminSettingsPage() {
               </span>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input type="checkbox" className="sr-only peer" checked={settings.crypto_enabled} onChange={() => togglePaymentMethod('crypto_enabled')} />
-                <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:shadow-sm after:transition-all peer-checked:after:translate-x-full peer-focus:outline-none"></div>
+                <div className="w-11 h-6 bg-gray-300 dark:bg-gray-600 rounded-full peer peer-checked:bg-primary after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:shadow-sm after:transition-all peer-checked:after:translate-x-full peer-focus:outline-none"></div>
               </label>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* ── Provider Low-Balance Alerts ──────────────────────────────────── */}
+      <div className="bg-surface-dark rounded-xl border border-border-dark overflow-hidden">
+        <div className="px-6 py-4 border-b border-border-dark bg-surface-darker/50 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center shrink-0">
+            <svg className="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-white">Provider Low-Balance Alerts</h2>
+            <p className="text-text-secondary text-sm">
+              Receive in-app alerts and native desktop notifications before orders from connected resellers and users fail.
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={handleSaveAlertThreshold} className="p-6 space-y-4">
+          {alertMessage.text && <div className={alertClass(alertMessage.type)}>{alertMessage.text}</div>}
+
+          <div>
+            <label className="text-text-secondary text-xs mb-1.5 block font-medium">
+              Alert Trigger Threshold ($ USD)
+            </label>
+            <div className="relative max-w-xs flex items-center rounded-xl bg-slate-50 border border-slate-200 overflow-hidden focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition shadow-xs">
+              <span className="pl-4 pr-2 font-bold text-slate-500 text-sm select-none shrink-0">$</span>
+              <input
+                type="number"
+                step="0.01"
+                min="1"
+                className="w-full py-2.5 pr-2 bg-transparent font-mono text-sm text-center font-bold text-slate-900 focus:outline-none placeholder-slate-400"
+                placeholder="15.00"
+                value={settings.provider_balance_alert_threshold}
+                onChange={(e) => setSettings({ ...settings, provider_balance_alert_threshold: e.target.value })}
+              />
+              <span className="pr-4 pl-1 text-xs font-bold text-slate-400 select-none shrink-0">USD</span>
+            </div>
+            <p className="text-text-secondary text-xs mt-1.5 leading-relaxed">
+              When any active upstream provider&apos;s balance drops below this amount, your Admin Panel will trigger a desktop notification and display a prominent warning banner.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+            <button
+              type="button"
+              onClick={handleTriggerTestAlert}
+              disabled={testingAlert}
+              className="px-4 py-2.5 rounded-xl border border-border-dark bg-surface-darker text-text-secondary hover:text-white hover:border-primary/50 text-xs font-semibold transition-all disabled:opacity-50 cursor-pointer"
+            >
+              {testingAlert ? 'Testing...' : 'Send Test Desktop Notification'}
+            </button>
+
+            <button
+              type="submit"
+              disabled={savingAlerts}
+              className="btn-primary cursor-pointer text-xs"
+            >
+              {savingAlerts ? 'Saving...' : 'Save Alert Threshold'}
+            </button>
+          </div>
+        </form>
       </div>
 
     </div>

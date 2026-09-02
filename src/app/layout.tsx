@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import SessionTimeoutModal from "@/components/SessionTimeoutModal";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -77,7 +78,6 @@ export const viewport = {
   maximumScale: 1,
 };
 
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -89,6 +89,7 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             {children}
+            <SessionTimeoutModal />
           </AuthProvider>
         </ThemeProvider>
       </body>

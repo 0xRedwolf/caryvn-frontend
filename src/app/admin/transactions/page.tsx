@@ -21,6 +21,7 @@ interface AdminTransaction {
 
 const GATEWAY_META: Record<string, { label: string; color: string; dot: string }> = {
   squad:               { label: 'Squad',       color: 'bg-violet-50 text-violet-700 border-violet-200',   dot: 'bg-violet-500' },
+  nexapay:             { label: 'NexaPay',     color: 'bg-indigo-50 text-indigo-700 border-indigo-200',   dot: 'bg-indigo-500' },
   manual:              { label: 'Bank',         color: 'bg-blue-50 text-blue-700 border-blue-200',         dot: 'bg-blue-500' },
   binance_pay:         { label: 'Binance Pay',  color: 'bg-amber-50 text-amber-700 border-amber-200',      dot: 'bg-amber-500' },
   on_chain_usdt_trc20: { label: 'USDT-TRC20',  color: 'bg-emerald-50 text-emerald-700 border-emerald-200',dot: 'bg-emerald-500' },
@@ -35,7 +36,7 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
   failed:  { label: 'Failed',  color: 'bg-red-50 text-red-700 border-red-200' },
 };
 
-const GATEWAYS = ['', 'squad', 'manual', 'binance_pay', 'on_chain_usdt_trc20', 'on_chain_usdt_bep20', 'on_chain_sol'];
+const GATEWAYS = ['', 'squad', 'nexapay', 'manual', 'binance_pay', 'on_chain_usdt_trc20', 'on_chain_usdt_bep20', 'on_chain_sol'];
 const STATUSES = ['', 'pending', 'success', 'failed'];
 const PAGE_SIZE = 50;
 
@@ -343,6 +344,7 @@ export default function AdminTransactionsPage() {
                   const gMeta = GATEWAY_META[tx.payment_gateway] ?? { label: tx.payment_gateway || 'Internal', color: 'bg-slate-100 text-slate-600 border-slate-200', dot: 'bg-slate-400' };
                   const sMeta = STATUS_META[tx.status] ?? { label: tx.status, color: 'bg-slate-100 text-slate-600 border-slate-200' };
                   const isSquad = tx.payment_gateway === 'squad';
+                  const isNexaPay = tx.payment_gateway === 'nexapay';
                   const isPending = tx.status === 'pending';
 
                   return (
@@ -383,6 +385,15 @@ export default function AdminTransactionsPage() {
                               className="px-3 py-1.5 rounded-lg text-xs font-bold bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-100 transition-colors disabled:opacity-50"
                             >
                               {actionLoading === `verify-${tx.id}` ? '…' : 'Query Squad'}
+                            </button>
+                          )}
+                          {isNexaPay && isPending && (
+                            <button
+                              onClick={() => handleVerify(tx)}
+                              disabled={actionLoading === `verify-${tx.id}`}
+                              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors disabled:opacity-50"
+                            >
+                              {actionLoading === `verify-${tx.id}` ? '…' : 'Verify NexaPay'}
                             </button>
                           )}
                           {isPending && (

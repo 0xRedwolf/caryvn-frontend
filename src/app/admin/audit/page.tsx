@@ -53,9 +53,11 @@ export default function SecurityAuditHubPage() {
   // Tab 3: Per-User Audit
   const [usersList, setUsersList] = useState<UserItem[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
+  const [selectedUser, setSelectedUser] = useState<UserItem | null>(null);
   const [userActivities, setUserActivities] = useState<UserActivity[]>([]);
   const [userSearch, setUserSearch] = useState('');
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [searchingUsers, setSearchingUsers] = useState(false);
 
   // Fetch initial data based on active tab
   useEffect(() => {
@@ -70,6 +72,31 @@ export default function SecurityAuditHubPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, activeTab]);
+
+  // Live debounced server search for users
+  useEffect(() => {
+    if (!token || activeTab !== 'user') return;
+    
+    const timer = setTimeout(async () => {
+      setSearchingUsers(true);
+      try {
+        const res = await adminApi.getUsers(token, {
+          search: userSearch.trim() || undefined,
+          limit: 50,
+        });
+        if (res.data) {
+          const data = res.data as { users: UserItem[] };
+          setUsersList(data.users || []);
+        }
+      } catch (err) {
+        console.error('Failed to search users:', err);
+      } finally {
+        setSearchingUsers(false);
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [userSearch, token, activeTab]);
 
   const loadSystemLogs = async () => {
     if (!token) return;
@@ -112,16 +139,13 @@ export default function SecurityAuditHubPage() {
 
   const loadUsersForAudit = async () => {
     if (!token) return;
-    setLoading(true);
-    const res = await adminApi.getUsers(token, { limit: 100 });
+    setSearchingUsers(true);
+    const res = await adminApi.getUsers(token, { limit: 50 });
     if (res.data) {
       const data = res.data as { users: UserItem[] };
       setUsersList(data.users || []);
-      if (data.users && data.users.length > 0 && !selectedUserId) {
-        // Removed auto-selection to leave the default state as "Select a User to Inspect..."
-      }
     }
-    setLoading(false);
+    setSearchingUsers(false);
   };
 
   const fetchSingleUserAudit = async (userId: string) => {
@@ -135,27 +159,13 @@ export default function SecurityAuditHubPage() {
     setLoading(false);
   };
 
-  const handleSelectUser = (userId: string) => {
-    setSelectedUserId(userId);
-    fetchSingleUserAudit(userId);
+  const handleSelectUser = (user: UserItem) => {
+    setSelectedUserId(user.id);
+    setSelectedUser(user);
+    setUserSearch(user.email);
+    setUserDropdownOpen(false);
+    fetchSingleUserAudit(user.id);
   };
-
-  const filteredUsers = usersList.filter((u) => {
-    const q = (userSearch || '').toLowerCase().trim();
-    if (!q) return true;
-    const email = (u.email || '').toLowerCase();
-    const username = (u.username || '').toLowerCase();
-    const firstName = (u.first_name || '').toLowerCase();
-    const lastName = (u.last_name || '').toLowerCase();
-    const fullName = `${firstName} ${lastName}`.trim();
-    return (
-      email.includes(q) ||
-      username.includes(q) ||
-      firstName.includes(q) ||
-      lastName.includes(q) ||
-      fullName.includes(q)
-    );
-  });
 
   return (
     <div className="space-y-6 text-slate-900">
@@ -347,104 +357,118 @@ export default function SecurityAuditHubPage() {
 
       {activeTab === 'user' && (
         <div className="space-y-4">
-          {/* User Selector Card — with search dropdown */}
-          <div className="relative z-20 bento-card !overflow-visible p-5 bg-white border border-slate-200 shadow-xs">
-            <div className="flex items-center justify-between mb-4">
+          {/* User Selector Card */}
+          <div className="relative z-20 bento-card !overflow-visible p-5 bg-white border border-slate-200 shadow-xs rounded-2xl">
+            <div className="flex items-center justify-between mb-3">
               <div>
                 <h2 className="text-base font-black text-slate-900">Per-User Security Audit</h2>
-                <p className="text-xs text-slate-500 mt-0.5">Select an account to view their activity trail</p>
+                <p className="text-xs text-slate-500 mt-0.5">Search and select an account to view their activity trail</p>
               </div>
               {selectedUserId && (
                 <button
+                  type="button"
                   onClick={() => {
                     setSelectedUserId('');
+                    setSelectedUser(null);
                     setUserActivities([]);
                     setUserSearch('');
                     setUserDropdownOpen(false);
                   }}
                   className="text-xs text-slate-600 hover:text-slate-900 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors font-semibold shadow-xs cursor-pointer"
                 >
-                  Clear
+                  Clear Selection
                 </button>
               )}
             </div>
 
-            {/* Search input (above dropdown as requested in the design) */}
-            <div className="relative mb-4">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" />
-              </svg>
-              <input
-                type="text"
-                placeholder="Search user by name/email..."
-                value={userSearch}
-                onChange={(e) => setUserSearch(e.target.value)}
-                className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition shadow-sm"
-              />
-            </div>
-
-            {/* Custom Dropdown for User Selection */}
-            <div className="relative mb-3">
-              <button
-                onClick={() => setUserDropdownOpen(!userDropdownOpen)}
-                className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-900 font-medium hover:bg-slate-100 transition shadow-sm"
-              >
-                <span className={selectedUserId ? 'text-primary' : 'text-slate-600'}>
-                  {selectedUserId 
-                    ? (usersList.find(u => u.id === selectedUserId)?.email || 'Select a User to Inspect...') 
-                    : 'Select a User to Inspect...'}
-                </span>
-                <svg className={`w-4 h-4 text-slate-500 transition-transform duration-200 ${userDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            {/* Unified Search Combobox */}
+            <div className="relative">
+              <div className="relative flex items-center">
+                <svg className="absolute left-3.5 w-4 h-4 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" />
                 </svg>
-              </button>
+                <input
+                  type="text"
+                  placeholder="Search user by email, username, or name..."
+                  value={userSearch}
+                  onFocus={() => setUserDropdownOpen(true)}
+                  onChange={(e) => {
+                    setUserSearch(e.target.value);
+                    setUserDropdownOpen(true);
+                  }}
+                  className="w-full pl-10 pr-24 py-3 rounded-xl bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-200 text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition shadow-xs"
+                />
+                <div className="absolute right-3 flex items-center gap-1.5">
+                  {searchingUsers ? (
+                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                  ) : userSearch ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserSearch('');
+                        setUserDropdownOpen(true);
+                      }}
+                      className="p-1 rounded-md text-slate-400 hover:text-slate-700 cursor-pointer"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => setUserDropdownOpen(!userDropdownOpen)}
+                    className="p-1 rounded-md text-slate-400 hover:text-slate-700 cursor-pointer"
+                  >
+                    <svg className={`w-4 h-4 transition-transform duration-200 ${userDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
 
+              {/* Live Dropdown Results */}
               {userDropdownOpen && (
                 <>
-                  <div className="fixed inset-0 z-10" onClick={() => setUserDropdownOpen(false)} />
-                  <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden py-1">
-                    <button
-                      onClick={() => {
-                        setSelectedUserId('');
-                        setUserDropdownOpen(false);
-                      }}
-                      className="w-full flex items-center justify-between px-4 py-3 text-left text-xs bg-slate-100 text-primary font-bold border-b border-slate-200"
-                    >
-                      Select a User to Inspect...
-                      {!selectedUserId && (
-                        <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </button>
-                    
-                    <div className="max-h-60 overflow-y-auto">
-                      {filteredUsers.length === 0 ? (
-                        <div className="px-4 py-6 text-center text-xs text-slate-500">No users match your search</div>
-                      ) : filteredUsers.map((u) => (
-                        <button
-                          key={u.id}
-                          onClick={() => {
-                            handleSelectUser(u.id);
-                            setUserDropdownOpen(false);
-                          }}
-                          className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-left transition-colors text-xs cursor-pointer ${
-                            selectedUserId === u.id ? 'bg-primary/5' : 'hover:bg-slate-50'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className={`truncate ${selectedUserId === u.id ? 'text-primary font-semibold' : 'text-slate-700'}`}>
-                              {u.first_name ? `${u.first_name} ${u.last_name || ''}`.trim() : (u.username || u.email)} ({u.email})
-                            </span>
-                          </div>
-                          {selectedUserId === u.id && (
-                            <svg className="w-4 h-4 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                            </svg>
-                          )}
-                        </button>
-                      ))}
-                    </div>
+                  <div className="fixed inset-0 z-40" onClick={() => setUserDropdownOpen(false)} />
+                  <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden py-1 divide-y divide-slate-100 max-h-72 overflow-y-auto">
+                    {usersList.length === 0 ? (
+                      <div className="px-4 py-8 text-center text-xs text-slate-500">
+                        {searchingUsers ? 'Searching users...' : 'No users found matching that query'}
+                      </div>
+                    ) : (
+                      usersList.map((u) => {
+                        const isSelected = selectedUserId === u.id;
+                        const displayName = u.first_name ? `${u.first_name} ${u.last_name || ''}`.trim() : (u.username || u.email.split('@')[0]);
+                        return (
+                          <button
+                            key={u.id}
+                            type="button"
+                            onClick={() => handleSelectUser(u)}
+                            className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-left transition-colors text-xs cursor-pointer ${
+                              isSelected ? 'bg-primary/10 font-bold' : 'hover:bg-slate-50'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-8 h-8 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-bold flex items-center justify-center shrink-0 text-xs">
+                                {displayName[0]?.toUpperCase() || '?'}
+                              </div>
+                              <div className="min-w-0">
+                                <p className={`truncate font-semibold ${isSelected ? 'text-primary' : 'text-slate-900'}`}>
+                                  {displayName}
+                                </p>
+                                <p className="text-[11px] text-slate-500 truncate">{u.email}</p>
+                              </div>
+                            </div>
+                            {isSelected && (
+                              <svg className="w-4 h-4 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </button>
+                        );
+                      })
+                    )}
                   </div>
                 </>
               )}
@@ -458,7 +482,7 @@ export default function SecurityAuditHubPage() {
                 <div>
                   <h2 className="text-base font-black text-slate-900">Account Activity Timeline</h2>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    {usersList.find((u) => u.id === selectedUserId)?.email || 'Selected Account'}
+                    {selectedUser?.email || usersList.find((u) => u.id === selectedUserId)?.email || 'Selected Account'}
                   </p>
                 </div>
                 <span className={`text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full ${

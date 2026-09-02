@@ -21,6 +21,8 @@ interface AuthContextType {
   refreshToken: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  sessionExpired: boolean;
+  closeSessionExpired: () => void;
   login: (loginIdentifier: string, password: string) => Promise<{ success: boolean; error?: string }>;
   register: (data: { email: string; username: string; password: string; password2: string; first_name?: string; last_name?: string }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
@@ -35,14 +37,20 @@ const REFRESH_KEY = 'caryvn_refresh';
 // Refresh the access token 5 minutes before the 30-minute expiry
 const REFRESH_INTERVAL_MS = 25 * 60 * 1000; // 25 minutes
 
+// Sign out after 5 minutes of total user inactivity
+const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [refreshTokenState, setRefreshToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   // Ref to hold the refresh timer so it can be cleared on logout/unmount
   const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Ref for the 5-minute inactivity timer
+  const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
@@ -52,6 +60,95 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshTimerRef.current = null;
     }
   };
+
+  const handleLogoutCleanup = () => {
+    stopRefreshTimer();
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+      inactivityTimerRef.current = null;
+    }
+    setUser(null);
+    setToken(null);
+    setRefreshToken(null);
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_KEY);
+  };
+
+  const handleSessionTimeout = useCallback(() => {
+    handleLogoutCleanup();
+    setSessionExpired(true);
+  }, []);
+
+  const closeSessionExpired = () => {
+    setSessionExpired(false);
+  };
+
+  // ── Inactivity Tracker ────────────────────────────────────────────────────
+  const resetInactivityTimer = useCallback(() => {
+    if (!user) return;
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+    }
+    inactivityTimerRef.current = setTimeout(() => {
+      handleSessionTimeout();
+    }, INACTIVITY_TIMEOUT_MS);
+  }, [user, handleSessionTimeout]);
+
+  useEffect(() => {
+    if (!user) {
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+        inactivityTimerRef.current = null;
+      }
+      return;
+    }
+
+    // Start 5-min inactivity timer
+    resetInactivityTimer();
+
+    // Throttled activity listener for mouse, keyboard, touch, scroll
+    let lastActivity = Date.now();
+    const handleActivity = () => {
+      const now = Date.now();
+      if (now - lastActivity > 2000) {
+        lastActivity = now;
+        resetInactivityTimer();
+      }
+    };
+
+    const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+    events.forEach((evt) => window.addEventListener(evt, handleActivity, { passive: true }));
+
+    return () => {
+      events.forEach((evt) => window.removeEventListener(evt, handleActivity));
+      if (inactivityTimerRef.current) {
+        clearTimeout(inactivityTimerRef.current);
+        inactivityTimerRef.current = null;
+      }
+    };
+  }, [user, resetInactivityTimer]);
+
+  // ── Global API Event Listeners (Token Refreshed & Session Expired) ────────
+  useEffect(() => {
+    const handleTokenRefreshed = (e: Event) => {
+      const custom = e as CustomEvent<{ access: string }>;
+      if (custom.detail?.access) {
+        setToken(custom.detail.access);
+      }
+    };
+
+    const handleSessionExpiredEvent = () => {
+      handleSessionTimeout();
+    };
+
+    window.addEventListener('caryvn_token_refreshed', handleTokenRefreshed);
+    window.addEventListener('caryvn_session_expired', handleSessionExpiredEvent);
+
+    return () => {
+      window.removeEventListener('caryvn_token_refreshed', handleTokenRefreshed);
+      window.removeEventListener('caryvn_session_expired', handleSessionExpiredEvent);
+    };
+  }, [handleSessionTimeout]);
 
   /**
    * Silently exchange the stored refresh token for a new access token.
@@ -75,14 +172,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           localStorage.setItem(REFRESH_KEY, refresh);
         }
       } else {
-        // Refresh token is invalid / blacklisted — force logout
-        handleLogoutCleanup();
+        // Refresh token is invalid / blacklisted — force logout & notify
+        handleSessionTimeout();
       }
     } catch {
       // Network error — don't log out, just let the next interval try again
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [handleSessionTimeout]);
 
   /**
    * Start the proactive refresh timer.
@@ -149,15 +246,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const handleLogoutCleanup = () => {
-    stopRefreshTimer();
-    setUser(null);
-    setToken(null);
-    setRefreshToken(null);
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(REFRESH_KEY);
-  };
-
   // ── Public API ────────────────────────────────────────────────────────────
 
   const login = async (loginIdentifier: string, password: string) => {
@@ -169,6 +257,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(data.user);
         setToken(data.tokens.access);
         setRefreshToken(data.tokens.refresh);
+        setSessionExpired(false);
         localStorage.setItem(TOKEN_KEY, data.tokens.access);
         localStorage.setItem(REFRESH_KEY, data.tokens.refresh);
         // Start timer fresh on every login
@@ -191,6 +280,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(responseData.user);
         setToken(responseData.tokens.access);
         setRefreshToken(responseData.tokens.refresh);
+        setSessionExpired(false);
         localStorage.setItem(TOKEN_KEY, responseData.tokens.access);
         localStorage.setItem(REFRESH_KEY, responseData.tokens.refresh);
         startRefreshTimer();
@@ -225,6 +315,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         refreshToken: refreshTokenState,
         isLoading,
         isAuthenticated: !!user,
+        sessionExpired,
+        closeSessionExpired,
         login,
         register,
         logout,
