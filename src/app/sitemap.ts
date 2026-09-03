@@ -1,25 +1,38 @@
 import { MetadataRoute } from 'next';
 
-export default function sitemap(): MetadataRoute.Sitemap {
+const defaultSlugs = [
+  'best-smm-tools-2026',
+  'best-platform-for-business',
+  'increase-engagement-2026',
+  'social-media-trends-2026',
+  'how-often-to-post-2026',
+  'beat-social-media-algorithm-2026',
+  'organic-vs-paid-social-2026',
+  'what-is-an-smm-panel',
+  'tiktok-algorithm-2026',
+  'social-proof-ecommerce',
+  'instagram-vs-youtube-roi',
+  'top-10-best-smm-panels-2026',
+];
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://www.caryvn.com';
+  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
-  const blogPosts = [
-    'best-smm-tools-2026',
-    'best-platform-for-business',
-    'increase-engagement-2026',
-    'social-media-trends-2026',
-    'how-often-to-post-2026',
-    'beat-social-media-algorithm-2026',
-    'organic-vs-paid-social-2026',
-    'what-is-an-smm-panel',
-    'tiktok-algorithm-2026',
-    'social-proof-ecommerce',
-    'instagram-vs-youtube-roi',
-    'top-10-best-smm-panels-2026',
-  ];
+  let allSlugs = [...defaultSlugs];
+  try {
+    const res = await fetch(`${API_URL}/blog/`, { next: { revalidate: 3600 } });
+    if (res.ok) {
+      const data = await res.json();
+      const results = Array.isArray(data) ? data : data.results || [];
+      const fetchedSlugs = results.map((p: any) => p.slug).filter(Boolean);
+      allSlugs = Array.from(new Set([...defaultSlugs, ...fetchedSlugs]));
+    }
+  } catch {
+    // Fallback to defaultSlugs
+  }
 
-
-  const blogEntries: MetadataRoute.Sitemap = blogPosts.map((slug) => ({
+  const blogEntries: MetadataRoute.Sitemap = allSlugs.map((slug) => ({
     url: `${baseUrl}/blog/${slug}`,
     lastModified: new Date(),
     changeFrequency: 'weekly',

@@ -42,7 +42,7 @@ export default function LoginPage() {
             {/* Logo */}
             <div className="flex justify-center mb-6">
               <Link href="/" className="cursor-pointer">
-                <Logo width={160} height={38} />
+                <Logo width={160} height={32} />
               </Link>
             </div>
 

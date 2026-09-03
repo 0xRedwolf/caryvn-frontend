@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import Footer from '@/components/Footer';
+import BlogPostView from '@/components/blog/BlogPostView';
 
 const blogPosts = {
   'what-is-an-smm-panel': {
@@ -1091,6 +1091,67 @@ const blogPosts = {
   }
 };
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+
+async function fetchPost(slug: string) {
+  try {
+    const res = await fetch(`${API_URL}/blog/${slug}/`, {
+      next: { revalidate: 60 },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        title: data.title,
+        slug: data.slug,
+        content: data.content,
+        excerpt: data.excerpt,
+        featured_image: data.featured_image,
+        read_time: data.read_time,
+        published_at: data.published_at,
+        views_count: data.views_count,
+        category_name: data.category?.name || data.category_name,
+        author_name: data.author?.name || data.author_name,
+        author_role: data.author?.role,
+        author_bio: data.author?.bio,
+        author_avatar: data.author?.avatar_url,
+        author_social_x: data.author?.social_x,
+        author_social_linkedin: data.author?.social_linkedin,
+        faqs: data.faqs,
+        cta_title: data.cta_title,
+        cta_description: data.cta_description,
+        cta_button_text: data.cta_button_text,
+        cta_url: data.cta_url,
+        seo_title: data.seo_title,
+        seo_description: data.seo_description,
+        canonical_url: data.canonical_url,
+        related_posts: data.related_posts,
+      };
+    }
+  } catch {
+    // API not reachable or offline, fallback to static dictionary
+  }
+
+  const staticPost = blogPosts[slug as keyof typeof blogPosts];
+  if (!staticPost) return null;
+
+  return {
+    title: staticPost.title,
+    slug: slug,
+    content: staticPost.content,
+    excerpt: staticPost.seoDescription,
+    featured_image: '/cat-strategy.png',
+    read_time: staticPost.readTime,
+    published_at: staticPost.date,
+    category_name: 'Social Media Strategy',
+    author_name: 'Alexander Sterling',
+    author_role: 'Editor In Chief',
+    author_bio: 'Alexander is the editor-in-chief of the Caryvn blog, specializing in social media growth, digital brand building, and engagement strategy.',
+    faqs: staticPost.faqs,
+    seo_title: staticPost.seoTitle,
+    seo_description: staticPost.seoDescription,
+  };
+}
+
 export async function generateStaticParams() {
   return Object.keys(blogPosts).map((slug) => ({
     slug: slug,
@@ -1099,81 +1160,137 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const post = blogPosts[slug as keyof typeof blogPosts];
-  if (!post) return { title: 'Post Not Found' };
-  
+  const post = await fetchPost(slug);
+  if (!post) return { title: 'Post Not Found - Caryvn Blog' };
+
+  const canonicalUrl = post.canonical_url || `https://www.caryvn.com/blog/${slug}`;
+  const ogImageUrl = post.featured_image?.startsWith('http')
+    ? post.featured_image
+    : `https://www.caryvn.com${post.featured_image || '/logo-full.png'}`;
+
   return {
-    title: post.seoTitle || `${post.title} - Caryvn Blog`,
-    description: post.seoDescription,
+    title: post.seo_title || `${post.title} - Caryvn Blog`,
+    description: post.seo_description || post.excerpt,
     alternates: {
-      canonical: `https://www.caryvn.com/blog/${slug}`,
+      canonical: canonicalUrl,
     },
     openGraph: {
-      title: post.seoTitle || post.title,
-      description: post.seoDescription,
-      url: `https://www.caryvn.com/blog/${slug}`,
+      title: post.seo_title || post.title,
+      description: post.seo_description || post.excerpt,
+      url: canonicalUrl,
       type: 'article',
-      publishedTime: post.date,
-      authors: ['Admin'],
-    }
+      publishedTime: post.published_at,
+      authors: [post.author_name || 'Alexander Sterling'],
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: post.title,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: post.seo_title || post.title,
+      description: post.seo_description || post.excerpt,
+      images: [ogImageUrl],
+    },
   };
 }
 
-const CTABottom = () => (
-  <div className="my-2 py-2 px-6 rounded-2xl text-center flex flex-col items-center justify-center gap-8 transition-colors">
-    <h4 className="text-2xl md:text-3xl font-bold text-white dark:text-white tracking-tight">Want To Grow Your Account Faster?</h4>
-    <a href="/services" className="bg-primary hover:bg-primary/80 hover:-translate-y-0.5 text-white font-semibold py-3.5 px-8 rounded-full shadow-[0_4px_14px_0_rgba(255,78,89,0.39)] hover:shadow-[0_6px_20px_rgba(255,78,89,0.3)] transition-all duration-200 flex items-center gap-2 text-[17px]">
-      Our Services
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"></path>
-      </svg>
-    </a>
-  </div>
-);
-
 export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const post = blogPosts[slug as keyof typeof blogPosts];
+  const post = await fetchPost(slug);
 
   if (!post) {
     notFound();
   }
 
+  const articleImageUrl = post.featured_image?.startsWith('http')
+    ? post.featured_image
+    : `https://www.caryvn.com${post.featured_image || '/logo-full.png'}`;
+
   const articleSchema = {
-    "@context": "https://schema.org",
-    "@type": "BlogPosting",
-    "headline": post.title,
-    "description": post.seoDescription,
-    "author": {
-      "@type": "Person",
-      "name": "Admin"
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    headline: post.title,
+    description: post.seo_description || post.excerpt,
+    image: [articleImageUrl],
+    author: {
+      '@type': 'Person',
+      name: post.author_name || 'Alexander Sterling',
+      jobTitle: post.author_role || 'Editor In Chief',
+      url: post.author_social_linkedin || post.author_social_x || 'https://www.caryvn.com/blog',
     },
-    "datePublished": post.date,
-    "url": `https://www.caryvn.com/blog/${slug}`,
-    "mainEntityOfPage": {
-      "@type": "WebPage",
-      "@id": `https://www.caryvn.com/blog/${slug}`
-    }
+    publisher: {
+      '@type': 'Organization',
+      name: 'Caryvn',
+      url: 'https://www.caryvn.com',
+      logo: {
+        '@type': 'ImageObject',
+        url: 'https://www.caryvn.com/svg-logo-light.svg',
+      },
+    },
+    datePublished: post.published_at,
+    dateModified: post.published_at,
+    url: `https://www.caryvn.com/blog/${slug}`,
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': `https://www.caryvn.com/blog/${slug}`,
+    },
   };
 
-  const faqSchema = post.faqs && post.faqs.length > 0 ? {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": post.faqs.map((faq) => ({
-      "@type": "Question",
-      "name": faq.q,
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": faq.a
-      }
-    }))
-  } : null;
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: 'Home',
+        item: 'https://www.caryvn.com',
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: 'Blog',
+        item: 'https://www.caryvn.com/blog',
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: post.title,
+        item: `https://www.caryvn.com/blog/${slug}`,
+      },
+    ],
+  };
+
+  const faqSchema =
+    post.faqs && post.faqs.length > 0
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'FAQPage',
+          mainEntity: post.faqs.map((faq: any) => ({
+            '@type': 'Question',
+            name: faq.q,
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: faq.a,
+            },
+          })),
+        }
+      : null;
 
   return (
-    <div className="min-h-screen bg-background-dark flex flex-col">
+    <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleSchema) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
       />
       {faqSchema && (
         <script
@@ -1181,148 +1298,8 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
         />
       )}
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 w-full">
-        <Link href="/blog" className="inline-flex items-center text-text-secondary hover:text-white transition-colors mb-6">
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Back to Blog
-        </Link>
-        
-        <div className="flex flex-col lg:flex-row gap-12">
-          {/* LEFT COLUMN - MAIN CONTENT */}
-          <article className="flex-1 lg:max-w-4xl">
-            {/* Category */}
-            <div className="text-primary font-bold tracking-wide uppercase text-sm mb-4">
-              Social Media Marketing
-            </div>
-
-            {/* Title */}
-            <h1 className="text-4xl md:text-5xl lg:text-5xl font-bold text-white leading-tight mb-8">
-              {post.title}
-            </h1>
-
-            {/* Hero Image Placeholder */}
-            <div className="w-full aspect-2/1 bg-surface-dark border border-border-dark rounded-3xl mb-8 flex items-center justify-center overflow-hidden relative shadow-lg">
-               <div className="text-center z-10">
-                 <svg className="w-16 h-16 mx-auto text-border-dark mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                 <span className="text-text-secondary font-medium">Hero Image Placeholder</span>
-               </div>
-               <div className="absolute inset-0 bg-linear-to-tr from-primary/10 to-transparent pointer-events-none"></div>
-            </div>
-
-            {/* Post Meta */}
-            <div className="flex flex-wrap items-center justify-between py-5 border-y border-border-dark mb-10 text-sm md:text-base text-text-secondary">
-               <div className="flex items-center gap-2">
-                 <span>Written By <strong className="text-white font-medium">Admin</strong></span>
-                 <span>on <strong className="text-white font-medium">{post.date}</strong></span>
-               </div>
-               <div className="flex items-center gap-6 mt-4 sm:mt-0 font-medium">
-                 <span className="flex items-center gap-2">
-                   {post.readTime}
-                 </span>
-                 <span className="flex items-center gap-2">
-                   1521 Views
-                 </span>
-               </div>
-            </div>
-
-            {/* Blog Content */}
-            <div 
-              className="prose prose-invert prose-primary max-w-none text-text-secondary md:text-lg leading-relaxed blog-content"
-              dangerouslySetInnerHTML={{ __html: post.content }}
-            />
-
-            {/* Author Block */}
-            <div className="mt-16 bg-surface-dark border border-border-dark rounded-3xl p-8 flex flex-col sm:flex-row items-center sm:items-start gap-8 shadow-sm">
-              <div className="w-28 h-28 shrink-0 rounded-full bg-background-dark border-4 border-surface-darker overflow-hidden flex items-center justify-center shadow-lg relative">
-                 <svg className="w-12 h-12 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                 <div className="absolute bottom-0 right-0 w-6 h-6 bg-primary rounded-full border-2 border-surface-dark"></div>
-              </div>
-              <div className="text-center sm:text-left flex-1">
-                <h4 className="text-2xl font-bold text-white mb-2">Admin</h4>
-                <div className="inline-block bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-4">Editor In Chief</div>
-                <p className="text-text-secondary leading-relaxed">
-                  Admin is the editor-in-chief of the Caryvn blog, specializing in social media growth, digital brand building, and engagement strategy. With years of experience optimizing social panels, Admin shares expert insights for scaling your online presence.
-                </p>
-              </div>
-            </div>
-
-            {/* FAQs */}
-            {post.faqs && post.faqs.length > 0 && (
-              <div className="mt-16 pt-12 border-t border-border-dark">
-                <h3 className="text-2xl font-bold text-white mb-8">Frequently Asked Questions</h3>
-                <div className="space-y-6">
-                  {post.faqs.map((faq, idx) => (
-                    <div key={idx} className="bg-surface-dark border border-border-dark rounded-2xl p-6">
-                      <h4 className="text-lg font-bold text-white mb-3 flex items-start gap-3">
-                        <span className="text-primary shrink-0">Q.</span>
-                        {faq.q}
-                      </h4>
-                      <p className="text-text-secondary text-md pl-7">{faq.a}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </article>
-
-          {/* RIGHT COLUMN - SIDEBAR */}
-          <aside className="w-full lg:w-80 shrink-0 space-y-8 lg:sticky lg:top-8 lg:self-start">
-            {/* Boost Card */}
-            <div className="bg-surface-dark border border-border-dark rounded-3xl p-8 text-center shadow-lg relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-3xl rounded-full"></div>
-              <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary/10 blur-3xl rounded-full"></div>
-              
-              <div className="relative z-10">
-                <div className="w-20 h-20 bg-background-dark border border-border-dark rounded-full flex items-center justify-center mx-auto mb-6 shadow-glow relative">
-                   <span className="text-3xl">🚀</span>
-                </div>
-                <h3 className="text-2xl font-bold text-white mb-4 leading-tight">Boost Your Social Media Accounts Now!</h3>
-                <p className="text-sm text-text-secondary mb-8 leading-relaxed">It&apos;s fun and easy. Just choose the amount of followers, likes, or views that suits your needs, and blast off to insane account growth.</p>
-                
-                <Link href="/register" className="flex items-center justify-center w-full py-3.5 px-4 bg-transparent border-2 border-primary text-primary hover:bg-primary hover:text-white font-bold rounded-xl mb-8 transition-all duration-300">
-                  Get Boosting Now! <span className="ml-2 font-normal text-xl leading-none">&rarr;</span>
-                </Link>
-                
-                <div className="space-y-4 text-left">
-                   {[
-                     {name: 'Buy Instagram Followers', url: '/services'},
-                     {name: 'Buy Instagram Likes', url: '/services'},
-                     {name: 'Buy Instagram Views', url: '/services'},
-                     {name: 'Buy Instagram Comments', url: '/services'},
-                     {name: 'Buy Instagram Reels Likes', url: '/services'},
-                     {name: 'Buy Instagram Reels Views', url: '/services'},
-                   ].map((service, i) => (
-                     <Link key={i} href={service.url} className="flex items-center justify-between text-[15px] font-medium text-text-secondary hover:text-primary transition-colors group">
-                       <span className="border-b border-transparent group-hover:border-primary pb-0.5">{service.name}</span>
-                       <span className="text-primary opacity-50 group-hover:opacity-100 transition-opacity">&rarr;</span>
-                     </Link>
-                   ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Table of Contents Box */}
-            <div className="pt-6 px-2 hidden lg:block">
-               <h4 className="text-white font-bold mb-6 text-lg tracking-wide border-b border-border-dark pb-3">Table of Contents:</h4>
-               <ul className="space-y-4 text-[15px] text-text-secondary list-disc pl-5 marker:text-border-dark">
-                 <li className="hover:text-primary cursor-pointer transition-colors pl-1">How Do SMM Panels Work?</li>
-                 <li className="hover:text-primary cursor-pointer transition-colors pl-1">Why Do Businesses Use Them?</li>
-                 <li className="hover:text-primary cursor-pointer transition-colors pl-1">Getting Started</li>
-                 <li className="hover:text-primary cursor-pointer transition-colors pl-1">FAQs About SMM Panels</li>
-               </ul>
-            </div>
-          </aside>
-        </div>
-
-        {/* Global CTA at the very bottom */}
-        <div className="mt-20">
-          <CTABottom />
-        </div>
-      </main>
-
-      <Footer />
-    </div>
+      <BlogPostView post={post as any} />
+    </>
   );
 }
+

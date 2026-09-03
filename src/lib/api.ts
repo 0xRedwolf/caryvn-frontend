@@ -512,3 +512,135 @@ export const popupsApi = {
   getActivePopups: (token: string) =>
     api('/popups/active/', { token }),
 };
+
+// =============================================================================
+// Blog CMS Interfaces & APIs
+// =============================================================================
+
+export interface BlogAuthor {
+  id: string;
+  name: string;
+  role: string;
+  avatar_url?: string;
+  bio?: string;
+  social_x?: string;
+  social_linkedin?: string;
+  posts_count?: number;
+}
+
+export interface BlogCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  posts_count?: number;
+}
+
+export interface BlogPostItem {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  featured_image?: string;
+  author_name: string;
+  author_avatar?: string;
+  category_name: string;
+  category_slug: string;
+  status: 'DRAFT' | 'PUBLISHED';
+  featured: boolean;
+  read_time: string;
+  views_count: number;
+  published_at: string;
+  created_at: string;
+}
+
+export interface BlogPostDetail extends BlogPostItem {
+  content: string;
+  author?: BlogAuthor;
+  category?: BlogCategory;
+  author_id?: string;
+  category_id?: string;
+  seo_title?: string;
+  seo_description?: string;
+  canonical_url?: string;
+  focus_keyword?: string;
+  faqs?: Array<{ q: string; a: string }>;
+  cta_title?: string;
+  cta_description?: string;
+  cta_button_text?: string;
+  cta_url?: string;
+  related_posts?: BlogPostItem[];
+}
+
+export const blogApi = {
+  getPosts: (params?: { category?: string; q?: string; page?: number; featured?: boolean }) => {
+    const query = new URLSearchParams();
+    if (params?.category) query.set('category', params.category);
+    if (params?.q) query.set('q', params.q);
+    if (params?.page) query.set('page', String(params.page));
+    if (params?.featured) query.set('featured', 'true');
+    const qs = query.toString();
+    return api<any>(`/blog/${qs ? `?${qs}` : ''}`);
+  },
+  getPostBySlug: (slug: string) =>
+    api<BlogPostDetail>(`/blog/${slug}/`),
+  getCategories: () =>
+    api<BlogCategory[]>('/blog/categories/'),
+  getAuthors: () =>
+    api<BlogAuthor[]>('/blog/authors/'),
+};
+
+export const adminBlogApi = {
+  getPosts: (token: string, params?: { status?: string; q?: string; page?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.status) query.set('status', params.status);
+    if (params?.q) query.set('q', params.q);
+    if (params?.page) query.set('page', String(params.page));
+    const qs = query.toString();
+    return api<any>(`/admin/blog/posts/${qs ? `?${qs}` : ''}`, { token });
+  },
+  getPost: (id: string, token: string) =>
+    api<BlogPostDetail>(`/admin/blog/posts/${id}/`, { token }),
+  createPost: (data: any, token: string) =>
+    api<BlogPostDetail>('/admin/blog/posts/', { method: 'POST', body: data, token }),
+  updatePost: (id: string, data: any, token: string) =>
+    api<BlogPostDetail>(`/admin/blog/posts/${id}/`, { method: 'PUT', body: data, token }),
+  deletePost: (id: string, token: string) =>
+    api(`/admin/blog/posts/${id}/`, { method: 'DELETE', token }),
+  uploadImage: async (file: File, token: string): Promise<{ url?: string; error?: string }> => {
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await fetch(`${API_URL}/admin/blog/upload-image/`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return { error: err.error || 'Failed to upload image' };
+      }
+      const data = await res.json();
+      return { url: data.url };
+    } catch (e: any) {
+      return { error: e.message || 'Image upload error' };
+    }
+  },
+  getAuthors: (token: string) =>
+    api<BlogAuthor[]>('/admin/blog/authors/', { token }),
+  createAuthor: (data: any, token: string) =>
+    api<BlogAuthor>('/admin/blog/authors/', { method: 'POST', body: data, token }),
+  updateAuthor: (id: string, data: any, token: string) =>
+    api<BlogAuthor>(`/admin/blog/authors/${id}/`, { method: 'PUT', body: data, token }),
+  deleteAuthor: (id: string, token: string) =>
+    api(`/admin/blog/authors/${id}/`, { method: 'DELETE', token }),
+  getCategories: (token: string) =>
+    api<BlogCategory[]>('/admin/blog/categories/', { token }),
+  createCategory: (data: any, token: string) =>
+    api<BlogCategory>('/admin/blog/categories/', { method: 'POST', body: data, token }),
+  updateCategory: (id: string, data: any, token: string) =>
+    api<BlogCategory>(`/admin/blog/categories/${id}/`, { method: 'PUT', body: data, token }),
+  deleteCategory: (id: string, token: string) =>
+    api(`/admin/blog/categories/${id}/`, { method: 'DELETE', token }),
+};
+

@@ -28,7 +28,7 @@ export default function CustomSelect({
   onChange,
   placeholder = 'Select option...',
   label,
-  searchable = true,
+  searchable = false,
   disabled = false,
   className = '',
   error,
@@ -68,7 +68,7 @@ export default function CustomSelect({
   return (
     <div className={`relative ${className}`} ref={containerRef}>
       {label && (
-        <label className="block text-xs font-semibold uppercase tracking-wider text-text-secondary mb-1.5">
+        <label className="block text-xs font-bold text-slate-700 mb-1.5">
           {label}
         </label>
       )}
@@ -77,22 +77,22 @@ export default function CustomSelect({
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border text-left transition-all duration-200 ${
+        className={`w-full flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl border text-left transition-all duration-200 bg-white ${
           isOpen
-            ? 'border-primary ring-2 ring-primary/20 bg-surface-dark/90 shadow-lg'
-            : 'border-border-dark bg-surface-dark/60 hover:border-slate-600 hover:bg-surface-dark'
+            ? 'border-primary ring-2 ring-primary/10 shadow-sm'
+            : 'border-slate-200 hover:border-slate-300'
         } ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${
-          error ? 'border-red-500 ring-1 ring-red-500/20' : ''
+          error ? 'border-rose-500 ring-1 ring-rose-500/20' : ''
         }`}
       >
         <div className="flex items-center gap-2.5 truncate">
-          {selectedOption?.icon && <span className="shrink-0">{selectedOption.icon}</span>}
+          {selectedOption?.icon && <span className="shrink-0 text-slate-500">{selectedOption.icon}</span>}
           <div className="truncate">
-            <span className={`block truncate text-sm font-medium ${selectedOption ? 'text-text-primary' : 'text-text-secondary'}`}>
+            <span className={`block truncate text-xs font-bold ${selectedOption ? 'text-slate-900' : 'text-slate-400'}`}>
               {selectedOption ? selectedOption.label : placeholder}
             </span>
             {selectedOption?.sublabel && (
-              <span className="block truncate text-xs text-text-secondary">{selectedOption.sublabel}</span>
+              <span className="block truncate text-[11px] text-slate-500 font-normal">{selectedOption.sublabel}</span>
             )}
           </div>
         </div>
@@ -104,7 +104,7 @@ export default function CustomSelect({
             </span>
           )}
           <svg
-            className={`w-4 h-4 text-text-secondary transition-transform duration-200 ${isOpen ? 'rotate-180 text-primary' : ''}`}
+            className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180 text-primary' : ''}`}
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -114,15 +114,15 @@ export default function CustomSelect({
         </div>
       </button>
 
-      {error && <p className="mt-1 text-xs text-red-400">{error}</p>}
+      {error && <p className="mt-1 text-xs text-rose-500">{error}</p>}
 
       {isOpen && (
-        <div className="absolute z-50 left-0 right-0 mt-2 max-h-72 bg-surface-dark/95 backdrop-blur-xl border border-border-dark rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute z-50 left-0 right-0 mt-1.5 max-h-72 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
           {searchable && (
-            <div className="p-2.5 border-b border-border-dark">
+            <div className="p-2 border-b border-slate-100 bg-slate-50/50">
               <div className="relative">
                 <svg
-                  className="w-4 h-4 text-text-secondary absolute left-3 top-1/2 -translate-y-1/2"
+                  className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -137,16 +137,16 @@ export default function CustomSelect({
                 <input
                   ref={searchInputRef}
                   type="text"
-                  placeholder="Search options..."
+                  placeholder="Search..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-xs rounded-lg bg-surface-darker/60 border border-border-dark text-white placeholder-text-secondary focus:outline-none focus:border-primary"
+                  className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg bg-white border border-slate-200 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-primary"
                 />
               </div>
             </div>
           )}
 
-          <div className="overflow-y-auto max-h-60 p-1.5 space-y-1">
+          <div className="overflow-y-auto max-h-60 p-1.5 space-y-0.5">
             {filteredOptions.length > 0 ? (
               filteredOptions.map((option) => {
                 const isSelected = String(option.value) === String(value);
@@ -158,20 +158,20 @@ export default function CustomSelect({
                       onChange(option.value);
                       setIsOpen(false);
                     }}
-                    className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-left transition-colors duration-150 cursor-pointer ${
+                    className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-xl text-left transition-colors duration-150 cursor-pointer ${
                       isSelected
-                        ? 'bg-primary text-white font-semibold shadow-md'
-                        : 'text-text-primary-dark hover:bg-white/5'
+                        ? 'bg-primary/10 text-primary font-bold'
+                        : 'text-slate-700 hover:bg-slate-50 font-medium'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 truncate">
                       {option.icon && <span className="shrink-0">{option.icon}</span>}
                       <div className="truncate">
-                        <span className="block truncate text-sm">{option.label}</span>
+                        <span className="block truncate text-xs">{option.label}</span>
                         {option.sublabel && (
                           <span
-                            className={`block truncate text-xs ${
-                              isSelected ? 'text-blue-100' : 'text-text-secondary'
+                            className={`block truncate text-[10px] ${
+                              isSelected ? 'text-primary/70' : 'text-slate-400'
                             }`}
                           >
                             {option.sublabel}
@@ -185,19 +185,20 @@ export default function CustomSelect({
                         <span
                           className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
                             isSelected
-                              ? 'bg-white/20 text-white'
-                              : 'bg-primary/10 text-primary border border-primary/20'
+                              ? 'bg-primary/20 text-primary'
+                              : 'bg-slate-100 text-slate-600'
                           }`}
                         >
                           {option.badge}
                         </span>
                       )}
                       {isSelected && (
-                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="w-4 h-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path
-                            fillRule="evenodd"
-                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                            clipRule="evenodd"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2.5}
+                            d="M5 13l4 4L19 7"
                           />
                         </svg>
                       )}
@@ -206,7 +207,7 @@ export default function CustomSelect({
                 );
               })
             ) : (
-              <div className="p-4 text-center text-xs text-text-secondary">No results found</div>
+              <div className="p-4 text-center text-xs text-slate-400">No options found</div>
             )}
           </div>
         </div>
