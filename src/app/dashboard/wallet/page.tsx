@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { walletApi, adminApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import PaymentSuccessCelebration from '@/components/PaymentSuccessCelebration';
+import CountUpBalance from '@/components/CountUpBalance';
 
 interface Transaction {
   id: string;
@@ -70,9 +72,9 @@ function CopyButton({ value }: { value: string }) {
     <button
       type="button"
       onClick={copy}
-      className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg border font-medium transition-all ${
+      className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border font-bold transition-all duration-150 transform active:scale-95 cursor-pointer ${
         copied
-          ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+          ? 'border-emerald-300 bg-emerald-50 text-emerald-700 shadow-xs'
           : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50'
       }`}
     >
@@ -104,6 +106,11 @@ export default function WalletPage() {
   const [topupLoading, setTopupLoading] = useState(false);
   const [topupError, setTopupError] = useState('');
   const [topupSuccess, setTopupSuccess] = useState('');
+  const [confirmedPayment, setConfirmedPayment] = useState<{
+    amount: string | number;
+    reference?: string;
+    newBalance?: string | number;
+  } | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [txOffset, setTxOffset] = useState(0);
   const [txTotal, setTxTotal] = useState(0);
@@ -169,7 +176,13 @@ export default function WalletPage() {
         if (res.data) {
           const data = res.data as { status: string; amount?: string };
           if (data.status === 'success') {
-            setTopupSuccess(`₦${parseFloat(nexaSession.amount).toLocaleString()} received! Your wallet has been credited.`);
+            const currentBal = user ? parseFloat(user.balance) || 0 : 0;
+            const depAmt = parseFloat(nexaSession.amount) || 0;
+            setConfirmedPayment({
+              amount: nexaSession.amount,
+              reference: nexaSession.reference,
+              newBalance: currentBal + depAmt,
+            });
             setNexaSession(null);
             await refreshUser();
             loadTransactions();
@@ -186,12 +199,12 @@ export default function WalletPage() {
       clearInterval(pollInterval);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nexaSession, token]);
+  }, [nexaSession, token, user]);
 
   const handleRefreshBalance = async () => {
     if (isRefreshing) return;
     setIsRefreshing(true);
-    await refreshUser();
+    await Promise.all([refreshUser(), loadTransactions(0)]);
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
@@ -221,9 +234,15 @@ export default function WalletPage() {
     try {
       const result = await walletApi.verifyTopup(pendingRef, token);
       if (result.data) {
-        const data = result.data as { status: string };
+        const data = result.data as { status: string; amount?: string; balance?: string };
         if (data.status === 'success') {
           sessionStorage.removeItem('pending_payment_ref');
+          setConfirmedPayment({
+            amount: data.amount || '0',
+            reference: pendingRef,
+            newBalance: data.balance,
+          });
+          setShowTopup(true);
           await refreshUser();
           loadTransactions();
         }
@@ -266,6 +285,7 @@ export default function WalletPage() {
 
   const resetTopup = () => {
     setShowTopup(false);
+    setConfirmedPayment(null);
     setTopupLoading(false);
     setTopupAmount('');
     setTopupError('');
@@ -460,7 +480,7 @@ export default function WalletPage() {
 
         <div className="mb-6">
           <div className="text-4xl sm:text-5xl font-black text-primary tracking-tight">
-            {formatCurrency(user?.balance || '0')}
+            <CountUpBalance value={user?.balance || '0'} />
           </div>
         </div>
 
@@ -504,8 +524,17 @@ export default function WalletPage() {
             </div>
 
             <div className="p-6 overflow-y-auto space-y-5">
-              {/* Primary Method Tabs (Exact previous wordings: Automatic, Manual, Crypto - No emojis) */}
-              {!nexaSession && !topupSuccess && (
+              {confirmedPayment ? (
+                <PaymentSuccessCelebration
+                  amount={confirmedPayment.amount}
+                  reference={confirmedPayment.reference}
+                  newBalance={confirmedPayment.newBalance}
+                  onClose={resetTopup}
+                />
+              ) : (
+                <>
+                  {/* Primary Method Tabs (Exact previous wordings: Automatic, Manual, Crypto - No emojis) */}
+                  {!nexaSession && !topupSuccess && (
                 <div className="grid grid-cols-3 gap-1.5 p-1.5 rounded-xl bg-slate-100 border border-slate-200/60">
                   {isAutomaticAvailable() && (
                     <button
@@ -670,7 +699,13 @@ export default function WalletPage() {
                             try {
                               const res = await walletApi.checkNexaPayStatus(nexaSession.reference, token!);
                               if (res.data && (res.data as { status: string }).status === 'success') {
-                                setTopupSuccess('Deposit confirmed!');
+                                const currentBal = user ? parseFloat(user.balance) || 0 : 0;
+                                const depAmt = parseFloat(nexaSession.amount) || 0;
+                                setConfirmedPayment({
+                                  amount: nexaSession.amount,
+                                  reference: nexaSession.reference,
+                                  newBalance: currentBal + depAmt,
+                                });
                                 setNexaSession(null);
                                 await refreshUser();
                                 loadTransactions();
@@ -1119,6 +1154,8 @@ export default function WalletPage() {
                     </div>
                   )}
                 </div>
+              )}
+                </>
               )}
             </div>
           </div>

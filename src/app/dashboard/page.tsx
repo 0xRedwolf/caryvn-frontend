@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ordersApi } from '@/lib/api';
 import DashboardPopup from '@/components/DashboardPopup';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import CountUpBalance from '@/components/CountUpBalance';
 
 interface Order {
   id: string;
@@ -221,7 +222,7 @@ export default function DashboardPage() {
               {loading ? (
                 <div className="h-12 w-48 bg-blue-50 rounded-lg animate-pulse" />
               ) : (
-                formatCurrency(user?.balance || '0')
+                <CountUpBalance value={user?.balance || '0'} />
               )}
             </div>
             <p className="text-xs text-slate-400 mt-1">Available for order execution</p>

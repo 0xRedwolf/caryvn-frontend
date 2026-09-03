@@ -9,6 +9,7 @@ import TawkTo from '@/components/TawkTo';
 import FloatingChatMenu from '@/components/FloatingChatMenu';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import { formatCurrency } from '@/lib/utils';
+import CountUpBalance from '@/components/CountUpBalance';
 import { useState } from 'react';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
 
@@ -170,7 +171,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </button>
               </div>
               <p className="text-primary text-2xl font-black tracking-tight">
-                {formatCurrency(user?.balance || '0')}
+                <CountUpBalance value={user?.balance || '0'} />
               </p>
               <Link
                 href="/dashboard/wallet"

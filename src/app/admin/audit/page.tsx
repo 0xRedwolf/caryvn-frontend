@@ -358,7 +358,7 @@ export default function SecurityAuditHubPage() {
       {activeTab === 'user' && (
         <div className="space-y-4">
           {/* User Selector Card */}
-          <div className="relative z-20 bento-card !overflow-visible p-5 bg-white border border-slate-200 shadow-xs rounded-2xl">
+          <div className="relative z-20 bento-card overflow-visible! p-5 bg-white border border-slate-200 shadow-xs rounded-2xl">
             <div className="flex items-center justify-between mb-3">
               <div>
                 <h2 className="text-base font-black text-slate-900">Per-User Security Audit</h2>
@@ -431,7 +431,7 @@ export default function SecurityAuditHubPage() {
               {userDropdownOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setUserDropdownOpen(false)} />
-                  <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden py-1 divide-y divide-slate-100 max-h-72 overflow-y-auto">
+                  <div className="absolute top-full left-0 right-0 mt-2 z-50 bg-white border border-slate-200 rounded-2xl shadow-xl overflow-hidden py-1 divide-y divide-slate-100 max-h-72 overflow-y-auto animate-in fade-in zoom-in-95 duration-150 ring-1 ring-black/5">
                     {usersList.length === 0 ? (
                       <div className="px-4 py-8 text-center text-xs text-slate-500">
                         {searchingUsers ? 'Searching users...' : 'No users found matching that query'}
@@ -497,7 +497,7 @@ export default function SecurityAuditHubPage() {
                   <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
                 </div>
               ) : userActivities.length > 0 ? (
-                <div className="space-y-2.5 max-h-[520px] overflow-y-auto pr-1">
+                <div className="space-y-2.5 max-h-130 overflow-y-auto pr-1">
                   {userActivities.map((act) => (
                     <div
                       key={act.id}

@@ -60,7 +60,7 @@ export default function RegisterPage() {
       <div className="flex-1 flex items-center justify-center pt-24 pb-16 px-4">
         <div className="w-full max-w-lg">
           {/* Card */}
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-6 sm:p-10 ring-1 ring-black/5">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-6 sm:p-10 ring-1 ring-black/5 animate-in fade-in slide-in-from-bottom-3 duration-300">
             {/* Logo */}
             <div className="flex justify-center mb-6">
               <Link href="/" className="cursor-pointer">
