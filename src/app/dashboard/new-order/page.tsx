@@ -105,7 +105,7 @@ const platformConfig = [
   { name: "TikTok", color: "bg-slate-900" },
   { name: "YouTube", color: "bg-red-600" },
   { name: "Facebook", color: "bg-blue-600" },
-  { name: "X (Twitter)", color: "bg-slate-900" },
+  { name: "Twitter", color: "bg-slate-900" },
   { name: "Threads", color: "bg-slate-900" },
   { name: "Discord", color: "bg-[#5865F2]" },
   { name: "Kick", color: "bg-[#53FC18]" },
@@ -314,7 +314,7 @@ export default function NewOrderPage() {
     return services.filter((s) => {
       const cat = s.category_name.toLowerCase();
       const name = s.name.toLowerCase();
-      if (p === "twitter" || p === "x") {
+      if (p === "twitter" || p === "x" || p.includes("twitter") || p.includes("x")) {
         return (
           cat.includes("twitter") ||
           cat.includes(" x ") ||

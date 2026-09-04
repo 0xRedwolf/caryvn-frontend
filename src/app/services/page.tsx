@@ -99,18 +99,18 @@ const PlatformIcon = ({ name, selected }: { name: string; selected?: boolean }) 
 
 // Platform config with clean light-friendly active styles
 const platformConfig = [
-  { name: "All", color: "bg-primary force-text-white" },
-  { name: "Instagram", color: "bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045] force-text-white" },
-  { name: "TikTok", color: "bg-slate-900 force-text-white" },
-  { name: "YouTube", color: "bg-red-600 force-text-white" },
-  { name: "Facebook", color: "bg-blue-600 force-text-white" },
-  { name: "X (Twitter)", color: "bg-slate-900 force-text-white" },
-  { name: "Threads", color: "bg-slate-900 force-text-white" },
-  { name: "Discord", color: "bg-[#5865F2] force-text-white" },
-  { name: "Kick", color: "bg-[#53FC18] force-text-dark font-black" },
-  { name: "Telegram", color: "bg-sky-500 force-text-white" },
-  { name: "Spotify", color: "bg-emerald-600 force-text-white" },
-  { name: "WhatsApp", color: "bg-green-600 force-text-white" },
+  { name: "All", color: "bg-primary" },
+  { name: "Instagram", color: "bg-gradient-to-r from-[#833ab4] via-[#fd1d1d] to-[#fcb045]" },
+  { name: "TikTok", color: "bg-slate-900" },
+  { name: "YouTube", color: "bg-red-600" },
+  { name: "Facebook", color: "bg-blue-600" },
+  { name: "Twitter", color: "bg-slate-900" },
+  { name: "Threads", color: "bg-slate-900" },
+  { name: "Discord", color: "bg-[#5865F2]" },
+  { name: "Kick", color: "bg-[#53FC18]" },
+  { name: "Telegram", color: "bg-sky-500" },
+  { name: "Spotify", color: "bg-emerald-600" },
+  { name: "WhatsApp", color: "bg-green-600" },
 ];
 
 export default function ServicesPage() {
