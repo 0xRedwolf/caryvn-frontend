@@ -473,18 +473,44 @@ export const adminApi = {
     }
   },
 
-  // Popup Management
+  // Popup & Ads Management
   getPopups: (token: string) =>
-    api('/admin/popups/', { token }),
+    api<PopupCard[]>('/admin/popups/', { token }),
 
-  createPopup: (data: FormData, token: string) =>
-    api('/admin/popups/', { method: 'POST', body: data, token }),
+  createPopup: (data: Partial<PopupCard> | FormData, token: string) =>
+    api<PopupCard>('/admin/popups/', { method: 'POST', body: data as any, token }),
 
-  updatePopup: (popupId: number, data: FormData, token: string) =>
-    api(`/admin/popups/${popupId}/`, { method: 'PATCH', body: data, token }),
+  updatePopup: (popupId: number, data: Partial<PopupCard> | FormData, token: string) =>
+    api<PopupCard>(`/admin/popups/${popupId}/`, { method: 'PATCH', body: data as any, token }),
 
   deletePopup: (popupId: number, token: string) =>
     api(`/admin/popups/${popupId}/`, { method: 'DELETE', token }),
+
+  togglePopupActive: (popupId: number, token: string) =>
+    api<{ id: number; is_active: boolean; message: string }>(`/admin/popups/${popupId}/toggle-active/`, {
+      method: 'POST',
+      token,
+    }),
+
+  uploadPopupImage: async (file: File, token: string): Promise<{ url?: string; error?: string }> => {
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+      const res = await fetch(`${API_URL}/admin/popups/upload-image/`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return { error: err.error || 'Failed to upload ad image' };
+      }
+      const data = await res.json();
+      return { url: data.url };
+    } catch (e: any) {
+      return { error: e.message || 'Ad image upload error' };
+    }
+  },
 
   // Notifications API
   getNotifications: (token: string) =>
@@ -507,10 +533,31 @@ export const activityApi = {
     api('/activity/', { method: 'POST', body: { page, action: 'page_visit' }, token }),
 };
 
-// Popups API
+// Popups & Ads API
+export interface PopupCard {
+  id: number;
+  title: string;
+  description: string;
+  image?: string;
+  action_url?: string;
+  action_text?: string;
+  placement_type: 'POPUP' | 'BANNER';
+  impressions_count: number;
+  clicks_count: number;
+  order: number;
+  is_active: boolean;
+  created_at?: string;
+}
+
 export const popupsApi = {
-  getActivePopups: (token: string) =>
-    api('/popups/active/', { token }),
+  getActivePopups: (token: string, placement?: 'POPUP' | 'BANNER') => {
+    const qs = placement ? `?placement=${placement}` : '';
+    return api<PopupCard[]>(`/popups/active/${qs}`, { token });
+  },
+  trackImpression: (popupId: number) =>
+    api<{ status: string }>(`/popups/${popupId}/impression/`, { method: 'POST' }),
+  trackClick: (popupId: number) =>
+    api<{ status: string }>(`/popups/${popupId}/click/`, { method: 'POST' }),
 };
 
 // =============================================================================

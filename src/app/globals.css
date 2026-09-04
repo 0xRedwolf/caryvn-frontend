@@ -293,6 +293,17 @@ html.light a.bg-primary {
   color: #ffffff !important;
 }
 
+/* Scoped active state text for platform filter pills only */
+.platform-pill-active-white,
+html.light .platform-pill-active-white {
+  color: #ffffff !important;
+}
+
+.platform-pill-active-dark,
+html.light .platform-pill-active-dark {
+  color: #0f172a !important;
+}
+
 html.light .text-text-secondary {
   color: #475569 !important;
 }

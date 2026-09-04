@@ -21,7 +21,6 @@ export default function Logo({ width = 160, height = 32, className = '', style }
       height={height}
       className={`object-contain object-left ${className}`}
       style={{ width: 'auto', height: 'auto', ...style }}
-      priority
       unoptimized
     />
   );
