@@ -40,6 +40,47 @@ interface AnalyticsData {
   order_status: Record<string, number>;
   revenue_by_provider?: { provider: string; revenue: number; profit: number; orders: number }[];
   source_breakdown?: { source: string; orders: number; revenue: number }[];
+  gateway_performance?: {
+    gateway: string;
+    name: string;
+    initiated: number;
+    completed: number;
+    failed: number;
+    pending: number;
+    volume: number;
+    total_volume: number;
+    conversion_rate: number;
+  }[];
+  top_customers?: {
+    id: string;
+    email: string;
+    name: string;
+    orders: number;
+    total_spend: number;
+    total_profit: number;
+  }[];
+  platform_margins?: {
+    platform: string;
+    revenue: number;
+    profit: number;
+    orders: number;
+    margin_rate: number;
+  }[];
+  service_refund_rates?: {
+    service_name: string;
+    category: string;
+    total_orders: number;
+    refunded_orders: number;
+    refund_rate: number;
+  }[];
+  provider_runway?: {
+    provider_id: number;
+    name: string;
+    currency: string;
+    orders_7d: number;
+    spend_7d_ngn: number;
+    daily_burn_ngn: number;
+  }[];
 }
 
 // Status color map → drives conic-gradient + legend
@@ -256,7 +297,7 @@ export default function AnalyticsPage() {
                 {/* Backdrop */}
                 <div className="fixed inset-0 z-10" onClick={() => setRangeOpen(false)} />
                 {/* Dropdown */}
-                <div className="absolute right-0 top-full mt-1.5 z-20 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xl min-w-[160px] py-1">
+                <div className="absolute right-0 top-full mt-1.5 z-20 bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xl min-w-40 py-1">
                   {RANGE_OPTIONS.map(opt => (
                     <button
                       key={opt.days}
@@ -438,7 +479,7 @@ export default function AnalyticsPage() {
                       </svg>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-slate-900 truncate max-w-[190px]">{svc.name}</p>
+                      <p className="text-sm font-semibold text-slate-900 truncate max-w-47.5">{svc.name}</p>
                       <p className="text-xs text-slate-500">{svc.orders.toLocaleString()} orders · {svc.platform}</p>
                     </div>
                   </div>
@@ -553,6 +594,252 @@ export default function AnalyticsPage() {
           })()}
         </div>
       )}
+
+      {/* ─── Gateway Conversion & Performance Funnel ────────────────────────── */}
+      {data.gateway_performance && data.gateway_performance.length > 0 && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-6">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-black text-slate-900">Payment Gateway Funnel</h2>
+                <span className="bg-emerald-50 text-emerald-700 text-[11px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-200">
+                  Real-Time Deposits
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Deposit checkout conversion rates, completed volumes, and dropoff telemetry per gateway.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {data.gateway_performance.map((gw) => (
+              <div
+                key={gw.gateway}
+                className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-bold text-slate-900 text-xs truncate max-w-45">{gw.name}</span>
+                    <span
+                      className={`text-[11px] font-bold px-2 py-0.5 rounded-md border ${
+                        gw.conversion_rate >= 80
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : gw.conversion_rate >= 50
+                          ? 'bg-amber-50 text-amber-700 border-amber-200'
+                          : 'bg-rose-50 text-rose-700 border-rose-200'
+                      }`}
+                    >
+                      {gw.conversion_rate}% Conv.
+                    </span>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="w-full bg-slate-200 rounded-full h-1.5 mb-3 overflow-hidden">
+                    <div
+                      className={`h-1.5 rounded-full transition-all duration-500 ${
+                        gw.conversion_rate >= 80 ? 'bg-emerald-500' : gw.conversion_rate >= 50 ? 'bg-amber-500' : 'bg-rose-500'
+                      }`}
+                      style={{ width: `${Math.min(gw.conversion_rate, 100)}%` }}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-1 text-[11px] text-slate-500 mb-3 bg-white p-2 rounded-lg border border-slate-100">
+                    <div>
+                      <span className="block text-[10px] text-slate-400 uppercase font-bold">Initiated</span>
+                      <span className="font-semibold text-slate-800">{gw.initiated}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] text-slate-400 uppercase font-bold">Success</span>
+                      <span className="font-semibold text-emerald-600">{gw.completed}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] text-slate-400 uppercase font-bold">Failed</span>
+                      <span className="font-semibold text-rose-600">{gw.failed}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-between items-center text-xs pt-2 border-t border-slate-200/60">
+                  <span className="text-slate-500 font-medium">Completed Vol:</span>
+                  <span className="font-bold text-primary">{formatCurrency(gw.volume.toString())}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ─── VIP Customer Leaderboard & Platform Margins ──────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* VIP Customers */}
+        {data.top_customers && data.top_customers.length > 0 && (
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+            <div className="px-6 py-5 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-black text-slate-900">VIP Clients Leaderboard</h2>
+                <span className="bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-200">
+                  Top 10 Spenders
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">Top grossing customer accounts in current window</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
+                  <tr>
+                    <th className="px-5 py-3">Client</th>
+                    <th className="px-4 py-3 text-center">Orders</th>
+                    <th className="px-4 py-3 text-right">Total Spent</th>
+                    <th className="px-5 py-3 text-right">Profit</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {data.top_customers.map((c, idx) => (
+                    <tr key={c.id} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="px-5 py-3 font-semibold text-slate-900 truncate max-w-42.5">
+                        <span className="text-slate-400 font-bold mr-1.5">#{idx + 1}</span>
+                        {c.email}
+                      </td>
+                      <td className="px-4 py-3 text-center font-semibold text-slate-700">{c.orders}</td>
+                      <td className="px-4 py-3 text-right font-bold text-primary">{formatCurrency(c.total_spend.toString())}</td>
+                      <td className="px-5 py-3 text-right font-bold text-emerald-700">{formatCurrency(c.total_profit.toString())}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Platform Profit Margins */}
+        {data.platform_margins && data.platform_margins.length > 0 && (
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+            <div className="px-6 py-5 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-black text-slate-900">Platform Net Margins</h2>
+                <span className="bg-purple-50 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-purple-200">
+                  Profitability
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">Real profit margin % by social media platform</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
+                  <tr>
+                    <th className="px-5 py-3">Platform</th>
+                    <th className="px-4 py-3 text-right">Revenue</th>
+                    <th className="px-4 py-3 text-right">Profit</th>
+                    <th className="px-5 py-3 text-right">Margin %</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {data.platform_margins.map((pm, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="px-5 py-3 font-bold text-slate-900 capitalize">{pm.platform}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-slate-700">{formatCurrency(pm.revenue.toString())}</td>
+                      <td className="px-4 py-3 text-right font-bold text-emerald-700">{formatCurrency(pm.profit.toString())}</td>
+                      <td className="px-5 py-3 text-right">
+                        <span className="inline-block bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-[11px] px-2 py-0.5 rounded-md">
+                          {pm.margin_rate}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ─── Quality Telemetry: High Refund Services & Provider Spend Velocity ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Service Refund Rates */}
+        {data.service_refund_rates && data.service_refund_rates.length > 0 && (
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+            <div className="px-6 py-5 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-black text-slate-900">Service Quality</h2>
+                <span className="bg-rose-50 text-rose-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-rose-200">
+                  Drop Monitor
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">Services with highest cancellation or refund frequency</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
+                  <tr>
+                    <th className="px-5 py-3">Service Name</th>
+                    <th className="px-4 py-3 text-center">Orders</th>
+                    <th className="px-4 py-3 text-center">Refunded</th>
+                    <th className="px-5 py-3 text-right">Refund %</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {data.service_refund_rates.map((sr, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="px-5 py-3 font-semibold text-slate-900 truncate max-w-50" title={sr.service_name}>
+                        {sr.service_name}
+                      </td>
+                      <td className="px-4 py-3 text-center text-slate-700 font-semibold">{sr.total_orders}</td>
+                      <td className="px-4 py-3 text-center font-bold text-rose-600">{sr.refunded_orders}</td>
+                      <td className="px-5 py-3 text-right">
+                        <span className={`inline-block font-bold text-[11px] px-2 py-0.5 rounded-md border ${
+                          sr.refund_rate > 30 ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-slate-100 text-slate-700 border-slate-200'
+                        }`}>
+                          {sr.refund_rate}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Provider Spend Velocity */}
+        {data.provider_runway && data.provider_runway.length > 0 && (
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+            <div className="px-6 py-5 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-black text-slate-900">Provider Spend Velocity</h2>
+                <span className="bg-amber-50 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-200">
+                  7-Day Burn Rate
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">Fulfillment volume and daily capital drain per upstream provider</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider">
+                  <tr>
+                    <th className="px-5 py-3">Provider</th>
+                    <th className="px-4 py-3 text-center">Orders (7d)</th>
+                    <th className="px-4 py-3 text-right">Spend (7d)</th>
+                    <th className="px-5 py-3 text-right">Daily Burn Rate</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {data.provider_runway.map((pr) => (
+                    <tr key={pr.provider_id} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="px-5 py-3 font-bold text-slate-900">{pr.name}</td>
+                      <td className="px-4 py-3 text-center font-semibold text-slate-700">{pr.orders_7d}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-slate-800">₦{pr.spend_7d_ngn.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                      <td className="px-5 py-3 text-right font-bold text-primary">
+                        ₦{pr.daily_burn_ngn.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/day
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* ─── Revenue by Provider ─────────────────────────────────────────────── */}
       {data.revenue_by_provider && data.revenue_by_provider.length > 0 && (

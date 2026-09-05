@@ -121,7 +121,8 @@ export function getPlatformIcon(category: string): string {
   if (categoryLower.includes('tiktok')) return 'music';
   if (categoryLower.includes('youtube')) return 'play';
   if (categoryLower.includes('facebook')) return 'thumbs-up';
-  if (categoryLower.includes('twitter') || categoryLower.includes('x ')) return 'at-sign';
+  if (categoryLower.includes('threads')) return 'at-sign';
+  if (categoryLower.includes('twitter') || categoryLower.startsWith('x ') || categoryLower.includes(' x ') || categoryLower.includes('x.com')) return 'at-sign';
   if (categoryLower.includes('telegram')) return 'send';
   if (categoryLower.includes('spotify')) return 'music';
   if (categoryLower.includes('linkedin')) return 'linkedin';

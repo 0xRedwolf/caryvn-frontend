@@ -170,7 +170,49 @@ export const authApi = {
 
   confirmPasswordReset: (data: Record<string, string>) =>
     api('/auth/password-reset/confirm/', { method: 'POST', body: data }),
+
+  getSessions: (token: string) =>
+    api<{ sessions: UserSessionItem[]; total_active: number }>('/auth/sessions/', { token }),
+
+  revokeOtherSessions: (currentSessionId: string | undefined, token: string) =>
+    api<{ message: string; revoked_count: number }>('/auth/sessions/revoke-others/', {
+      method: 'POST',
+      body: currentSessionId ? { current_session_id: currentSessionId } : {},
+      token,
+    }),
+
+  revokeSession: (sessionId: string, token: string) =>
+    api<{ message: string }>(`/auth/sessions/${sessionId}/`, { method: 'DELETE', token }),
 };
+
+export interface UserSessionItem {
+  id: string;
+  device_type: string;
+  browser: string;
+  os: string;
+  ip_address: string;
+  location: string;
+  last_active_at: string;
+  created_at: string;
+  is_current: boolean;
+}
+
+export interface AuditLogItem {
+  id: string;
+  action: string;
+  action_display: string;
+  target_model: string;
+  target_id: string;
+  description: string;
+  changes: Record<string, unknown>;
+  ip_address: string | null;
+  actor: {
+    id: string | null;
+    email: string;
+    first_name?: string;
+  } | null;
+  created_at: string;
+}
 
 // Wallet API
 export const walletApi = {
@@ -323,6 +365,22 @@ export const adminApi = {
     if (params?.offset) searchParams.set('offset', params.offset.toString());
     const query = searchParams.toString();
     return api(`/admin/logs/${query ? `?${query}` : ''}`, { token });
+  },
+
+  getAuditLogs: (token: string, params?: { page?: number; page_size?: number; action?: string; target_model?: string; search?: string }) => {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.page_size) qs.set('page_size', String(params.page_size));
+    if (params?.action) qs.set('action', params.action);
+    if (params?.target_model) qs.set('target_model', params.target_model);
+    if (params?.search) qs.set('search', params.search);
+    return api<{
+      logs: AuditLogItem[];
+      total_count: number;
+      total_pages: number;
+      current_page: number;
+      page_size: number;
+    }>(`/admin/audit-logs/?${qs.toString()}`, { token });
   },
 
   syncServices: (token: string, providerSlug?: string) =>
