@@ -583,6 +583,25 @@ export const adminApi = {
 
   triggerTestNotification: (token: string) =>
     api('/admin/notifications/test/', { method: 'POST', token }),
+
+  // Announcements Ticker Management
+  getAnnouncements: (token: string) =>
+    api<Announcement[]>('/admin/announcements/', { token }),
+
+  createAnnouncement: (data: Partial<Announcement>, token: string) =>
+    api<Announcement>('/admin/announcements/', { method: 'POST', body: data as any, token }),
+
+  updateAnnouncement: (id: number, data: Partial<Announcement>, token: string) =>
+    api<Announcement>(`/admin/announcements/${id}/`, { method: 'PATCH', body: data as any, token }),
+
+  deleteAnnouncement: (id: number, token: string) =>
+    api(`/admin/announcements/${id}/`, { method: 'DELETE', token }),
+
+  toggleAnnouncementActive: (id: number, token: string) =>
+    api<{ id: number; is_active: boolean; message: string }>(`/admin/announcements/${id}/toggle/`, {
+      method: 'POST',
+      token,
+    }),
 };
 
 // Activity Tracking API
@@ -616,6 +635,27 @@ export const popupsApi = {
     api<{ status: string }>(`/popups/${popupId}/impression/`, { method: 'POST' }),
   trackClick: (popupId: number) =>
     api<{ status: string }>(`/popups/${popupId}/click/`, { method: 'POST' }),
+};
+
+// =============================================================================
+// Announcements Ticker Interfaces & APIs
+// =============================================================================
+
+export interface Announcement {
+  id: number;
+  text: string;
+  link_url?: string | null;
+  link_text?: string | null;
+  color: 'emerald' | 'primary' | 'amber' | 'purple' | 'rose';
+  is_ping: boolean;
+  is_active: boolean;
+  sort_order: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export const announcementsApi = {
+  getActive: () => api<Announcement[]>('/announcements/'),
 };
 
 // =============================================================================

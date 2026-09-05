@@ -1,18 +1,180 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
-import { adminApi, PopupCard } from '@/lib/api';
+import { adminApi, PopupCard, Announcement } from '@/lib/api';
+
+const ANNOUNCEMENT_COLORS: {
+  id: 'emerald' | 'primary' | 'amber' | 'purple' | 'rose';
+  name: string;
+  badge: string;
+  dot: string;
+}[] = [
+  { id: 'emerald', name: 'Green (Live / Status)', badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
+  { id: 'primary', name: 'Blue (New Feature / Info)', badge: 'bg-blue-50 text-primary border-blue-200', dot: 'bg-primary' },
+  { id: 'amber', name: 'Amber (Promo / Notice)', badge: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
+  { id: 'purple', name: 'Purple (Special Offer)', badge: 'bg-purple-50 text-purple-700 border-purple-200', dot: 'bg-purple-500' },
+  { id: 'rose', name: 'Red (Urgent / Alert)', badge: 'bg-rose-50 text-rose-700 border-rose-200', dot: 'bg-rose-500' },
+];
+
+function getDotColor(color: string) {
+  switch (color) {
+    case 'emerald': return 'bg-emerald-500';
+    case 'amber': return 'bg-amber-500';
+    case 'purple': return 'bg-purple-500';
+    case 'rose': return 'bg-rose-500';
+    case 'primary':
+    default: return 'bg-primary';
+  }
+}
+
+function AdminTickerPreview({ announcements }: { announcements: Announcement[] }) {
+  const activeAnnouncements = announcements.filter((a) => a.is_active);
+  const tickerRef = useRef<HTMLDivElement>(null);
+  const tickerSetRef = useRef<HTMLDivElement>(null);
+  const [tickerPaused, setTickerPaused] = useState(false);
+
+  useEffect(() => {
+    if (activeAnnouncements.length === 0) return;
+    let offset = 0;
+    let animId: number;
+    const speed = 0.5;
+
+    const animate = () => {
+      if (!tickerRef.current || !tickerSetRef.current) return;
+      if (!tickerPaused) {
+        const setWidth = tickerSetRef.current.offsetWidth;
+        if (setWidth > 0) {
+          offset -= speed;
+          if (Math.abs(offset) >= setWidth) {
+            offset += setWidth;
+          }
+          tickerRef.current.style.transform = `translateX(${offset}px)`;
+        }
+      }
+      animId = requestAnimationFrame(animate);
+    };
+    animId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animId);
+  }, [tickerPaused, activeAnnouncements]);
+
+  if (activeAnnouncements.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50/70 p-4 text-center">
+        <p className="text-xs font-semibold text-slate-500">
+          No active ticker updates. Create or activate an update to see it scroll here.
+        </p>
+      </div>
+    );
+  }
+
+  const tickerItems = activeAnnouncements.length < 3
+    ? [...activeAnnouncements, ...activeAnnouncements, ...activeAnnouncements]
+    : activeAnnouncements;
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
+      <div className="flex items-center">
+        <div className="shrink-0 flex items-center gap-1.5 px-3.5 py-2.5 bg-primary text-white">
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          <span className="text-[11px] font-black uppercase tracking-wider">Updates</span>
+        </div>
+
+        <div
+          className="overflow-hidden relative flex-1 min-w-0"
+          onMouseEnter={() => setTickerPaused(true)}
+          onMouseLeave={() => setTickerPaused(false)}
+        >
+          <div ref={tickerRef} className="flex items-center py-2 whitespace-nowrap" style={{ willChange: 'transform' }}>
+            <div ref={tickerSetRef} className="flex items-center shrink-0">
+              {tickerItems.map((ann, idx) => (
+                <span key={`ap1-${ann.id}-${idx}`} className="inline-flex items-center gap-2 text-slate-600 text-xs mr-8">
+                  {ann.is_ping ? (
+                    <span className="relative flex h-2 w-2 shrink-0">
+                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${getDotColor(ann.color)}`} />
+                      <span className={`relative inline-flex rounded-full h-2 w-2 ${getDotColor(ann.color)}`} />
+                    </span>
+                  ) : (
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${getDotColor(ann.color)}`} />
+                  )}
+                  <span>{ann.text}</span>
+                  {ann.link_url && (
+                    <a
+                      href={ann.link_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary font-bold hover:underline"
+                    >
+                      {ann.link_text || 'Learn more'}
+                    </a>
+                  )}
+                </span>
+              ))}
+            </div>
+            <div className="flex items-center shrink-0" aria-hidden="true">
+              {tickerItems.map((ann, idx) => (
+                <span key={`ap2-${ann.id}-${idx}`} className="inline-flex items-center gap-2 text-slate-600 text-xs mr-8">
+                  {ann.is_ping ? (
+                    <span className="relative flex h-2 w-2 shrink-0">
+                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${getDotColor(ann.color)}`} />
+                      <span className={`relative inline-flex rounded-full h-2 w-2 ${getDotColor(ann.color)}`} />
+                    </span>
+                  ) : (
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${getDotColor(ann.color)}`} />
+                  )}
+                  <span>{ann.text}</span>
+                  {ann.link_url && (
+                    <a
+                      href={ann.link_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary font-bold hover:underline"
+                    >
+                      {ann.link_text || 'Learn more'}
+                    </a>
+                  )}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function AdminAdsPage() {
   const { token } = useAuth();
+  const [activeTab, setActiveTab] = useState<'ADS' | 'TICKER'>('ADS');
   const [popups, setPopups] = useState<PopupCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [placementFilter, setPlacementFilter] = useState<'ALL' | 'POPUP' | 'BANNER'>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+
+  // Announcements (Ticker) state
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [loadingAnnouncements, setLoadingAnnouncements] = useState(false);
+  const [announcementSearch, setAnnouncementSearch] = useState('');
+  const [announcementModalOpen, setAnnouncementModalOpen] = useState(false);
+  const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
+  const [deletingAnnouncement, setDeletingAnnouncement] = useState<Announcement | null>(null);
+  const [isDeletingAnnouncement, setIsDeletingAnnouncement] = useState(false);
+  const [announcementSubmitting, setAnnouncementSubmitting] = useState(false);
+  const [announcementError, setAnnouncementError] = useState('');
+
+  // Announcement Form Fields
+  const [annText, setAnnText] = useState('');
+  const [annLinkUrl, setAnnLinkUrl] = useState('');
+  const [annLinkText, setAnnLinkText] = useState('');
+  const [annColor, setAnnColor] = useState<'emerald' | 'primary' | 'amber' | 'purple' | 'rose'>('primary');
+  const [annIsPing, setAnnIsPing] = useState(false);
+  const [annSortOrder, setAnnSortOrder] = useState(0);
+  const [annIsActive, setAnnIsActive] = useState(true);
 
   // Modal & Form states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -55,9 +217,25 @@ export default function AdminAdsPage() {
     }
   };
 
+  const loadAnnouncements = async () => {
+    if (!token) return;
+    setLoadingAnnouncements(true);
+    try {
+      const res = await adminApi.getAnnouncements(token);
+      if (res.data) {
+        setAnnouncements(res.data);
+      }
+    } catch (err: any) {
+      console.error(err);
+    } finally {
+      setLoadingAnnouncements(false);
+    }
+  };
+
   useEffect(() => {
     if (token) {
       loadPopups();
+      loadAnnouncements();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
@@ -212,39 +390,195 @@ export default function AdminAdsPage() {
     }
   };
 
+  const filteredAnnouncements = useMemo(() => {
+    if (!announcementSearch.trim()) return announcements;
+    const q = announcementSearch.toLowerCase();
+    return announcements.filter(
+      (a) =>
+        a.text.toLowerCase().includes(q) ||
+        (a.link_text && a.link_text.toLowerCase().includes(q)) ||
+        (a.link_url && a.link_url.toLowerCase().includes(q))
+    );
+  }, [announcements, announcementSearch]);
+
+  const handleCreateAnnouncement = () => {
+    setEditingAnnouncement(null);
+    setAnnText('');
+    setAnnLinkUrl('');
+    setAnnLinkText('');
+    setAnnColor('primary');
+    setAnnIsPing(false);
+    setAnnSortOrder(announcements.length);
+    setAnnIsActive(true);
+    setAnnouncementError('');
+    setAnnouncementModalOpen(true);
+  };
+
+  const handleEditAnnouncement = (ann: Announcement) => {
+    setEditingAnnouncement(ann);
+    setAnnText(ann.text);
+    setAnnLinkUrl(ann.link_url || '');
+    setAnnLinkText(ann.link_text || '');
+    setAnnColor(ann.color);
+    setAnnIsPing(ann.is_ping);
+    setAnnSortOrder(ann.sort_order);
+    setAnnIsActive(ann.is_active);
+    setAnnouncementError('');
+    setAnnouncementModalOpen(true);
+  };
+
+  const handleToggleAnnouncementActive = async (id: number) => {
+    if (!token) return;
+    try {
+      const res = await adminApi.toggleAnnouncementActive(id, token);
+      if (res.data) {
+        setAnnouncements((prev) =>
+          prev.map((a) => (a.id === id ? { ...a, is_active: res.data!.is_active } : a))
+        );
+      }
+    } catch (err: any) {
+      console.error('Error toggling announcement:', err);
+    }
+  };
+
+  const confirmDeleteAnnouncement = async () => {
+    if (!deletingAnnouncement || !token) return;
+    setIsDeletingAnnouncement(true);
+    try {
+      await adminApi.deleteAnnouncement(deletingAnnouncement.id, token);
+      setAnnouncements((prev) => prev.filter((a) => a.id !== deletingAnnouncement.id));
+      setDeletingAnnouncement(null);
+    } catch (err: any) {
+      setAnnouncementError(err.message || 'Failed to delete announcement');
+    } finally {
+      setIsDeletingAnnouncement(false);
+    }
+  };
+
+  const handleSaveAnnouncement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token) return;
+    if (!annText.trim()) {
+      setAnnouncementError('Announcement text is required.');
+      return;
+    }
+
+    setAnnouncementSubmitting(true);
+    setAnnouncementError('');
+
+    const payload: Partial<Announcement> = {
+      text: annText.trim(),
+      link_url: annLinkUrl.trim() || null,
+      link_text: annLinkText.trim() || null,
+      color: annColor,
+      is_ping: annIsPing,
+      sort_order: annSortOrder,
+      is_active: annIsActive,
+    };
+
+    try {
+      let res;
+      if (editingAnnouncement) {
+        res = await adminApi.updateAnnouncement(editingAnnouncement.id, payload, token);
+      } else {
+        res = await adminApi.createAnnouncement(payload, token);
+      }
+
+      if (res.data) {
+        setAnnouncementModalOpen(false);
+        loadAnnouncements();
+      } else {
+        setAnnouncementError(res.error || 'Failed to save announcement');
+      }
+    } catch (err: any) {
+      setAnnouncementError(err.message || 'Error saving announcement');
+    } finally {
+      setAnnouncementSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-12">
+      {/* Top Navigation Tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-3">
+        <button
+          type="button"
+          onClick={() => setActiveTab('ADS')}
+          className={`flex items-center justify-center gap-2 flex-1 sm:flex-initial sm:min-w-35 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            activeTab === 'ADS'
+              ? 'bg-primary text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          <span>Ads</span>
+          <span className={`min-w-5 text-center px-2 py-0.5 rounded-full text-[11px] font-black shrink-0 ${
+            activeTab === 'ADS' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+          }`}>
+            {popups.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('TICKER')}
+          className={`flex items-center justify-center gap-2 flex-1 sm:flex-initial sm:min-w-35 px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            activeTab === 'TICKER'
+              ? 'bg-primary text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          <span>Updates</span>
+          <span className={`min-w-5 text-center px-2 py-0.5 rounded-full text-[11px] font-black shrink-0 ${
+            activeTab === 'TICKER' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'
+          }`}>
+            {announcements.length}
+          </span>
+        </button>
+      </div>
+
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-blue-50 text-primary border border-blue-100">
-              Engagement Hub
+              {activeTab === 'ADS' ? 'Engagement Hub' : 'Dashboard Marquee'}
             </span>
-            <span className="text-xs text-slate-500 font-semibold">Cloudinary CDN Powered</span>
+            <span className="text-xs text-slate-500 font-semibold">
+              {activeTab === 'ADS' ? 'Cloudinary CDN Powered' : 'Real-time Ticker Broadcast'}
+            </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight mt-1.5">
-            Ads & Announcements
+            {activeTab === 'ADS' ? 'Ads & Announcements' : 'Dashboard Ticker Updates'}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Deploy modal popups and in-feed dashboard banners with live interactive preview and conversion metrics.
+            {activeTab === 'ADS'
+              ? 'Deploy modal popups and in-feed dashboard banners with live interactive preview and conversion metrics.'
+              : 'Manage real-time scrolling announcement ticker updates displayed on user dashboards.'}
           </p>
         </div>
 
         <button
           type="button"
-          onClick={handleCreateNew}
+          onClick={activeTab === 'ADS' ? handleCreateNew : handleCreateAnnouncement}
           className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-primary hover:bg-primary-hover text-white text-sm font-bold shadow-xs transition-colors cursor-pointer shrink-0"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
           </svg>
-          <span>Create New Ad</span>
+          <span>{activeTab === 'ADS' ? 'Create New Ad' : 'Add Ticker Update'}</span>
         </button>
       </div>
 
-      {/* Metrics Bento */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {activeTab === 'ADS' ? (
+        <>
+          {/* Metrics Bento */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white rounded-3xl border border-slate-200 p-5 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Ads</span>
@@ -551,6 +885,183 @@ export default function AdminAdsPage() {
           </button>
         </div>
       )}
+        </>
+      ) : (
+        <div className="space-y-6">
+          {/* Live Preview Card */}
+          <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider">
+                  Dashboard Preview
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  This is exactly how active updates appear for the user.
+                </p>
+              </div>
+              <span className="px-2.5 py-1 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
+                {announcements.filter((a) => a.is_active).length}
+              </span>
+            </div>
+
+            <AdminTickerPreview announcements={announcements} />
+          </div>
+
+          {/* Search & Stats Bar */}
+          <div className="bg-white rounded-3xl border border-slate-200 p-4 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="relative w-full sm:w-80">
+              <svg className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                value={announcementSearch}
+                onChange={(e) => setAnnouncementSearch(e.target.value)}
+                placeholder="Search ticker updates..."
+                className="w-full pl-10 pr-4 py-2 text-xs font-medium rounded-xl border border-slate-200 bg-slate-50/50 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-primary focus:bg-white transition-colors"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 text-xs text-slate-500 font-semibold">
+              <span>Total: <strong className="text-slate-900">{announcements.length}</strong></span>
+              <span>•</span>
+              <span className="text-emerald-600">Active: <strong className="text-emerald-700">{announcements.filter((a) => a.is_active).length}</strong></span>
+              <span>•</span>
+              <span className="text-slate-400">Inactive: <strong className="text-slate-600">{announcements.filter((a) => !a.is_active).length}</strong></span>
+            </div>
+          </div>
+
+          {/* Announcements Table */}
+          {loadingAnnouncements && announcements.length === 0 ? (
+            <div className="py-24 text-center bg-white rounded-3xl border border-slate-200">
+              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-xs text-slate-500 font-medium">Loading ticker updates...</p>
+            </div>
+          ) : filteredAnnouncements.length > 0 ? (
+            <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-100 bg-slate-50/75 text-[11px] font-black text-slate-500 uppercase tracking-wider">
+                      <th className="py-3.5 px-4 text-center w-14">Order</th>
+                      <th className="py-3.5 px-4 text-center w-20">Indicator</th>
+                      <th className="py-3.5 px-4">Announcement Text</th>
+                      <th className="py-3.5 px-4">Target Link</th>
+                      <th className="py-3.5 px-4 text-center w-28">Status</th>
+                      <th className="py-3.5 px-4 text-right w-28">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs font-medium">
+                    {filteredAnnouncements.map((ann) => (
+                      <tr key={ann.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="py-4 px-4 text-center">
+                          <span className="inline-block px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 text-[11px] font-mono font-bold">
+                            #{ann.sort_order}
+                          </span>
+                        </td>
+                        <td className="py-4 px-4 text-center">
+                          <div className="flex items-center justify-center">
+                            <span className="relative flex h-3 w-3 shrink-0" title={ann.color}>
+                              {ann.is_ping && (
+                                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${getDotColor(ann.color)}`} />
+                              )}
+                              <span className={`relative inline-flex rounded-full h-3 w-3 ${getDotColor(ann.color)}`} />
+                            </span>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <p className="text-slate-900 font-bold max-w-md line-clamp-2">
+                            {ann.text}
+                          </p>
+                        </td>
+                        <td className="py-4 px-4">
+                          {ann.link_url ? (
+                              <a
+                                href={ann.link_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-primary font-bold hover:underline"
+                              >
+                                <span>{ann.link_text || ann.link_url}</span>
+                                <svg className="w-3 h-3 text-primary/70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                              </a>
+                            ) : (
+                              <span className="text-slate-400 italic">No link</span>
+                            )}
+                          </td>
+                          <td className="py-4 px-4 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleToggleAnnouncementActive(ann.id)}
+                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold border transition-colors cursor-pointer ${
+                                ann.is_active
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                  : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+                              }`}
+                            >
+                              <span className={`w-1.5 h-1.5 rounded-full ${ann.is_active ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                              {ann.is_active ? 'Active' : 'Hidden'}
+                            </button>
+                          </td>
+                          <td className="py-4 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleEditAnnouncement(ann)}
+                                className="p-2 rounded-xl text-slate-600 hover:text-primary hover:bg-blue-50 transition-colors cursor-pointer"
+                                title="Edit update"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeletingAnnouncement(ann)}
+                                className="p-2 rounded-xl text-slate-600 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                                title="Delete update"
+                              >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="py-16 text-center bg-white rounded-3xl border border-slate-200 p-8 shadow-xs">
+              <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-primary mx-auto mb-3">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h3 className="text-base font-black text-slate-900">
+                {announcementSearch ? 'No Ticker Updates Match Your Search' : 'No Ticker Updates Yet'}
+              </h3>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                {announcementSearch
+                  ? 'Try clearing your search query to see all announcements.'
+                  : 'Add news, system updates, or promo notices to broadcast at the top of every user’s dashboard.'}
+              </p>
+              <button
+                type="button"
+                onClick={handleCreateAnnouncement}
+                className="mt-4 px-4 py-2 bg-primary text-white text-xs font-bold rounded-xl hover:bg-primary-hover transition-colors cursor-pointer"
+              >
+                Create First Announcement
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
 
       {/* Editor Modal with Real-Time Interactive Device Preview */}
       {isModalOpen && (
@@ -993,6 +1504,250 @@ export default function AdminAdsPage() {
           </div>
         </div>
       )}
+
+      {/* Announcement Create / Edit Modal */}
+      {announcementModalOpen && (
+        <div className="fixed inset-0 z-200 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-2xl rounded-3xl border border-slate-200 shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+              <div>
+                <h2 className="text-lg font-black text-slate-900">
+                  {editingAnnouncement ? 'Edit Ticker Update' : 'New Ticker Update'}
+                </h2>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Configure announcement text, link, and indicator style for the dashboard marquee.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAnnouncementModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form id="announcement-form" onSubmit={handleSaveAnnouncement} className="overflow-y-auto p-6 space-y-5">
+              {announcementError && (
+                <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold">
+                  {announcementError}
+                </div>
+              )}
+
+              {/* Text Input */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Announcement Text <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[11px] font-mono text-slate-400">{annText.length}/300</span>
+                </div>
+                <input
+                  type="text"
+                  maxLength={300}
+                  value={annText}
+                  onChange={(e) => setAnnText(e.target.value)}
+                  placeholder="e.g., Instant automatic order processing running 24/7"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-primary"
+                  required
+                />
+              </div>
+
+              {/* Links */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Link URL <span className="text-slate-400 font-normal">(Optional)</span>
+                  </label>
+                  <input
+                    type="url"
+                    value={annLinkUrl}
+                    onChange={(e) => setAnnLinkUrl(e.target.value)}
+                    placeholder="https://... or /dashboard/..."
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Link Anchor Text <span className="text-slate-400 font-normal">(Optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={annLinkText}
+                    onChange={(e) => setAnnLinkText(e.target.value)}
+                    placeholder="e.g., zapotp.com or Learn more"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+
+              {/* Indicator Dot Color */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  Indicator Dot Color
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {ANNOUNCEMENT_COLORS.map((col) => {
+                    const isSelected = annColor === col.id;
+                    return (
+                      <button
+                        key={col.id}
+                        type="button"
+                        onClick={() => setAnnColor(col.id)}
+                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2 ${
+                          isSelected
+                            ? 'border-primary bg-blue-50/50 ring-1 ring-primary/20'
+                            : 'border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <span className={`w-3 h-3 rounded-full ${col.dot} shrink-0`} />
+                        <span className="text-xs font-bold text-slate-800 line-clamp-1">{col.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Settings: Ping pulse & Active status */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                <div className="flex items-center gap-3 p-3 rounded-2xl border border-slate-200 bg-slate-50/50">
+                  <input
+                    type="checkbox"
+                    id="ann_is_ping"
+                    checked={annIsPing}
+                    onChange={(e) => setAnnIsPing(e.target.checked)}
+                    className="w-4 h-4 rounded text-primary focus:ring-primary cursor-pointer"
+                  />
+                  <label htmlFor="ann_is_ping" className="text-xs font-bold text-slate-800 cursor-pointer">
+                    Pulsing Ping Animation
+                    <span className="block text-[11px] font-normal text-slate-500">
+                      Creates an animated radar pulse on the dot
+                    </span>
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 rounded-2xl border border-slate-200 bg-slate-50/50">
+                  <input
+                    type="checkbox"
+                    id="ann_is_active"
+                    checked={annIsActive}
+                    onChange={(e) => setAnnIsActive(e.target.checked)}
+                    className="w-4 h-4 rounded text-primary focus:ring-primary cursor-pointer"
+                  />
+                  <label htmlFor="ann_is_active" className="text-xs font-bold text-slate-800 cursor-pointer">
+                    Active / Visible
+                    <span className="block text-[11px] font-normal text-slate-500">
+                      Toggle whether this item is currently displayed
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Display Order
+                </label>
+                <input
+                  type="number"
+                  value={annSortOrder}
+                  onChange={(e) => setAnnSortOrder(parseInt(e.target.value) || 0)}
+                  placeholder="0"
+                  className="w-32 px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:border-primary"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Lower numbers scroll first in the ticker sequence.
+                </p>
+              </div>
+
+              {/* Live In-Modal Preview */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                  Live Item Preview
+                </span>
+                <div className="inline-flex items-center gap-2 text-slate-700 text-xs bg-white px-3.5 py-2.5 rounded-xl border border-slate-200 shadow-xs">
+                  {annIsPing ? (
+                    <span className="relative flex h-2 w-2 shrink-0">
+                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${getDotColor(annColor)}`} />
+                      <span className={`relative inline-flex rounded-full h-2 w-2 ${getDotColor(annColor)}`} />
+                    </span>
+                  ) : (
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${getDotColor(annColor)}`} />
+                  )}
+                  <span className="font-medium">{annText || 'Your announcement text preview will appear here...'}</span>
+                  {annLinkUrl && (
+                    <span className="text-primary font-bold hover:underline cursor-pointer">
+                      {annLinkText || 'Learn more'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </form>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-3.5 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setAnnouncementModalOpen(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="announcement-form"
+                disabled={announcementSubmitting}
+                className="px-5 py-2 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-bold shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+              >
+                {announcementSubmitting ? 'Saving...' : editingAnnouncement ? 'Update Announcement' : 'Add Announcement'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Announcement Delete Confirmation Modal */}
+      {deletingAnnouncement && (
+        <div className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full border border-slate-200 shadow-2xl space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200/80 text-rose-600 flex items-center justify-center mx-auto shadow-xs">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div className="text-center">
+              <h3 className="text-lg font-black text-slate-900">Delete Ticker Update?</h3>
+              <p className="text-xs text-slate-500 mt-1 font-medium leading-relaxed">
+                Are you sure you want to delete <span className="font-bold text-slate-800">&ldquo;{deletingAnnouncement.text.slice(0, 40)}...&rdquo;</span>? This will immediately remove it from all user dashboards.
+              </p>
+            </div>
+
+            <div className="flex gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeletingAnnouncement(null)}
+                disabled={isDeletingAnnouncement}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteAnnouncement}
+                disabled={isDeletingAnnouncement}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 text-xs font-bold text-white hover:bg-rose-700 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+              >
+                {isDeletingAnnouncement ? 'Deleting...' : 'Yes, Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

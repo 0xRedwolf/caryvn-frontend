@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { ordersApi } from '@/lib/api';
+import { ordersApi, announcementsApi, Announcement } from '@/lib/api';
 import DashboardPopup from '@/components/DashboardPopup';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import CountUpBalance from '@/components/CountUpBalance';
@@ -24,18 +24,40 @@ interface Stats {
   completedOrders: number;
 }
 
+function getDotColor(color: string) {
+  switch (color) {
+    case 'emerald': return 'bg-emerald-500';
+    case 'amber': return 'bg-amber-500';
+    case 'purple': return 'bg-purple-500';
+    case 'rose': return 'bg-rose-500';
+    case 'primary':
+    default: return 'bg-primary';
+  }
+}
+
 export default function DashboardPage() {
   const { user, token, refreshUser } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [isRefreshingBalance, setIsRefreshingBalance] = useState(false);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const tickerRef = useRef<HTMLDivElement>(null);
   const tickerSetRef = useRef<HTMLDivElement>(null);
   const [tickerPaused, setTickerPaused] = useState(false);
 
+  // Fetch active announcements
+  useEffect(() => {
+    announcementsApi.getActive().then((res) => {
+      if (res.data) {
+        setAnnouncements(res.data);
+      }
+    }).catch(console.error);
+  }, []);
+
   // Smooth announcement ticker
   useEffect(() => {
+    if (announcements.length === 0) return;
     let offset = 0;
     let animId: number;
     const speed = window.innerWidth < 768 ? 0.3 : 0.5;
@@ -44,17 +66,19 @@ export default function DashboardPage() {
       if (!tickerRef.current || !tickerSetRef.current) return;
       if (!tickerPaused) {
         const setWidth = tickerSetRef.current.offsetWidth;
-        offset -= speed;
-        if (Math.abs(offset) >= setWidth) {
-          offset += setWidth;
+        if (setWidth > 0) {
+          offset -= speed;
+          if (Math.abs(offset) >= setWidth) {
+            offset += setWidth;
+          }
+          tickerRef.current.style.transform = `translateX(${offset}px)`;
         }
-        tickerRef.current.style.transform = `translateX(${offset}px)`;
       }
       animId = requestAnimationFrame(animate);
     };
     animId = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animId);
-  }, [tickerPaused]);
+  }, [tickerPaused, announcements]);
 
   useEffect(() => {
     if (token) {
@@ -141,47 +165,88 @@ export default function DashboardPage() {
       </div>
 
       {/* Scrolling News Ticker */}
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
-        <div className="flex items-center">
-          <div className="shrink-0 flex items-center gap-1.5 px-3.5 py-2.5 bg-primary text-white">
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2.5}
-                d="M13 10V3L4 14h7v7l9-11h-7z"
-              />
-            </svg>
-            <span className="text-[11px] font-black uppercase tracking-wider">Updates</span>
-          </div>
+      {announcements.length > 0 && (() => {
+        const tickerItems = announcements.length < 3
+          ? [...announcements, ...announcements, ...announcements]
+          : announcements;
 
-          <div
-            className="overflow-hidden relative flex-1 min-w-0"
-            onMouseEnter={() => setTickerPaused(true)}
-            onMouseLeave={() => setTickerPaused(false)}
-          >
-            <div ref={tickerRef} className="flex items-center py-2 whitespace-nowrap" style={{ willChange: 'transform' }}>
-              <div ref={tickerSetRef} className="flex items-center shrink-0">
-                <span className="inline-flex items-center gap-2 text-slate-600 text-xs mr-8">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-ping" />
-                  Instant automatic order processing running 24/7
-                </span>
-                <span className="inline-flex items-center gap-2 text-slate-600 text-xs mr-8">
-                  <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
-                  NEW: Binance Pay and On-Chain Crypto Deposits available
-                </span>
-                <span className="inline-flex items-center gap-2 text-slate-600 text-xs mr-8">
-                  <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
-                  Get Foreign Numbers for OTPs on{' '}
-                  <a href="https://zapotp.com/login" target="_blank" rel="noopener noreferrer" className="text-primary font-bold hover:underline">
-                    zapotp.com
-                  </a>
-                </span>
+        return (
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
+            <div className="flex items-center">
+              <div className="shrink-0 flex items-center gap-1.5 px-3.5 py-2.5 bg-primary text-white">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2.5}
+                    d="M13 10V3L4 14h7v7l9-11h-7z"
+                  />
+                </svg>
+                <span className="text-[11px] font-black uppercase tracking-wider">Updates</span>
+              </div>
+
+              <div
+                className="overflow-hidden relative flex-1 min-w-0"
+                onMouseEnter={() => setTickerPaused(true)}
+                onMouseLeave={() => setTickerPaused(false)}
+              >
+                <div ref={tickerRef} className="flex items-center py-2 whitespace-nowrap" style={{ willChange: 'transform' }}>
+                  <div ref={tickerSetRef} className="flex items-center shrink-0">
+                    {tickerItems.map((ann, idx) => (
+                      <span key={`s1-${ann.id}-${idx}`} className="inline-flex items-center gap-2 text-slate-600 text-xs mr-8">
+                        {ann.is_ping ? (
+                          <span className="relative flex h-2 w-2 shrink-0">
+                            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${getDotColor(ann.color)}`} />
+                            <span className={`relative inline-flex rounded-full h-2 w-2 ${getDotColor(ann.color)}`} />
+                          </span>
+                        ) : (
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${getDotColor(ann.color)}`} />
+                        )}
+                        <span>{ann.text}</span>
+                        {ann.link_url && (
+                          <a
+                            href={ann.link_url}
+                            target={ann.link_url.startsWith('http') ? '_blank' : undefined}
+                            rel="noopener noreferrer"
+                            className="text-primary font-bold hover:underline"
+                          >
+                            {ann.link_text || 'Learn more'}
+                          </a>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex items-center shrink-0" aria-hidden="true">
+                    {tickerItems.map((ann, idx) => (
+                      <span key={`s2-${ann.id}-${idx}`} className="inline-flex items-center gap-2 text-slate-600 text-xs mr-8">
+                        {ann.is_ping ? (
+                          <span className="relative flex h-2 w-2 shrink-0">
+                            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${getDotColor(ann.color)}`} />
+                            <span className={`relative inline-flex rounded-full h-2 w-2 ${getDotColor(ann.color)}`} />
+                          </span>
+                        ) : (
+                          <span className={`w-2 h-2 rounded-full shrink-0 ${getDotColor(ann.color)}`} />
+                        )}
+                        <span>{ann.text}</span>
+                        {ann.link_url && (
+                          <a
+                            href={ann.link_url}
+                            target={ann.link_url.startsWith('http') ? '_blank' : undefined}
+                            rel="noopener noreferrer"
+                            className="text-primary font-bold hover:underline"
+                          >
+                            {ann.link_text || 'Learn more'}
+                          </a>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* BENTO GRID (2x2 / 4-Col Adaptive Architecture) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
