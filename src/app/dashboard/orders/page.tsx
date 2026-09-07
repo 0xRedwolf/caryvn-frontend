@@ -11,8 +11,8 @@ import OtpVerificationModal from '@/components/OtpVerificationModal';
 
 interface Order {
   id: string;
-  service_name: string;
-  link: string;
+  service_name?: string | null;
+  link?: string | null;
   quantity: number;
   charge: string;
   status: string;
@@ -20,6 +20,7 @@ interface Order {
   remains?: number | null;
   service_has_refill?: boolean;
   avg_completion_time?: string;
+  source?: 'web' | 'api' | string;
   created_at: string;
 }
 
@@ -41,8 +42,8 @@ const otpStatusFilters = [
   { key: 'EXPIRED', label: 'Expired' },
 ];
 
-function getPlatformIcon(serviceName: string) {
-  const s = serviceName.toLowerCase();
+function getPlatformIcon(serviceName?: string | null) {
+  const s = (serviceName || '').toLowerCase();
   if (s.includes('instagram')) {
     return (
       <span className="w-8 h-8 rounded-xl bg-pink-50 border border-pink-200/80 text-pink-600 flex items-center justify-center shrink-0">
@@ -162,14 +163,16 @@ function getPlatformIcon(serviceName: string) {
 }
 
 function calculateProgress(order: Order): number | null {
+  const qty = Number(order.quantity || 0);
+  const remains = order.remains !== null && order.remains !== undefined ? Number(order.remains) : null;
   if (
-    order.quantity > 0 &&
-    order.remains !== null &&
-    order.remains !== undefined &&
-    order.remains >= 0
+    qty > 0 &&
+    remains !== null &&
+    !isNaN(remains) &&
+    remains >= 0
   ) {
-    const completed = Math.max(0, order.quantity - order.remains);
-    return Math.min(100, Math.max(0, Math.round((completed / order.quantity) * 100)));
+    const completed = Math.max(0, qty - remains);
+    return Math.min(100, Math.max(0, Math.round((completed / qty) * 100)));
   }
   return null;
 }
@@ -215,6 +218,7 @@ function OrdersContent() {
   const [loading, setLoading] = useState(true);
   const [verticalTab, setVerticalTab] = useState<'smm' | 'otp'>('smm');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'web' | 'api'>('all');
   const [search, setSearch] = useState('');
 
   const [showReviewPopup, setShowReviewPopup] = useState(false);
@@ -233,7 +237,7 @@ function OrdersContent() {
       loadOrders();
       loadOtpOrders();
     }
-  }, [token, statusFilter]);
+  }, [token, statusFilter, sourceFilter]);
 
   async function loadOtpOrders() {
     if (!token) return;
@@ -267,6 +271,7 @@ function OrdersContent() {
 
     const result = await ordersApi.getOrders(token, {
       status: statusFilter === 'All' ? undefined : statusFilter,
+      source: sourceFilter === 'all' ? undefined : sourceFilter,
       limit: 100,
     });
 
@@ -311,9 +316,9 @@ function OrdersContent() {
     const q = search.toLowerCase().trim();
     return orders.filter(
       (o) =>
-        o.service_name.toLowerCase().includes(q) ||
-        o.link.toLowerCase().includes(q) ||
-        String(o.id).toLowerCase().includes(q)
+        (o.service_name || '').toLowerCase().includes(q) ||
+        (o.link || '').toLowerCase().includes(q) ||
+        String(o.id || '').toLowerCase().includes(q)
     );
   }, [orders, search]);
 
@@ -601,6 +606,51 @@ function OrdersContent() {
           )}
         </div>
 
+        {/* Channel Switcher (All / Web / API) for SMM */}
+        {verticalTab === 'smm' && (
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl w-fit">
+            <button
+              type="button"
+              onClick={() => setSourceFilter('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                sourceFilter === 'all'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              All Orders
+            </button>
+            <button
+              type="button"
+              onClick={() => setSourceFilter('web')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                sourceFilter === 'web'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <svg className={`w-3.5 h-3.5 ${sourceFilter === 'web' ? 'text-blue-600' : 'text-slate-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+              </svg>
+              Direct Web
+            </button>
+            <button
+              type="button"
+              onClick={() => setSourceFilter('api')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                sourceFilter === 'api'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <svg className={`w-3.5 h-3.5 ${sourceFilter === 'api' ? 'text-cyan-600' : 'text-slate-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+              </svg>
+              Reseller API
+            </button>
+          </div>
+        )}
+
         {/* Filter Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
           {activeStatusFilters.map((f) => {
@@ -634,11 +684,13 @@ function OrdersContent() {
           ) : filteredOrders.length > 0 ? (
             <div className="divide-y divide-slate-100">
               {filteredOrders.map((order) => {
-                const statusLower = order.status.toLowerCase();
+                const statusLower = (order.status || '').toLowerCase();
                 const progress = calculateProgress(order);
                 const showProgress = progress !== null && ['in_progress', 'processing', 'partial'].includes(statusLower);
-                const delivered = order.start_count !== null && order.start_count !== undefined && order.remains !== null && order.remains !== undefined
-                  ? Math.max(0, order.quantity - order.remains)
+                const qty = Number(order.quantity || 0);
+                const remainsNum = order.remains !== null && order.remains !== undefined ? Number(order.remains) : null;
+                const delivered = order.start_count !== null && order.start_count !== undefined && remainsNum !== null
+                  ? Math.max(0, qty - remainsNum)
                   : null;
 
                 return (
@@ -654,7 +706,7 @@ function OrdersContent() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap mb-1">
                             <h3 className="text-xs sm:text-sm font-bold text-slate-900 truncate">
-                              {order.service_name}
+                              {order.service_name || 'Custom SMM Service'}
                             </h3>
                             <button
                               type="button"
@@ -662,7 +714,7 @@ function OrdersContent() {
                               className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-[10px] font-mono font-bold text-slate-500 hover:bg-slate-200 transition-colors cursor-pointer"
                               title="Click to copy Order ID"
                             >
-                              <span>#{String(order.id).slice(0, 8).toUpperCase()}</span>
+                              <span>#{String(order.id || '').slice(0, 8).toUpperCase()}</span>
                               {copiedId === order.id ? (
                                 <span className="text-emerald-600 font-sans">✓</span>
                               ) : (
@@ -671,18 +723,27 @@ function OrdersContent() {
                                 </svg>
                               )}
                             </button>
+                            {order.source === 'api' && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-cyan-50 border border-cyan-200 text-cyan-700 text-[10px] font-mono font-black">
+                                API
+                              </span>
+                            )}
                           </div>
 
                           {/* Link Preview */}
                           <p className="text-xs text-slate-500 truncate max-w-md font-medium">
-                            <a
-                              href={order.link.startsWith('http') ? order.link : `https://${order.link}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="hover:text-primary transition-colors hover:underline"
-                            >
-                              {order.link}
-                            </a>
+                            {order.link ? (
+                              <a
+                                href={order.link.startsWith('http') ? order.link : `https://${order.link}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hover:text-primary transition-colors hover:underline"
+                              >
+                                {order.link}
+                              </a>
+                            ) : (
+                              <span className="text-slate-400">No link specified</span>
+                            )}
                           </p>
                         </div>
                       </div>
@@ -690,15 +751,13 @@ function OrdersContent() {
                       {/* Quantity & Charge */}
                       <div className="text-right shrink-0 flex items-center gap-4">
                         <div className="hidden sm:block">
-                          <p className="text-xs sm:text-sm font-black text-slate-900">{order.quantity.toLocaleString()}</p>
+                          <p className="text-xs sm:text-sm font-black text-slate-900">{qty.toLocaleString()}</p>
                           <p className="text-[10px] font-bold text-slate-400 uppercase">Quantity</p>
                         </div>
                         <div>
-                          <p className="text-xs sm:text-sm font-black text-slate-900">{formatCurrency(order.charge)}</p>
-                          <p className="text-[10px] font-bold text-slate-400">{formatDate(order.created_at)}</p>
+                          <p className="text-xs sm:text-sm font-black text-slate-900">{formatCurrency(order.charge || 0)}</p>
+                          <p className="text-[10px] font-bold text-slate-400">{order.created_at ? formatDate(order.created_at) : '—'}</p>
                         </div>
-
-
                       </div>
                     </div>
 
@@ -711,7 +770,7 @@ function OrdersContent() {
                             Delivery Progress
                           </span>
                           <span>
-                            {delivered!.toLocaleString()} / {order.quantity.toLocaleString()} ({Math.round(progress!)}%)
+                            {(delivered ?? 0).toLocaleString()} / {qty.toLocaleString()} ({Math.round(progress ?? 0)}%)
                           </span>
                         </div>
                         <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
@@ -742,7 +801,7 @@ function OrdersContent() {
                               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
                               <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600" />
                             </span>
-                            <span>{order.status.replace('_', ' ')}</span>
+                            <span>{statusLower.replace('_', ' ')}</span>
                           </span>
                         )}
 
@@ -770,12 +829,12 @@ function OrdersContent() {
                         {/* Counts (Start count / Remains) */}
                         {order.start_count !== null && order.start_count !== undefined && (
                           <span className="text-[11px] text-slate-500 font-medium">
-                            Start: <strong className="text-slate-700">{order.start_count.toLocaleString()}</strong>
+                            Start: <strong className="text-slate-700">{Number(order.start_count).toLocaleString()}</strong>
                           </span>
                         )}
                         {order.remains !== null && order.remains !== undefined && (
                           <span className="text-[11px] text-slate-500 font-medium">
-                            Remains: <strong className="text-slate-700">{order.remains.toLocaleString()}</strong>
+                            Remains: <strong className="text-slate-700">{Number(order.remains).toLocaleString()}</strong>
                           </span>
                         )}
                       </div>

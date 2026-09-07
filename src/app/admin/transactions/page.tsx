@@ -13,9 +13,11 @@ interface AdminTransaction {
   amount: string;
   description: string;
   status: string;
+  otp_status?: string | null;
   payment_gateway: string;
   payment_reference: string | null;
   has_proof: boolean;
+  is_api?: boolean;
   created_at: string;
 }
 
@@ -31,10 +33,25 @@ const GATEWAY_META: Record<string, { label: string; color: string; dot: string }
 };
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
-  pending: { label: 'Pending', color: 'bg-amber-50 text-amber-700 border-amber-200' },
-  success: { label: 'Success', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  failed:  { label: 'Failed',  color: 'bg-red-50 text-red-700 border-red-200' },
+  pending:  { label: 'Pending',   color: 'bg-amber-50 text-amber-700 border-amber-200' },
+  success:  { label: 'Success',   color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  failed:   { label: 'Failed',    color: 'bg-red-50 text-red-700 border-red-200' },
+  canceled: { label: 'Canceled',  color: 'bg-rose-50 text-rose-700 border-rose-200' },
+  expired:  { label: 'Expired',   color: 'bg-slate-100 text-slate-700 border-slate-200' },
+  refunded: { label: 'Refunded',  color: 'bg-amber-50 text-amber-700 border-amber-200' },
+  received: { label: 'Delivered', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
 };
+
+function getTxStatusMeta(tx: AdminTransaction): { label: string; color: string } {
+  // If this is a virtual number charge and correlated OTP order was canceled/expired/pending
+  if (tx.otp_status) {
+    const rawOtpStatus = tx.otp_status.toLowerCase();
+    if (STATUS_META[rawOtpStatus]) {
+      return STATUS_META[rawOtpStatus];
+    }
+  }
+  return STATUS_META[tx.status] ?? { label: tx.status, color: 'bg-slate-100 text-slate-600 border-slate-200' };
+}
 
 const GATEWAYS = ['', 'squad', 'nexapay', 'manual', 'binance_pay', 'on_chain_usdt_trc20', 'on_chain_usdt_bep20', 'on_chain_sol'];
 const STATUSES = ['', 'pending', 'success', 'failed'];
@@ -110,6 +127,17 @@ function Badge({ label, color }: { label: string; color: string }) {
 
 function getTxCategoryMeta(tx: AdminTransaction): { label: string; color: string; icon: ReactNode } {
   const desc = (tx.description || '').toLowerCase();
+  if (tx.type === 'refund' || desc.includes('refund')) {
+    return {
+      label: 'Refund',
+      color: 'bg-amber-50 text-amber-700 border-amber-200',
+      icon: (
+        <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+        </svg>
+      ),
+    };
+  }
   if (desc.includes('virtual number') || desc.includes('otp')) {
     return {
       label: 'Virtual Number',
@@ -121,13 +149,13 @@ function getTxCategoryMeta(tx: AdminTransaction): { label: string; color: string
       ),
     };
   }
-  if (tx.type === 'refund' || desc.includes('refund')) {
+  if (tx.is_api || desc.startsWith('api') || desc.includes('api order')) {
     return {
-      label: 'Refund',
-      color: 'bg-amber-50 text-amber-700 border-amber-200',
+      label: 'API Order',
+      color: 'bg-cyan-50 text-cyan-700 border-cyan-200',
       icon: (
         <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
         </svg>
       ),
     };
@@ -163,7 +191,7 @@ export default function AdminTransactionsPage() {
   const [forceVerifyTx, setForceVerifyTx] = useState<{ id: string; amount: string; ref: string | null; error: string } | null>(null);
   const [forceLoading, setForceLoading] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [category, setCategory] = useState<'all' | 'deposit' | 'smm' | 'otp'>('all');
+  const [category, setCategory] = useState<'all' | 'deposit' | 'smm' | 'api' | 'otp' | 'refund'>('all');
   const [search, setSearch] = useState('');
   const [gateway, setGateway] = useState('');
   const [txStatus, setTxStatus] = useState('');
@@ -312,10 +340,19 @@ export default function AdminTransactionsPage() {
           },
           {
             id: 'smm',
-            label: 'Social Media Boosts',
+            label: 'Web Boosts',
             icon: (
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            ),
+          },
+          {
+            id: 'api',
+            label: 'API Orders',
+            icon: (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
               </svg>
             ),
           },
@@ -325,6 +362,15 @@ export default function AdminTransactionsPage() {
             icon: (
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+            ),
+          },
+          {
+            id: 'refund',
+            label: 'Refunds',
+            icon: (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
               </svg>
             ),
           },
@@ -405,11 +451,13 @@ export default function AdminTransactionsPage() {
           <div className="sm:hidden space-y-3">
             {transactions.map(tx => {
               const gMeta = GATEWAY_META[tx.payment_gateway] ?? GATEWAY_META[''];
-              const sMeta = STATUS_META[tx.status] ?? { label: tx.status, color: 'bg-slate-100 text-slate-600 border-slate-200' };
+              const sMeta = getTxStatusMeta(tx);
               const cMeta = getTxCategoryMeta(tx);
               const isPending = tx.status === 'pending';
               const isSquad = tx.payment_gateway === 'squad';
               const isNexaPay = tx.payment_gateway === 'nexapay';
+              const isPositive = tx.type === 'deposit' || tx.type === 'refund' || (tx.description || '').toLowerCase().includes('refund');
+              const absAmount = Math.abs(parseFloat(tx.amount) || 0);
 
               return (
                 <div key={tx.id} className="bento-card bg-white border border-slate-200 p-4 space-y-3">
@@ -438,8 +486,8 @@ export default function AdminTransactionsPage() {
                       <div className={`w-2 h-2 rounded-full ${gMeta.dot}`} />
                       <Badge label={gMeta.label} color={gMeta.color} />
                     </div>
-                    <span className={`font-black font-mono text-base ${tx.type === 'deposit' ? 'text-emerald-700' : 'text-slate-600'}`}>
-                      {tx.type === 'deposit' ? '+' : '-'}₦{parseFloat(tx.amount).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    <span className={`font-black font-mono text-base ${isPositive ? 'text-emerald-700' : 'text-slate-600'}`}>
+                      {isPositive ? '+' : '-'}₦{absAmount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </span>
                   </div>
 
@@ -516,11 +564,13 @@ export default function AdminTransactionsPage() {
               <tbody className="divide-y divide-slate-100">
                 {transactions.map(tx => {
                   const gMeta = GATEWAY_META[tx.payment_gateway] ?? { label: tx.payment_gateway || 'Internal', color: 'bg-slate-100 text-slate-600 border-slate-200', dot: 'bg-slate-400' };
-                  const sMeta = STATUS_META[tx.status] ?? { label: tx.status, color: 'bg-slate-100 text-slate-600 border-slate-200' };
+                  const sMeta = getTxStatusMeta(tx);
                   const cMeta = getTxCategoryMeta(tx);
                   const isSquad = tx.payment_gateway === 'squad';
                   const isNexaPay = tx.payment_gateway === 'nexapay';
                   const isPending = tx.status === 'pending';
+                  const isPositive = tx.type === 'deposit' || tx.type === 'refund' || (tx.description || '').toLowerCase().includes('refund');
+                  const absAmount = Math.abs(parseFloat(tx.amount) || 0);
 
                   return (
                     <tr key={tx.id} className="hover:bg-slate-50 transition-colors">
@@ -545,8 +595,8 @@ export default function AdminTransactionsPage() {
                         <Badge label={gMeta.label} color={gMeta.color} />
                       </td>
                       <td className="px-4 py-3.5 text-right">
-                        <span className={`font-bold font-mono text-sm ${tx.type === 'deposit' ? 'text-emerald-700' : 'text-slate-500'}`}>
-                          {tx.type === 'deposit' ? '+' : '-'}₦{parseFloat(tx.amount).toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        <span className={`font-bold font-mono text-sm ${isPositive ? 'text-emerald-700' : 'text-slate-500'}`}>
+                          {isPositive ? '+' : '-'}₦{absAmount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </td>
                       <td className="px-4 py-3.5">

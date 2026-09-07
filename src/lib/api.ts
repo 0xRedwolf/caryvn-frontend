@@ -284,9 +284,10 @@ export const ordersApi = {
   checkProviderBalance: (data: { service_id: number; quantity: number }, token: string) =>
     api('/orders/check-provider-balance/', { method: 'POST', body: data, token }),
 
-  getOrders: (token: string, params?: { status?: string; limit?: number; offset?: number }) => {
+  getOrders: (token: string, params?: { status?: string; source?: string; limit?: number; offset?: number }) => {
     const searchParams = new URLSearchParams();
     if (params?.status) searchParams.set('status', params.status);
+    if (params?.source) searchParams.set('source', params.source);
     if (params?.limit) searchParams.set('limit', params.limit.toString());
     if (params?.offset) searchParams.set('offset', params.offset.toString());
     const query = searchParams.toString();
@@ -332,9 +333,10 @@ export const adminApi = {
     return api(`/admin/users/${query ? `?${query}` : ''}`, { token });
   },
 
-  getOrders: (token: string, params?: { status?: string; user?: string; search?: string; limit?: number; offset?: number }) => {
+  getOrders: (token: string, params?: { status?: string; source?: string; user?: string; search?: string; limit?: number; offset?: number }) => {
     const searchParams = new URLSearchParams();
     if (params?.status) searchParams.set('status', params.status);
+    if (params?.source) searchParams.set('source', params.source);
     if (params?.user) searchParams.set('user', params.user);
     if (params?.search) searchParams.set('search', params.search);
     if (params?.limit) searchParams.set('limit', params.limit.toString());

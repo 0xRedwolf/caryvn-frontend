@@ -14,6 +14,7 @@ interface Order {
   charge: string;
   profit: string;
   status: string;
+  source?: string;
   start_count?: number | null;
   remains?: number | null;
   service_has_refill?: boolean;
@@ -40,6 +41,38 @@ function getOtpStatusBadge(status: string): string {
     default:
       return 'bg-slate-100 text-slate-600 border-slate-200';
   }
+}
+
+// Clean SVG Country Flag with automatic code badge fallback
+function CountryFlag({
+  code,
+  name,
+  className = 'w-5 h-3.5',
+}: {
+  code: string;
+  name?: string;
+  className?: string;
+}) {
+  const [imgError, setImgError] = useState(false);
+  const lc = (code || '').toLowerCase();
+
+  if (imgError || !code) {
+    return (
+      <span className="font-mono font-bold text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 shrink-0 uppercase">
+        {code}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={`/flags/${lc}.svg`}
+      alt={name || code}
+      onError={() => setImgError(true)}
+      className={`${className} object-cover rounded-xs border border-slate-200/80 shrink-0 shadow-2xs`}
+      loading="lazy"
+    />
+  );
 }
 
 // Custom dropdown component
@@ -101,6 +134,7 @@ export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('All');
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'web' | 'api'>('all');
   const [search, setSearch] = useState('');
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
@@ -129,14 +163,14 @@ export default function AdminOrdersPage() {
   useEffect(() => {
     if (token) loadOrders();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, statusFilter, search, offset]);
+  }, [token, statusFilter, sourceFilter, search, offset]);
 
   useEffect(() => {
     if (token) loadOtpOrders();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, otpPage, otpStatusFilter, otpSearch]);
 
-  useEffect(() => { setOffset(0); }, [statusFilter, search]);
+  useEffect(() => { setOffset(0); }, [statusFilter, sourceFilter, search]);
   useEffect(() => { setOtpPage(1); }, [otpStatusFilter, otpSearch]);
 
   const copyToClipboard = (text: string, id: string) => {
@@ -175,6 +209,7 @@ export default function AdminOrdersPage() {
     setLoading(true);
     const result = await adminApi.getOrders(token, {
       status: statusFilter === 'All' ? undefined : statusFilter,
+      source: sourceFilter === 'all' ? undefined : sourceFilter,
       search: search || undefined,
       limit: PAGE_SIZE,
       offset,
@@ -360,6 +395,46 @@ export default function AdminOrdersPage() {
 
       {verticalTab === 'smm' ? (
         <>
+          {/* Source Tabs (All / Web / API) */}
+          <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl w-fit">
+            <button
+              onClick={() => setSourceFilter('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                sourceFilter === 'all'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              All Channels
+            </button>
+            <button
+              onClick={() => setSourceFilter('web')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                sourceFilter === 'web'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <svg className={`w-3.5 h-3.5 ${sourceFilter === 'web' ? 'text-blue-600' : 'text-slate-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+              </svg>
+              Web Orders
+            </button>
+            <button
+              onClick={() => setSourceFilter('api')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                sourceFilter === 'api'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <svg className={`w-3.5 h-3.5 ${sourceFilter === 'api' ? 'text-cyan-600' : 'text-slate-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+              </svg>
+              API Orders
+            </button>
+          </div>
+
           {/* Filters Row */}
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
@@ -476,7 +551,14 @@ export default function AdminOrdersPage() {
                           onChange={() => toggleSelectOrder(order.id)}
                         />
                         <div className="min-w-0">
-                          <p className="font-black text-slate-900 font-mono text-sm">{order.id.slice(0, 8).toUpperCase()}</p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="font-black text-slate-900 font-mono text-sm">{order.id.slice(0, 8).toUpperCase()}</p>
+                            {order.source === 'api' && (
+                              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-cyan-50 text-cyan-700 border border-cyan-200 uppercase tracking-wider">
+                                API
+                              </span>
+                            )}
+                          </div>
                           <p className="text-[11px] text-slate-500 truncate">{order.user_email}</p>
                         </div>
                       </div>
@@ -599,9 +681,16 @@ export default function AdminOrdersPage() {
                           />
                         </td>
                         <td className="py-3.5 px-4">
-                          <span className="font-mono text-xs font-bold text-slate-700" title={order.id}>
-                            {order.id.slice(0, 8).toUpperCase()}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-xs font-bold text-slate-700" title={order.id}>
+                              {order.id.slice(0, 8).toUpperCase()}
+                            </span>
+                            {order.source === 'api' && (
+                              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-cyan-50 text-cyan-700 border border-cyan-200 uppercase tracking-wider">
+                                API
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3.5 px-4">
                           <span className="text-xs text-slate-600 truncate max-w-32 block">{order.user_email}</span>
@@ -781,8 +870,8 @@ export default function AdminOrdersPage() {
                       <div className="space-y-1">
                         <p className="text-xs font-bold text-slate-800 truncate">{order.user_email || '—'}</p>
                         <div className="flex items-center gap-2 text-xs text-slate-600">
+                          <CountryFlag code={order.country} />
                           <span className="font-semibold">{order.service_name}</span>
-                          <span className="px-1.5 py-0.5 rounded bg-slate-100 font-mono text-[10px] font-bold text-slate-500 uppercase">{order.country}</span>
                         </div>
                       </div>
 
@@ -867,9 +956,9 @@ export default function AdminOrdersPage() {
                             <p className="text-slate-400 text-[11px]">@{order.user_username || 'user'}</p>
                           </td>
                           <td className="px-4 py-3.5">
-                            <div className="flex items-center gap-1.5">
+                            <div className="flex items-center gap-2">
+                              <CountryFlag code={order.country} />
                               <span className="font-medium text-xs text-slate-900">{order.service_name}</span>
-                              <span className="px-1.5 py-0.5 rounded bg-slate-100 font-mono text-[10px] font-bold text-slate-500 uppercase">{order.country}</span>
                             </div>
                             <span className="text-[11px] text-slate-400 capitalize">{order.rental_type} rental</span>
                           </td>

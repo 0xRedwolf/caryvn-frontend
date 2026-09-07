@@ -115,6 +115,29 @@ interface AnalyticsData {
     spend_7d_ngn: number;
     daily_burn_ngn: number;
   }[];
+  api_metrics?: {
+    total_orders: number;
+    revenue: number;
+    profit: number;
+    completed_count: number;
+    failed_count: number;
+    success_rate: number;
+    top_resellers?: {
+      user_id: string;
+      email: string;
+      username: string;
+      orders: number;
+      total_spend: number;
+      total_profit: number;
+    }[];
+    popular_services?: {
+      name: string;
+      category: string;
+      orders: number;
+      revenue: number;
+      profit: number;
+    }[];
+  };
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -1235,6 +1258,114 @@ export default function AdminAnalyticsPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {/* Reseller API Telemetry Studio */}
+          {data.api_metrics && (
+            <div className="p-6 rounded-3xl bg-white border border-slate-200/90 shadow-xs space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-cyan-50 text-cyan-700 flex items-center justify-center border border-cyan-200">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900">Reseller API Performance & Telemetry</h3>
+                    <p className="text-[11px] text-slate-400">Order throughput, programmatic revenue, and top API clients</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-cyan-50 text-cyan-700 border border-cyan-200 uppercase tracking-wider self-start sm:self-auto">
+                  Endpoint /api/v2
+                </span>
+              </div>
+
+              {/* API Mini KPI Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100">
+                  <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">API Orders</p>
+                  <p className="text-lg sm:text-xl font-black text-slate-900 mt-0.5">{data.api_metrics.total_orders.toLocaleString()}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Programmatic placements</p>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-cyan-50/60 border border-cyan-100">
+                  <p className="text-[10px] uppercase font-bold text-cyan-600 tracking-wider">API Revenue</p>
+                  <p className="text-lg sm:text-xl font-black text-cyan-800 mt-0.5">{formatCompactCurrency(data.api_metrics.revenue)}</p>
+                  <p className="text-[10px] text-cyan-600/70 mt-0.5">Gross billed via API</p>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-emerald-50/60 border border-emerald-100">
+                  <p className="text-[10px] uppercase font-bold text-emerald-600 tracking-wider">API Profit</p>
+                  <p className="text-lg sm:text-xl font-black text-emerald-800 mt-0.5">{formatCompactCurrency(data.api_metrics.profit)}</p>
+                  <p className="text-[10px] text-emerald-600/70 mt-0.5">Net margin earned</p>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100">
+                  <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Fulfillment Rate</p>
+                  <p className="text-lg sm:text-xl font-black text-blue-600 mt-0.5">{data.api_metrics.success_rate}%</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{data.api_metrics.completed_count} completed orders</p>
+                </div>
+              </div>
+
+              {/* 2-Column: Top Resellers & Popular API Services */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pt-2">
+                {/* Top Resellers Leaderboard */}
+                <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80">
+                  <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200/60">
+                    <span className="text-xs font-bold text-slate-800">Top API Reseller Accounts</span>
+                    <span className="text-[10px] text-slate-400">By total spend</span>
+                  </div>
+                  {data.api_metrics.top_resellers && data.api_metrics.top_resellers.length > 0 ? (
+                    <div className="space-y-2">
+                      {data.api_metrics.top_resellers.map((r, i) => (
+                        <div key={r.user_id} className="flex items-center justify-between text-xs py-1.5 px-2.5 rounded-xl bg-white border border-slate-200/60 shadow-2xs">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-5 h-5 rounded-full bg-slate-100 text-[10px] font-bold text-slate-600 flex items-center justify-center shrink-0">
+                              {i + 1}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="font-bold text-slate-900 truncate">{r.email}</p>
+                              <p className="text-[10px] text-slate-400">{r.orders} orders placed</p>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="font-bold text-slate-800">{formatCompactCurrency(r.total_spend)}</p>
+                            <p className="text-[10px] text-emerald-600 font-semibold">+{formatCompactCurrency(r.total_profit)}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 italic py-4 text-center">No API reseller orders in this timeframe.</p>
+                  )}
+                </div>
+
+                {/* Popular API Services */}
+                <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80">
+                  <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200/60">
+                    <span className="text-xs font-bold text-slate-800">Top Programmatic Services</span>
+                    <span className="text-[10px] text-slate-400">Most requested via API</span>
+                  </div>
+                  {data.api_metrics.popular_services && data.api_metrics.popular_services.length > 0 ? (
+                    <div className="space-y-2">
+                      {data.api_metrics.popular_services.map((s, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs py-1.5 px-2.5 rounded-xl bg-white border border-slate-200/60 shadow-2xs">
+                          <div className="min-w-0 mr-2">
+                            <p className="font-bold text-slate-900 truncate">{s.name}</p>
+                            <p className="text-[10px] text-slate-400">{s.category}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="inline-block px-2 py-0.5 rounded-md bg-cyan-50 text-cyan-700 font-bold text-[10px]">
+                              {s.orders} orders
+                            </span>
+                            <p className="text-[10px] text-slate-500 font-mono mt-0.5">{formatCompactCurrency(s.revenue)}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 italic py-4 text-center">No service orders logged via API yet.</p>
+                  )}
+                </div>
               </div>
             </div>
           )}
