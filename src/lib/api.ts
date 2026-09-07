@@ -418,11 +418,12 @@ export const adminApi = {
   getUserTransactions: (userId: string, token: string) =>
     api(`/admin/users/${userId}/transactions/`, { token }),
 
-  getAllTransactions: (token: string, params?: { search?: string; gateway?: string; status?: string; limit?: number; offset?: number }) => {
+  getAllTransactions: (token: string, params?: { search?: string; gateway?: string; status?: string; category?: string; limit?: number; offset?: number }) => {
     const qs = new URLSearchParams();
     if (params?.search) qs.set('search', params.search);
     if (params?.gateway) qs.set('gateway', params.gateway);
     if (params?.status) qs.set('status', params.status);
+    if (params?.category) qs.set('category', params.category);
     if (params?.limit !== undefined) qs.set('limit', String(params.limit));
     if (params?.offset !== undefined) qs.set('offset', String(params.offset));
     return api(`/admin/transactions/?${qs.toString()}`, { token });
@@ -788,4 +789,139 @@ export const adminBlogApi = {
   deleteCategory: (id: string, token: string) =>
     api(`/admin/blog/categories/${id}/`, { method: 'DELETE', token }),
 };
+
+// ==========================================
+// Virtual Numbers & SMS OTP API
+// ==========================================
+
+export interface OTPServiceItem {
+  service_id: string;
+  service_name: string;
+  price: number;
+  wholesale_price?: number;
+  count?: number;
+  success_rate?: number;
+  pool_id?: string;
+  pool_name?: string;
+  provider?: string;
+}
+
+export interface OTPOrder {
+  id: string;
+  phone_number: string;
+  country: string;
+  service_id: string;
+  service_name: string;
+  provider: string;
+  rental_type: 'short' | 'long';
+  rental_days: number;
+  user_charge: string | number;
+  status: 'PENDING' | 'RECEIVED' | 'CANCELED' | 'EXPIRED' | 'REFUNDED';
+  formatted_status: string;
+  sms_code: string | null;
+  full_sms: string;
+  expires_at: string;
+  received_at: string | null;
+  refunded_at: string | null;
+  created_at: string;
+  user_email?: string;
+  user_username?: string;
+  provider_cost?: string | number;
+  profit?: string | number;
+}
+
+export interface OTPProviderSetting {
+  id: number;
+  api_key: string;
+  base_url: string;
+  is_active: boolean;
+  markup_percentage: string | number;
+  min_margin: string | number;
+  low_balance_threshold: string | number;
+  cached_balance: string | number;
+  last_balance_check: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const otpApi = {
+  getServices: (country: string = 'US', provider: string = 'global', service?: string, token?: string) => {
+    const params = new URLSearchParams({ country, provider });
+    if (service) params.set('service', service);
+    return api<{ status: string; country: string; provider: string; services: OTPServiceItem[] }>(
+      `/otp/services/?${params.toString()}`,
+      { token }
+    );
+  },
+  rentNumber: (
+    data: {
+      country: string;
+      service: string;
+      service_name: string;
+      provider?: string;
+      rental_type?: 'short' | 'long';
+      days?: number;
+      pool?: string;
+    },
+    token?: string
+  ) => api<{ status: string; message: string; order: OTPOrder }>('/otp/rent/', {
+    method: 'POST',
+    body: data as any,
+    token,
+  }),
+  pollSms: (orderId: string, token?: string) =>
+    api<{ status: string; message?: string; order: OTPOrder }>(`/otp/orders/${orderId}/sms/`, { token }),
+  cancelOrder: (orderId: string, token?: string) =>
+    api<{ status: string; message: string; order: OTPOrder }>(`/otp/orders/${orderId}/cancel/`, {
+      method: 'POST',
+      token,
+    }),
+  getOrders: (params?: { page?: number; status?: string }, token?: string) => {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.status) qs.set('status', params.status);
+    return api<{ count: number; next: string | null; previous: string | null; results: OTPOrder[] }>(
+      `/otp/orders/${qs.toString() ? `?${qs.toString()}` : ''}`,
+      { token }
+    );
+  },
+  getStatus: () =>
+    api<{ is_active: boolean }>('/otp/status/'),
+};
+
+export const adminOtpApi = {
+  getSettings: (token: string) =>
+    api<OTPProviderSetting>('/admin/otp/settings/', { token }),
+  updateSettings: (data: Partial<OTPProviderSetting>, token: string) =>
+    api<OTPProviderSetting>('/admin/otp/settings/', {
+      method: 'PATCH',
+      body: data as any,
+      token,
+    }),
+  getBalance: (token: string) =>
+    api<{ status: string; data: { username: string; balance: number; currency: string } }>(
+      '/admin/otp/balance/',
+      { token }
+    ),
+  getOrders: (params?: { page?: number; status?: string; search?: string }, token?: string) => {
+    const qs = new URLSearchParams();
+    if (params?.page) qs.set('page', String(params.page));
+    if (params?.status) qs.set('status', params.status);
+    if (params?.search) qs.set('search', params.search);
+    return api<{
+      count: number;
+      next: string | null;
+      previous: string | null;
+      results: OTPOrder[];
+      analytics: {
+        total_orders: number;
+        received_count: number;
+        refunded_count: number;
+        success_rate: number;
+        total_profit: number;
+      };
+    }>(`/admin/otp/orders/${qs.toString() ? `?${qs.toString()}` : ''}`, { token });
+  },
+};
+
 

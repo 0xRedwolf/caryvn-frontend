@@ -48,6 +48,7 @@ export default function AdminSyncPage() {
   const [activeTab, setActiveTab] = useState<'active' | 'inactive'>('active');
   const [serviceSearch, setServiceSearch] = useState('');
   const [showOnlyAvailableUpstream, setShowOnlyAvailableUpstream] = useState(false);
+  const [showOnlyDeadUpstream, setShowOnlyDeadUpstream] = useState(false);
   const [togglingId, setTogglingId] = useState<number | null>(null);
 
   // Bulk Toggling State
@@ -72,7 +73,6 @@ export default function AdminSyncPage() {
     if (token) {
       loadData(true);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   async function loadData(showLoader = true) {
@@ -98,7 +98,7 @@ export default function AdminSyncPage() {
     }
 
     setLoading(false);
-  };
+  }
 
   const currentProvider = useMemo(
     () => providers.find(p => p.slug === selectedProvider),
@@ -111,6 +111,9 @@ export default function AdminSyncPage() {
 
     if (activeTab === 'active') {
       filtered = filtered.filter(s => s.is_active);
+      if (showOnlyDeadUpstream) {
+        filtered = filtered.filter(s => !s.provider_is_active);
+      }
     } else {
       filtered = filtered.filter(s => !s.is_active);
       if (showOnlyAvailableUpstream) {
@@ -128,7 +131,7 @@ export default function AdminSyncPage() {
     }
 
     return filtered;
-  }, [services, currentProvider, activeTab, serviceSearch, showOnlyAvailableUpstream]);
+  }, [services, currentProvider, activeTab, serviceSearch, showOnlyAvailableUpstream, showOnlyDeadUpstream]);
 
   const activeCount = useMemo(
     () => services.filter(s => s.provider_name === currentProvider?.name && s.is_active).length,
@@ -136,6 +139,14 @@ export default function AdminSyncPage() {
   );
   const inactiveCount = useMemo(
     () => services.filter(s => s.provider_name === currentProvider?.name && !s.is_active).length,
+    [services, currentProvider]
+  );
+  const deadUpstreamCount = useMemo(
+    () => services.filter(s => s.provider_name === currentProvider?.name && s.is_active && !s.provider_is_active).length,
+    [services, currentProvider]
+  );
+  const availableUpstreamCount = useMemo(
+    () => services.filter(s => s.provider_name === currentProvider?.name && !s.is_active && s.provider_is_active).length,
     [services, currentProvider]
   );
 
@@ -162,47 +173,26 @@ export default function AdminSyncPage() {
     setMessage('');
     setError('');
 
-    const result = await adminApi.syncOrders(token, providerSlug);
+    const result = await adminApi.syncOrders(token);
     if (result.data) {
-      const data = result.data as { updated: number; errors: number };
-      setMessage(`Orders synced: ${data.updated} updated, ${data.errors} errors`);
+      const data = result.data as { message: string };
+      setMessage(data.message);
     } else {
       setError(result.error || 'Failed to sync orders');
     }
     setSyncingOrders(null);
   };
 
-  const handleAddProvider = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token) return;
-    setAddingProvider(true);
-    setError('');
-    
-    const result = await adminApi.createProvider(newProviderForm, token);
-    
-    setAddingProvider(false);
-    if (result.data) {
-      setMessage(`Provider ${newProviderForm.name} added successfully!`);
-      setShowAddProvider(false);
-      setNewProviderForm({ name: '', api_url: '', api_key: '', currency: 'USD', exchange_rate: '1.0' });
-      loadData(false);
-    } else {
-      setError(result.error || 'Failed to add provider');
-    }
-  };
-
-  const handleToggleService = async (serviceId: number) => {
+  const handleToggleActive = async (serviceId: number, currentActive: boolean) => {
     if (!token) return;
     setTogglingId(serviceId);
-
     const result = await adminApi.toggleServiceActive(serviceId, token);
+    setTogglingId(null);
     if (result.data) {
-      const data = result.data as { is_active: boolean };
       setServices(prev =>
-        prev.map(s => s.id === serviceId ? { ...s, is_active: data.is_active } : s)
+        prev.map(s => s.id === serviceId ? { ...s, is_active: !currentActive } : s)
       );
     }
-    setTogglingId(null);
   };
 
   const handleToggleShowInactive = async (providerSlug: string) => {
@@ -216,7 +206,27 @@ export default function AdminSyncPage() {
     }
   };
 
-  const toggleSelectAll = () => {
+  const handleAddProvider = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token) return;
+    setAddingProvider(true);
+    setError('');
+    setMessage('');
+
+    const result = await adminApi.createProvider(newProviderForm, token);
+    setAddingProvider(false);
+
+    if (result.data) {
+      setMessage('Provider added successfully');
+      setShowAddProvider(false);
+      setNewProviderForm({ name: '', api_url: '', api_key: '', currency: 'USD', exchange_rate: '1.0' });
+      loadData(true);
+    } else {
+      setError(result.error || 'Failed to add provider');
+    }
+  };
+
+  const handleSelectAll = () => {
     if (selectedServices.size === filteredServices.length) {
       setSelectedServices(new Set());
     } else {
@@ -224,7 +234,7 @@ export default function AdminSyncPage() {
     }
   };
 
-  const toggleSelectService = (id: number) => {
+  const handleToggleSelect = (id: number) => {
     const newSet = new Set(selectedServices);
     if (newSet.has(id)) {
       newSet.delete(id);
@@ -276,26 +286,26 @@ export default function AdminSyncPage() {
 
   if (loading) {
     return (
-      <div className="py-12 text-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-text-secondary">Loading providers...</p>
+      <div className="py-16 text-center">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-xs font-semibold text-slate-400">Loading service providers...</p>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="space-y-6">
       {/* Header */}
-      <div className="mb-6 flex justify-between items-start md:items-center flex-col md:flex-row gap-4">
+      <div className="flex justify-between items-start md:items-center flex-col md:flex-row gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Service Providers</h1>
-          <p className="text-text-secondary text-sm mt-1">
-            Manage services from multiple SMM providers
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Service Providers & Sync</h1>
+          <p className="text-slate-500 text-sm mt-1">
+            Manage upstream catalog feeds, sync rates, and toggle services from connected SMM providers.
           </p>
         </div>
         <button
           onClick={() => setShowAddProvider(true)}
-          className="btn-primary px-5 py-2.5 text-sm"
+          className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
         >
           + Add New Provider
         </button>
@@ -303,117 +313,128 @@ export default function AdminSyncPage() {
 
       {/* Messages */}
       {message && (
-        <div className="mb-4 p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm flex justify-between items-center">
-          {message}
-          <button onClick={() => setMessage('')} className="text-emerald-500 hover:text-emerald-300 ml-4">✕</button>
+        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex justify-between items-center shadow-xs">
+          <span>{message}</span>
+          <button onClick={() => setMessage('')} className="text-emerald-600 hover:text-emerald-900 ml-4 font-bold cursor-pointer">✕</button>
         </div>
       )}
       {error && (
-        <div className="mb-4 p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex justify-between items-center">
-          {error}
-          <button onClick={() => setError('')} className="text-red-500 hover:text-red-300 ml-4">✕</button>
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex justify-between items-center shadow-xs">
+          <span>{error}</span>
+          <button onClick={() => setError('')} className="text-rose-600 hover:text-rose-900 ml-4 font-bold cursor-pointer">✕</button>
         </div>
       )}
 
       {/* Provider Tabs */}
-      <div className="flex gap-2 mb-6">
-        {providers.map(provider => (
-          <button
-            key={provider.slug}
-            onClick={() => { setSelectedProvider(provider.slug); setActiveTab('active'); setServiceSearch(''); }}
-            className={`px-5 py-3 rounded-xl font-medium text-sm transition-all flex items-center gap-2 ${
-              selectedProvider === provider.slug
-                ? 'bg-primary text-white shadow-lg shadow-primary/20'
-                : 'bg-surface-dark text-text-secondary border border-border-dark hover:text-white hover:border-primary/30'
-            }`}
-          >
-            <span className={`w-2 h-2 rounded-full ${provider.is_active ? 'bg-emerald-400' : 'bg-red-400'}`} />
-            {provider.name}
-            <span className="text-xs opacity-70">({provider.currency})</span>
-          </button>
-        ))}
+      <div className="flex flex-wrap gap-2">
+        {providers.map(provider => {
+          const isSelected = selectedProvider === provider.slug;
+          return (
+            <button
+              key={provider.slug}
+              onClick={() => { setSelectedProvider(provider.slug); setActiveTab('active'); setServiceSearch(''); }}
+              className={`px-4 py-2.5 rounded-2xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer ${
+                isSelected
+                  ? 'bg-primary text-white shadow-md shadow-primary/20 ring-2 ring-primary/20'
+                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:text-slate-900 shadow-2xs'
+              }`}
+            >
+              <span className={`w-2 h-2 rounded-full ${provider.is_active ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+              <span>{provider.name}</span>
+              <span className={`text-[10px] font-mono ${isSelected ? 'text-white/80' : 'text-slate-400'}`}>({provider.currency})</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Selected Provider Content */}
       {currentProvider && (
         <div className="space-y-6">
           {/* Provider Controls Card */}
-          <div className="bg-surface-dark rounded-2xl border border-border-dark p-6">
-            <div className="flex flex-wrap items-center gap-4 mb-6">
+          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-6">
+            <div className="flex flex-wrap items-center gap-3 mb-6 pb-6 border-b border-slate-100">
               {/* Sync Buttons */}
               <button
                 onClick={() => handleSyncServices(currentProvider.slug)}
                 disabled={syncingServices === currentProvider.slug}
-                className="btn-primary px-5 py-2.5 text-sm disabled:opacity-50"
+                className="px-4 py-2 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-white shadow-xs transition-all disabled:opacity-50 cursor-pointer flex items-center gap-2"
               >
                 {syncingServices === currentProvider.slug ? (
                   <span className="flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Syncing...
+                    <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Syncing Catalog...
                   </span>
                 ) : (
-                  'Sync Services'
+                  <>
+                    <span>Sync Services</span>
+                  </>
                 )}
               </button>
 
               <button
                 onClick={() => handleSyncOrders(currentProvider.slug)}
                 disabled={syncingOrders === currentProvider.slug}
-                className="px-5 py-2.5 text-sm rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-all disabled:opacity-50"
+                className="px-4 py-2 text-xs font-bold rounded-xl bg-blue-50 text-primary border border-blue-200 hover:bg-blue-100 shadow-xs transition-all disabled:opacity-50 cursor-pointer flex items-center gap-2"
               >
                 {syncingOrders === currentProvider.slug ? (
                   <span className="flex items-center gap-2">
-                    <span className="w-4 h-4 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
-                    Syncing...
+                    <span className="w-3.5 h-3.5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                    Syncing Orders...
                   </span>
                 ) : (
-                  'Sync Orders'
+                  <>
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span>Sync Orders Status</span>
+                  </>
                 )}
               </button>
 
               {/* Spacer */}
               <div className="flex-1" />
 
-              {/* Provider On/Off */}
+              {/* Provider Master Toggle */}
               <button
                 onClick={() => handleToggleProviderActive(currentProvider.slug, currentProvider.is_active)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
                   currentProvider.is_active
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20'
-                    : 'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20'
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                    : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
                 }`}
               >
-                {currentProvider.is_active ? 'Provider Active' : 'Provider Off'}
+                <span className={`w-2 h-2 rounded-full ${currentProvider.is_active ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                <span>{currentProvider.is_active ? 'Provider Active' : 'Provider Disabled'}</span>
               </button>
             </div>
 
-            {/* Provider Info Row */}
-            <div className="flex flex-wrap gap-6 text-sm">
+            {/* Provider Settings Metadata Row */}
+            <div className="flex flex-wrap items-center gap-6 text-xs text-slate-600">
               {/* Exchange Rate */}
               <div className="flex items-center gap-2">
-                <span className="text-text-secondary">Exchange Rate:</span>
+                <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px]">Exchange Rate:</span>
                 {editingRate === currentProvider.slug ? (
                   <div className="flex items-center gap-2">
-                    <span className="text-text-secondary">1 {currentProvider.currency} =</span>
+                    <span className="font-semibold">1 {currentProvider.currency} =</span>
                     <input
                       type="number"
                       step="0.01"
                       value={rateValue}
                       onChange={e => setRateValue(e.target.value)}
-                      className="input w-28 h-8 text-sm"
+                      className="w-24 px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold"
                       autoFocus
                     />
-                    <span className="text-text-secondary">NGN</span>
+                    <span>NGN</span>
                     <button
                       onClick={() => handleSaveExchangeRate(currentProvider.slug)}
                       disabled={savingRate}
-                      className="px-3 py-1 rounded bg-primary text-white text-xs hover:bg-primary-hover disabled:opacity-50"
+                      className="px-2.5 py-1 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 cursor-pointer"
                     >
                       {savingRate ? '...' : 'Save'}
                     </button>
                     <button
                       onClick={() => setEditingRate(null)}
-                      className="px-3 py-1 rounded bg-surface-darker text-text-secondary text-xs hover:text-white"
+                      className="px-2.5 py-1 bg-slate-100 text-slate-600 font-bold rounded-lg hover:bg-slate-200 cursor-pointer"
                     >
                       Cancel
                     </button>
@@ -421,213 +442,246 @@ export default function AdminSyncPage() {
                 ) : (
                   <button
                     onClick={() => { setEditingRate(currentProvider.slug); setRateValue(currentProvider.exchange_rate); }}
-                    className="text-white font-medium hover:text-primary transition-colors"
+                    className="font-bold text-slate-900 hover:text-primary transition-colors cursor-pointer flex items-center gap-1.5"
                   >
-                    {currentProvider.currency === 'NGN'
-                      ? '1.00 (native)'
-                      : `1 ${currentProvider.currency} = ${currentProvider.exchange_rate} NGN`}
-                    {currentProvider.currency !== 'NGN' && <span className="ml-1 text-text-secondary text-xs">✏️</span>}
+                    <span>
+                      {currentProvider.currency === 'NGN'
+                        ? '1.00 (Native NGN)'
+                        : `1 ${currentProvider.currency} = ₦${currentProvider.exchange_rate}`}
+                    </span>
+                    {currentProvider.currency !== 'NGN' && (
+                      <svg className="w-3.5 h-3.5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    )}
                   </button>
                 )}
               </div>
 
               {/* Show Inactive Toggle */}
               <div className="flex items-center gap-2">
-                <span className="text-text-secondary">Show inactive to users:</span>
+                <span className="text-slate-400 font-bold uppercase tracking-wider text-[11px]">Show Inactive in User Storefront:</span>
                 <button
+                  type="button"
                   onClick={() => handleToggleShowInactive(currentProvider.slug)}
-                  className={`relative w-10 h-5 rounded-full transition-colors ${
-                    currentProvider.show_inactive_services ? 'bg-primary' : 'bg-surface-darker border border-border-dark'
+                  className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer ${
+                    currentProvider.show_inactive_services ? 'bg-primary' : 'bg-slate-200'
                   }`}
                 >
-                  <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
-                    currentProvider.show_inactive_services ? 'translate-x-5' : ''
+                  <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform shadow-xs ${
+                    currentProvider.show_inactive_services ? 'translate-x-4' : ''
                   }`} />
                 </button>
               </div>
 
-              {/* Service Counts */}
-              <div className="text-text-secondary">
-                <span className="text-emerald-400 font-medium">{activeCount}</span> active
-                <span className="mx-1">·</span>
-                <span className="text-amber-400 font-medium">{inactiveCount}</span> inactive
+              {/* Counts */}
+              <div className="text-slate-500 font-medium">
+                Active: <span className="font-black text-slate-900">{activeCount}</span> | Inactive: <span className="font-black text-slate-900">{inactiveCount}</span>
               </div>
             </div>
           </div>
 
-          {/* Active/Inactive Tabs + Search */}
-          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4">
-            <div className="flex bg-surface-dark rounded-full border border-border-dark p-1 w-fit">
-              <button
-                onClick={() => setActiveTab('active')}
-                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-                  activeTab === 'active'
-                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20'
-                    : 'text-text-secondary hover:text-white'
-                }`}
-              >
-                ACTIVE ({activeCount})
-              </button>
-              <button
-                onClick={() => setActiveTab('inactive')}
-                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
-                  activeTab === 'inactive'
-                    ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20'
-                    : 'text-text-secondary hover:text-white'
-                }`}
-              >
-                INACTIVE ({inactiveCount})
-              </button>
-            </div>
+          {/* Sub Tabs: Active vs Inactive Services & Smart Upstream Toggles */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Primary Active / Inactive Switcher */}
+              <div className="flex items-center gap-2 bg-slate-200/60 p-1 rounded-xl w-fit">
+                <button
+                  onClick={() => {
+                    setActiveTab('active');
+                    setSelectedServices(new Set());
+                  }}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    activeTab === 'active'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Active Services ({activeCount})
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('inactive');
+                    setSelectedServices(new Set());
+                  }}
+                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    activeTab === 'inactive'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Inactive / Disabled ({inactiveCount})
+                </button>
+              </div>
 
-            <div className="flex-1 flex gap-4">
-              <input
-                type="text"
-                placeholder="Search services..."
-                value={serviceSearch}
-                onChange={e => setServiceSearch(e.target.value)}
-                className="input w-full max-w-md h-10 text-sm"
-              />
-              
-              {activeTab === 'inactive' && (
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase tracking-wider text-text-secondary font-bold">Available Upstream</span>
-                  <button
-                    onClick={() => setShowOnlyAvailableUpstream(!showOnlyAvailableUpstream)}
-                    className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${
-                      showOnlyAvailableUpstream ? 'bg-emerald-500' : 'bg-surface-darker border border-border-dark'
-                    }`}
-                  >
-                    <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
-                      showOnlyAvailableUpstream ? 'translate-x-4' : ''
-                    }`} />
-                  </button>
-                </div>
+              {/* Smart Upstream Filtering Toggle (Context-Aware) */}
+              {activeTab === 'active' ? (
+                <button
+                  type="button"
+                  onClick={() => setShowOnlyDeadUpstream(!showOnlyDeadUpstream)}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-2 cursor-pointer ${
+                    showOnlyDeadUpstream
+                      ? 'bg-rose-50 text-rose-700 border-rose-200 shadow-xs ring-2 ring-rose-100'
+                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                  }`}
+                  title="Show active Caryvn services that are disabled or removed upstream"
+                >
+                  <span className={`w-2 h-2 rounded-full ${showOnlyDeadUpstream ? 'bg-rose-500 animate-pulse' : 'bg-slate-300'}`} />
+                  <span>Dead Upstream</span>
+                  {deadUpstreamCount > 0 && (
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                      showOnlyDeadUpstream ? 'bg-rose-200 text-rose-800' : 'bg-rose-100 text-rose-700'
+                    }`}>
+                      {deadUpstreamCount}
+                    </span>
+                  )}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowOnlyAvailableUpstream(!showOnlyAvailableUpstream)}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-2 cursor-pointer ${
+                    showOnlyAvailableUpstream
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-xs ring-2 ring-emerald-100'
+                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                  }`}
+                  title="Show inactive Caryvn services that are available and healthy upstream"
+                >
+                  <span className={`w-2 h-2 rounded-full ${showOnlyAvailableUpstream ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                  <span>Available Upstream</span>
+                  {availableUpstreamCount > 0 && (
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
+                      showOnlyAvailableUpstream ? 'bg-emerald-200 text-emerald-800' : 'bg-emerald-100 text-emerald-700'
+                    }`}>
+                      {availableUpstreamCount}
+                    </span>
+                  )}
+                </button>
               )}
             </div>
+
+            {/* Search filter */}
+            <input
+              type="text"
+              placeholder="Search service name, ID, category..."
+              value={serviceSearch}
+              onChange={e => setServiceSearch(e.target.value)}
+              className="bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all w-72 shadow-2xs"
+            />
           </div>
 
-          {/* Bulk Action Bar */}
-          {filteredServices.length > 0 && (
-            <div className="bg-surface-darker rounded-xl border border-border-dark p-3 flex items-center justify-between gap-4 mb-2">
-              <div className="flex items-center gap-3 px-2 cursor-pointer" onClick={toggleSelectAll}>
-                <input 
-                  type="checkbox" 
-                  className="rounded border-border-dark bg-surface-dark text-primary focus:ring-primary h-4 w-4"
-                  checked={selectedServices.size === filteredServices.length}
-                  onChange={toggleSelectAll}
-                />
-                <span className="text-sm text-text-secondary select-none">
-                  Select All ({filteredServices.length})
+          {/* Smart Bulk Action Strip (Only the relevant action is shown) */}
+          {selectedServices.size > 0 && (
+            <div className="bg-blue-50/70 border border-blue-200 rounded-2xl p-4 flex items-center justify-between shadow-xs">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-primary animate-ping" />
+                <span className="text-xs font-black text-primary">
+                  {selectedServices.size} {selectedServices.size === 1 ? 'service' : 'services'} selected
                 </span>
               </div>
-              
-              {selectedServices.size > 0 && (
-                <div className="flex items-center gap-2">
-                  <span className="text-primary font-bold text-sm mr-2">{selectedServices.size} selected</span>
-                  <button
-                    onClick={() => handleBulkToggle(activeTab === 'inactive')}
-                    disabled={bulkToggling}
-                    className="px-4 py-1.5 bg-primary hover:bg-primary-hover text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-                  >
-                    {bulkToggling ? '...' : (activeTab === 'active' ? 'Mass Deactivate' : 'Mass Activate')}
-                  </button>
-                </div>
+
+              {activeTab === 'active' ? (
+                <button
+                  onClick={() => handleBulkToggle(false)}
+                  disabled={bulkToggling}
+                  className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-2 transition-all"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                  </svg>
+                  <span>Deactivate Selected</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleBulkToggle(true)}
+                  disabled={bulkToggling}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-2 transition-all"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Activate Selected</span>
+                </button>
               )}
             </div>
           )}
 
-          {/* Service List */}
-          <div className="space-y-2">
+          {/* Services Table Card */}
+          <div className="bg-white rounded-3xl border border-slate-200/90 shadow-xs overflow-hidden">
+            <div className="p-4 bg-slate-50/70 border-b border-slate-100 flex items-center justify-between text-xs font-bold text-slate-500">
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={filteredServices.length > 0 && selectedServices.size === filteredServices.length}
+                  onChange={handleSelectAll}
+                  className="w-4 h-4 rounded text-primary focus:ring-primary cursor-pointer"
+                />
+                <span>Select All ({filteredServices.length})</span>
+              </div>
+            </div>
+
             {filteredServices.length === 0 ? (
-              <div className="bg-surface-dark rounded-xl border border-border-dark p-8 text-center">
-                <p className="text-text-secondary">
-                  {serviceSearch
-                    ? 'No services match your search'
-                    : activeTab === 'active'
-                    ? 'No active services. Sync to fetch from provider.'
-                    : 'No inactive services.'}
-                </p>
+              <div className="p-12 text-center text-slate-400 text-xs font-semibold">
+                No services match your filters.
               </div>
             ) : (
-              filteredServices.map(service => (
-                <div
-                  key={service.id}
-                  className={`bg-surface-dark rounded-xl border p-4 flex items-center justify-between gap-4 transition-colors ${selectedServices.has(service.id) ? 'border-primary/50 bg-primary/5' : 'border-border-dark hover:border-primary/20'}`}
-                >
-                  <div className="shrink-0">
-                    <input 
-                      type="checkbox" 
-                      className="rounded border-border-dark bg-surface-darker text-primary focus:ring-primary h-4 w-4 cursor-pointer"
-                      checked={selectedServices.has(service.id)}
-                      onChange={() => toggleSelectService(service.id)}
-                    />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-text-secondary text-xs font-mono">#{service.external_id}</span>
-                      <span className="text-text-secondary text-xs">·</span>
-                      <span className="text-text-secondary text-xs">{service.category_name}</span>
-                      
-                      {/* Provider Status Badges (only really needed in Inactive tab) */}
-                      {!service.is_active && service.provider_is_active && (
-                        <span className="ml-2 px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 text-[10px] font-medium border border-emerald-500/20">
-                          Available
-                        </span>
-                      )}
-                      {!service.provider_is_active && (
-                        <span className="ml-2 px-1.5 py-0.5 rounded bg-red-500/10 text-red-400 text-[10px] font-medium border border-red-500/20">
-                          Dead
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-white text-sm font-medium truncate">{service.name}</p>
-                    <div className="flex items-center gap-3 mt-1  text-xs">
-                      <span className="text-primary font-medium">{formatCurrency(service.user_rate)} /1k</span>
-                      <span className="text-text-secondary">Min: {service.min_quantity}</span>
-                      <span className="text-text-secondary">Max: {service.max_quantity.toLocaleString()}</span>
-                      {service.has_refill && <span className="text-emerald-400">♻️ Refill</span>}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleToggleService(service.id)}
-                    disabled={togglingId === service.id}
-                    className={`px-4 py-2 rounded-lg text-xs font-medium transition-all shrink-0 ${
-                      service.is_active
-                        ? 'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20'
-                        : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20'
-                    }`}
+              <div className="divide-y divide-slate-100">
+                {filteredServices.map(service => (
+                  <div
+                    key={service.id}
+                    className="p-4 hover:bg-slate-50/60 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
                   >
-                    {togglingId === service.id ? '...' : activeTab === 'active' ? 'Deactivate' : 'Activate'}
-                  </button>
-                </div>
-              ))
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedServices.has(service.id)}
+                        onChange={() => handleToggleSelect(service.id)}
+                        className="w-4 h-4 mt-0.5 rounded text-primary focus:ring-primary cursor-pointer"
+                      />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-slate-900">{service.name}</span>
+                          <span className="text-[10px] font-mono text-slate-400">ID #{service.external_id}</span>
+                        </div>
+                        <p className="text-[11px] text-slate-400 mt-0.5 font-medium">{service.category_name}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-6 self-end sm:self-center">
+                      <div className="text-right">
+                        <p className="font-black text-slate-900">{formatCurrency(service.user_rate)}</p>
+                        <p className="text-[10px] text-slate-400">per 1,000</p>
+                      </div>
+
+                      <button
+                        onClick={() => handleToggleActive(service.id, service.is_active)}
+                        disabled={togglingId === service.id}
+                        className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-colors cursor-pointer ${
+                          service.is_active
+                            ? 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                            : 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                        }`}
+                      >
+                        {togglingId === service.id ? '...' : service.is_active ? 'Deactivate' : 'Activate'}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>
       )}
 
-      {providers.length === 0 && (
-        <div className="bg-surface-dark rounded-xl border border-border-dark p-8 text-center">
-          <p className="text-text-secondary mb-4">No providers configured yet.</p>
-          <button
-            onClick={() => setShowAddProvider(true)}
-            className="btn-primary px-5 py-2.5 text-sm"
-          >
-            + Add Your First Provider
-          </button>
-        </div>
-      )}
-
       {/* Add Provider Modal */}
       {showAddProvider && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-surface-darker w-full max-w-md rounded-2xl border border-border-dark shadow-2xl overflow-hidden">
-            <div className="p-6 border-b border-border-dark flex justify-between items-center bg-surface-dark/50">
-              <h2 className="text-lg font-semibold text-white">Add New Provider</h2>
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-3xl border border-slate-200 shadow-2xl overflow-hidden ring-1 ring-black/5 animate-in zoom-in-95 duration-150">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+              <h2 className="text-base font-black text-slate-900">Add New SMM Provider</h2>
               <button 
                 onClick={() => setShowAddProvider(false)}
-                className="text-text-secondary hover:text-white"
+                className="text-slate-400 hover:text-slate-700 p-1 cursor-pointer"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
@@ -635,74 +689,74 @@ export default function AdminSyncPage() {
             
             <form onSubmit={handleAddProvider} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">Provider Name</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Provider Name</label>
                 <input 
                   type="text" 
                   required 
                   value={newProviderForm.name}
                   onChange={e => setNewProviderForm({...newProviderForm, name: e.target.value})}
-                  className="input w-full" 
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/20" 
                   placeholder="e.g. SMMRocket"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">API URL (must end with /)</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">API URL (must end with /)</label>
                 <input 
                   type="url" 
                   required 
                   value={newProviderForm.api_url}
                   onChange={e => setNewProviderForm({...newProviderForm, api_url: e.target.value})}
-                  className="input w-full" 
-                  placeholder="https://smmrocket.com/api/v2"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/20" 
+                  placeholder="https://smmrocket.com/api/v2/"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1">API Key</label>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">API Key</label>
                 <input 
                   type="text" 
                   required 
                   value={newProviderForm.api_key}
                   onChange={e => setNewProviderForm({...newProviderForm, api_key: e.target.value})}
-                  className="input w-full" 
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 font-mono focus:outline-none focus:ring-2 focus:ring-primary/20" 
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-1">Provider Currency</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Currency</label>
                   <input 
                     type="text" 
                     required 
                     value={newProviderForm.currency}
                     onChange={e => setNewProviderForm({...newProviderForm, currency: e.target.value})}
-                    className="input w-full" 
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/20" 
                     placeholder="USD"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-1">Exchange Rate to NGN</label>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Rate to NGN</label>
                   <input 
                     type="number" 
                     step="0.01"
                     required 
                     value={newProviderForm.exchange_rate}
                     onChange={e => setNewProviderForm({...newProviderForm, exchange_rate: String(e.target.value)})}
-                    className="input w-full" 
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/20" 
                   />
                 </div>
               </div>
               
-              <div className="pt-4 flex justify-end gap-3">
+              <div className="pt-4 flex justify-end gap-2 border-t border-slate-100">
                 <button 
                   type="button" 
                   onClick={() => setShowAddProvider(false)}
-                  className="px-4 py-2 rounded-lg text-sm text-text-secondary hover:text-white transition-colors"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
                   disabled={addingProvider}
-                  className="btn-primary px-6 py-2 text-sm disabled:opacity-50"
+                  className="px-5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold shadow-xs cursor-pointer disabled:opacity-50"
                 >
                   {addingProvider ? 'Adding...' : 'Add Provider'}
                 </button>

@@ -10,8 +10,9 @@ import FloatingChatMenu from '@/components/FloatingChatMenu';
 import MobileBottomNav from '@/components/MobileBottomNav';
 import { formatCurrency } from '@/lib/utils';
 import CountUpBalance from '@/components/CountUpBalance';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
+import { otpApi } from '@/lib/api';
 
 const sidebarLinks = [
   {
@@ -71,6 +72,21 @@ const sidebarLinks = [
     ),
   },
   {
+    name: 'Virtual Numbers',
+    href: '/dashboard/virtual-numbers',
+    badge: 'NEW',
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+        />
+      </svg>
+    ),
+  },
+  {
     name: 'API Docs',
     href: '/api-docs',
     icon: (
@@ -101,7 +117,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, logout, refreshUser, isLoading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [otpEnabled, setOtpEnabled] = useState(true);
   useActivityTracker();
+
+  useEffect(() => {
+    otpApi.getStatus().then((res) => {
+      if (res.data && typeof res.data.is_active === 'boolean') {
+        setOtpEnabled(res.data.is_active);
+      }
+    }).catch(() => {});
+  }, []);
+
+  const visibleLinks = sidebarLinks.filter((link) => {
+    if (link.href === '/dashboard/virtual-numbers' && !otpEnabled) return false;
+    return true;
+  });
 
   const handleRefreshBalance = async () => {
     if (isRefreshing) return;
@@ -187,42 +217,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           {/* Navigation Links */}
           <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
-            {sidebarLinks.map((link) => {
+            {visibleLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
                 <div key={link.href}>
                   <Link
                     href={link.href}
                     onClick={() => setSidebarOpen(false)}
-                    className={`flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-200 ${
+                    className={`flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-200 ${
                       isActive
                         ? 'drawer-active-pill'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium'
                     }`}
                   >
-                    <div className="shrink-0">{link.icon}</div>
-                    <span className="text-sm">{link.name}</span>
+                    <div className="flex items-center gap-3.5">
+                      <div className="shrink-0">{link.icon}</div>
+                      <span className="text-sm">{link.name}</span>
+                    </div>
+                    {(link as any).badge && (
+                      <span className="px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide bg-emerald-500 text-white rounded-md shadow-xs">
+                        {(link as any).badge}
+                      </span>
+                    )}
                   </Link>
-
-                  {/* External OTP link */}
-                  {link.href === '/dashboard/wallet' && (
-                    <a
-                      href="https://zapotp.com/login"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3.5 px-4 py-3 rounded-xl transition-colors text-slate-600 hover:text-slate-900 hover:bg-slate-100 mt-1 font-medium"
-                    >
-                      <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                        />
-                      </svg>
-                      <span className="text-sm">Get Foreign Numbers</span>
-                    </a>
-                  )}
                 </div>
               );
             })}

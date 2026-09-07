@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, ReactNode } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { adminApi } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
@@ -81,7 +81,7 @@ function CustomSelect({
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1.5 w-full min-w-[160px] bg-white rounded-2xl border border-slate-200 shadow-xl z-30 overflow-hidden py-1">
+        <div className="absolute top-full left-0 mt-1.5 w-full min-w-40 bg-white rounded-2xl border border-slate-200 shadow-xl z-30 overflow-hidden py-1">
           {options.map(opt => (
             <button
               key={opt.value}
@@ -108,11 +108,58 @@ function Badge({ label, color }: { label: string; color: string }) {
   );
 }
 
+function getTxCategoryMeta(tx: AdminTransaction): { label: string; color: string; icon: ReactNode } {
+  const desc = (tx.description || '').toLowerCase();
+  if (desc.includes('virtual number') || desc.includes('otp')) {
+    return {
+      label: 'Virtual Number',
+      color: 'bg-primary/5 text-primary border-primary/20',
+      icon: (
+        <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+        </svg>
+      ),
+    };
+  }
+  if (tx.type === 'refund' || desc.includes('refund')) {
+    return {
+      label: 'Refund',
+      color: 'bg-amber-50 text-amber-700 border-amber-200',
+      icon: (
+        <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+        </svg>
+      ),
+    };
+  }
+  if (tx.type === 'deposit') {
+    return {
+      label: 'Deposit',
+      color: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      icon: (
+        <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+        </svg>
+      ),
+    };
+  }
+  return {
+    label: 'SMM Boost',
+    color: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    icon: (
+      <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+    ),
+  };
+}
+
 export default function AdminTransactionsPage() {
   const { token } = useAuth();
   const [transactions, setTransactions] = useState<AdminTransaction[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [category, setCategory] = useState<'all' | 'deposit' | 'smm' | 'otp'>('all');
   const [search, setSearch] = useState('');
   const [gateway, setGateway] = useState('');
   const [txStatus, setTxStatus] = useState('');
@@ -132,6 +179,7 @@ export default function AdminTransactionsPage() {
       search: search || undefined,
       gateway: gateway || undefined,
       status: txStatus || undefined,
+      category: category === 'all' ? undefined : category,
       limit: PAGE_SIZE,
       offset,
     });
@@ -141,12 +189,12 @@ export default function AdminTransactionsPage() {
       setTotal(d.total);
     }
     setLoading(false);
-  }, [token, search, gateway, txStatus, offset]);
+  }, [token, search, gateway, txStatus, category, offset]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [category, offset]);
 
-  useEffect(() => { setOffset(0); }, [search, gateway, txStatus]);
+  useEffect(() => { setOffset(0); }, [search, gateway, txStatus, category]);
 
   const handleVerify = async (tx: AdminTransaction) => {
     if (!token) return;
@@ -197,13 +245,68 @@ export default function AdminTransactionsPage() {
         </div>
         <button
           onClick={load}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-sm font-semibold text-slate-700 hover:border-primary/40 hover:text-primary transition-all shadow-xs"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-sm font-semibold text-slate-700 hover:border-primary/40 hover:text-primary transition-all shadow-xs cursor-pointer"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
           Refresh
         </button>
+      </div>
+
+      {/* Category Filter Tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-3 overflow-x-auto no-scrollbar">
+        {[
+          {
+            id: 'all',
+            label: 'All Transactions',
+            icon: (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              </svg>
+            ),
+          },
+          {
+            id: 'deposit',
+            label: 'Deposits',
+            icon: (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+            ),
+          },
+          {
+            id: 'smm',
+            label: 'Social Media Boosts',
+            icon: (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            ),
+          },
+          {
+            id: 'otp',
+            label: 'Virtual Numbers',
+            icon: (
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+            ),
+          },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setCategory(tab.id as any)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
+              category === tab.id
+                ? 'bg-primary text-white shadow-md shadow-primary/20 ring-2 ring-primary/20'
+                : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:border-slate-300'
+            }`}
+          >
+            {tab.icon}
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Toast */}
@@ -225,7 +328,7 @@ export default function AdminTransactionsPage() {
           </svg>
           <input
             type="text"
-            placeholder="Search by email, username, or reference…"
+            placeholder="Search by email, username, reference, or service…"
             className="w-full pl-9 pr-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 shadow-xs transition"
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -268,6 +371,7 @@ export default function AdminTransactionsPage() {
             {transactions.map(tx => {
               const gMeta = GATEWAY_META[tx.payment_gateway] ?? GATEWAY_META[''];
               const sMeta = STATUS_META[tx.status] ?? { label: tx.status, color: 'bg-slate-100 text-slate-600 border-slate-200' };
+              const cMeta = getTxCategoryMeta(tx);
               const isPending = tx.status === 'pending';
               const isSquad = tx.payment_gateway === 'squad';
 
@@ -279,6 +383,18 @@ export default function AdminTransactionsPage() {
                       <p className="text-[11px] text-slate-500">@{tx.user_username}</p>
                     </div>
                     <Badge label={sMeta.label} color={sMeta.color} />
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md border ${cMeta.color}`}>
+                      {cMeta.icon}
+                      {cMeta.label}
+                    </span>
+                    {tx.description && (
+                      <span className="text-xs text-slate-600 truncate max-w-50" title={tx.description}>
+                        {tx.description}
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center justify-between gap-3">
@@ -331,6 +447,7 @@ export default function AdminTransactionsPage() {
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50">
                   <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">User</th>
+                  <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Service / Type</th>
                   <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Method</th>
                   <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Amount</th>
                   <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Status</th>
@@ -343,6 +460,7 @@ export default function AdminTransactionsPage() {
                 {transactions.map(tx => {
                   const gMeta = GATEWAY_META[tx.payment_gateway] ?? { label: tx.payment_gateway || 'Internal', color: 'bg-slate-100 text-slate-600 border-slate-200', dot: 'bg-slate-400' };
                   const sMeta = STATUS_META[tx.status] ?? { label: tx.status, color: 'bg-slate-100 text-slate-600 border-slate-200' };
+                  const cMeta = getTxCategoryMeta(tx);
                   const isSquad = tx.payment_gateway === 'squad';
                   const isNexaPay = tx.payment_gateway === 'nexapay';
                   const isPending = tx.status === 'pending';
@@ -352,6 +470,19 @@ export default function AdminTransactionsPage() {
                       <td className="px-4 py-3.5">
                         <p className="text-slate-900 font-semibold text-xs">{tx.user_email}</p>
                         <p className="text-slate-400 text-[11px]">@{tx.user_username}</p>
+                      </td>
+                      <td className="px-4 py-3.5">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md border ${cMeta.color}`}>
+                            {cMeta.icon}
+                            {cMeta.label}
+                          </span>
+                        </div>
+                        {tx.description && (
+                          <p className="text-slate-600 text-xs truncate max-w-50" title={tx.description}>
+                            {tx.description}
+                          </p>
+                        )}
                       </td>
                       <td className="px-4 py-3.5">
                         <Badge label={gMeta.label} color={gMeta.color} />
@@ -366,7 +497,7 @@ export default function AdminTransactionsPage() {
                       </td>
                       <td className="px-4 py-3.5">
                         {tx.payment_reference ? (
-                          <span className="font-mono text-[10px] text-slate-500 bg-slate-50 border border-slate-100 px-2 py-1 rounded truncate max-w-[140px] block" title={tx.payment_reference}>
+                          <span className="font-mono text-[10px] text-slate-500 bg-slate-50 border border-slate-100 px-2 py-1 rounded truncate max-w-35 block" title={tx.payment_reference}>
                             {tx.payment_reference}
                           </span>
                         ) : (
@@ -426,16 +557,16 @@ export default function AdminTransactionsPage() {
             <button
               onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
               disabled={offset === 0}
-              className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
             >
-              ← Previous
+              Previous
             </button>
             <button
               onClick={() => setOffset(offset + PAGE_SIZE)}
               disabled={offset + PAGE_SIZE >= total}
-              className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
             >
-              Next →
+              Next
             </button>
           </div>
         </div>

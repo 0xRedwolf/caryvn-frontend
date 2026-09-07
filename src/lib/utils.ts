@@ -26,6 +26,26 @@ export function formatCurrency(amount: number | string, currency = 'NGN'): strin
 }
 
 /**
+ * Format currency in compact format for large numbers (e.g. ₦1.04M, ₦657.96K).
+ */
+export function formatCompactCurrency(amount: number | string | undefined | null, currencySymbol = '₦'): string {
+  if (amount === undefined || amount === null || amount === '') return `${currencySymbol}0.00`;
+  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+  if (isNaN(num)) return `${currencySymbol}0.00`;
+  const abs = Math.abs(num);
+  const sign = num < 0 ? '-' : '';
+  if (abs >= 1_000_000) {
+    const val = (abs / 1_000_000).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    return `${sign}${currencySymbol}${val}M`;
+  }
+  if (abs >= 10_000) {
+    const val = (abs / 1_000).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    return `${sign}${currencySymbol}${val}K`;
+  }
+  return `${sign}${currencySymbol}${abs.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+/**
  * Format number with commas.
  */
 export function formatNumber(num: number | string): string {

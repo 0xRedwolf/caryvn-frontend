@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { ordersApi, announcementsApi, Announcement } from '@/lib/api';
+import { ordersApi, announcementsApi, Announcement, otpApi } from '@/lib/api';
 import DashboardPopup from '@/components/DashboardPopup';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import CountUpBalance from '@/components/CountUpBalance';
@@ -45,6 +45,18 @@ export default function DashboardPage() {
   const tickerRef = useRef<HTMLDivElement>(null);
   const tickerSetRef = useRef<HTMLDivElement>(null);
   const [tickerPaused, setTickerPaused] = useState(false);
+  const [isOtpActive, setIsOtpActive] = useState<boolean>(false);
+
+  // Check if virtual number service is active
+  useEffect(() => {
+    otpApi.getStatus()
+      .then((res) => {
+        if (res.data && typeof res.data.is_active === 'boolean') {
+          setIsOtpActive(res.data.is_active);
+        }
+      })
+      .catch(() => setIsOtpActive(false));
+  }, []);
 
   // Fetch active announcements
   useEffect(() => {
@@ -153,15 +165,29 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <Link
-          href="/dashboard/new-order"
-          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white text-xs sm:text-sm font-bold hover:bg-primary-hover transition-all shadow-md shadow-primary/20 self-start sm:self-auto"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-          </svg>
-          <span>Create New Order</span>
-        </Link>
+        <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap self-start sm:self-auto">
+          <Link
+            href="/dashboard/new-order"
+            className="inline-flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-primary text-white text-xs sm:text-sm font-bold hover:bg-primary-hover transition-all shadow-md shadow-primary/20 shrink-0"
+          >
+            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+            </svg>
+            <span>Create New Order</span>
+          </Link>
+
+          {isOtpActive && (
+            <Link
+              href="/dashboard/virtual-numbers"
+              className="inline-flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-800 text-xs sm:text-sm font-bold transition-all shadow-2xs hover:border-slate-300 shrink-0"
+            >
+              <svg className="w-4 h-4 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              <span>Buy Virtual Number</span>
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Scrolling News Ticker */}

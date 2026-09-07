@@ -4,9 +4,10 @@ import { useState, useEffect, Suspense, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { ordersApi } from '@/lib/api';
+import { ordersApi, otpApi, OTPOrder } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import TrustpilotPopup, { shouldShowReviewPopup } from '@/components/TrustpilotPopup';
+import OtpVerificationModal from '@/components/OtpVerificationModal';
 
 interface Order {
   id: string;
@@ -22,7 +23,7 @@ interface Order {
   created_at: string;
 }
 
-const statusFilters = [
+const smmStatusFilters = [
   { key: 'All', label: 'All Orders' },
   { key: 'in_progress', label: 'In Progress' },
   { key: 'processing', label: 'Processing' },
@@ -30,6 +31,14 @@ const statusFilters = [
   { key: 'completed', label: 'Completed' },
   { key: 'partial', label: 'Partial' },
   { key: 'canceled', label: 'Canceled' },
+];
+
+const otpStatusFilters = [
+  { key: 'All', label: 'All Numbers' },
+  { key: 'PENDING', label: 'Listening' },
+  { key: 'RECEIVED', label: 'Received' },
+  { key: 'CANCELED', label: 'Canceled' },
+  { key: 'EXPIRED', label: 'Expired' },
 ];
 
 function getPlatformIcon(serviceName: string) {
@@ -152,18 +161,69 @@ function getPlatformIcon(serviceName: string) {
   );
 }
 
+function calculateProgress(order: Order): number | null {
+  if (
+    order.quantity > 0 &&
+    order.remains !== null &&
+    order.remains !== undefined &&
+    order.remains >= 0
+  ) {
+    const completed = Math.max(0, order.quantity - order.remains);
+    return Math.min(100, Math.max(0, Math.round((completed / order.quantity) * 100)));
+  }
+  return null;
+}
+
+// Clean SVG Country Flag with automatic code badge fallback
+function CountryFlag({
+  code,
+  name,
+  className = 'w-5 h-3.5',
+}: {
+  code: string;
+  name?: string;
+  className?: string;
+}) {
+  const [imgError, setImgError] = useState(false);
+  const lc = (code || '').toLowerCase();
+
+  if (imgError || !code) {
+    return (
+      <span className="font-mono font-bold text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 shrink-0">
+        {code}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={`/flags/${lc}.svg`}
+      alt={name || code}
+      onError={() => setImgError(true)}
+      className={`${className} object-cover rounded-xs border border-slate-200/80 shrink-0 shadow-2xs`}
+      loading="lazy"
+    />
+  );
+}
+
 function OrdersContent() {
-  const { token } = useAuth();
+  const { token, refreshUser } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [otpOrders, setOtpOrders] = useState<OTPOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [verticalTab, setVerticalTab] = useState<'smm' | 'otp'>('smm');
   const [statusFilter, setStatusFilter] = useState('All');
   const [search, setSearch] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [showReviewPopup, setShowReviewPopup] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // OTP Modal State
+  const [selectedOtpOrder, setSelectedOtpOrder] = useState<OTPOrder | null>(null);
+  const [otpModalOpen, setOtpModalOpen] = useState(false);
 
   // Refill state
   const [refillLoading, setRefillLoading] = useState<string | null>(null);
@@ -172,9 +232,21 @@ function OrdersContent() {
   useEffect(() => {
     if (token) {
       loadOrders();
+      loadOtpOrders();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, statusFilter]);
+
+  async function loadOtpOrders() {
+    if (!token) return;
+    try {
+      const res = await otpApi.getOrders(undefined, token);
+      if (res.data?.results) {
+        setOtpOrders(res.data.results);
+      }
+    } catch (e) {
+      console.error('Error loading OTP orders:', e);
+    }
+  }
 
   // Trustpilot review popup: trigger 3s after landing from a fresh purchase
   useEffect(() => {
@@ -243,7 +315,7 @@ function OrdersContent() {
     setTimeout(() => setRefillMessage(null), 5000);
   };
 
-  // Client-side search filter
+  // Client-side search filter for SMM
   const filteredOrders = useMemo(() => {
     if (!search.trim()) return orders;
     const q = search.toLowerCase().trim();
@@ -255,14 +327,59 @@ function OrdersContent() {
     );
   }, [orders, search]);
 
-  // Summary Metrics
-  const metrics = useMemo(() => {
+  // Client-side search & status filter for OTP orders
+  const filteredOtpOrders = useMemo(() => {
+    let list = otpOrders;
+
+    // Filter by status
+    if (statusFilter !== 'All') {
+      const sf = statusFilter.toUpperCase();
+      list = list.filter((o) => {
+        const os = (o.status || '').toUpperCase();
+        if (sf === 'COMPLETED' || sf === 'RECEIVED') return os === 'RECEIVED';
+        if (sf === 'PENDING' || sf === 'IN_PROGRESS' || sf === 'PROCESSING') return os === 'PENDING';
+        if (sf === 'CANCELED' || sf === 'CANCELLED') return os === 'CANCELED' || os === 'CANCELLED';
+        if (sf === 'EXPIRED') return os === 'EXPIRED';
+        return os === sf;
+      });
+    }
+
+    // Filter by search query
+    if (search.trim()) {
+      const q = search.toLowerCase().trim();
+      list = list.filter(
+        (o) =>
+          (o.service_name || '').toLowerCase().includes(q) ||
+          (o.phone_number || '').toLowerCase().includes(q) ||
+          (o.sms_code || '').toLowerCase().includes(q) ||
+          (o.country || '').toLowerCase().includes(q) ||
+          String(o.id).toLowerCase().includes(q)
+      );
+    }
+
+    return list;
+  }, [otpOrders, statusFilter, search]);
+
+  // Summary Metrics (SMM)
+  const smmMetrics = useMemo(() => {
     const total = orders.length;
     const active = orders.filter((o) => ['pending', 'processing', 'in_progress'].includes(o.status.toLowerCase())).length;
     const completed = orders.filter((o) => o.status.toLowerCase() === 'completed').length;
     const totalSpent = orders.reduce((acc, curr) => acc + (parseFloat(curr.charge) || 0), 0);
     return { total, active, completed, totalSpent };
   }, [orders]);
+
+  // Summary Metrics (OTP Virtual Numbers)
+  const otpMetrics = useMemo(() => {
+    const total = otpOrders.length;
+    const active = otpOrders.filter((o) => o.status === 'PENDING').length;
+    const completed = otpOrders.filter((o) => o.status === 'RECEIVED').length;
+    const totalSpent = otpOrders.reduce((acc, curr) => acc + (parseFloat(String(curr.user_charge || 0)) || 0), 0);
+    return { total, active, completed, totalSpent };
+  }, [otpOrders]);
+
+  const activeMetrics = verticalTab === 'smm' ? smmMetrics : otpMetrics;
+  const activeStatusFilters = verticalTab === 'smm' ? smmStatusFilters : otpStatusFilters;
 
   return (
     <div className="space-y-6 text-slate-900 animate-in fade-in duration-200">
@@ -280,7 +397,10 @@ function OrdersContent() {
         <div className="flex items-center gap-2.5">
           <button
             type="button"
-            onClick={loadOrders}
+            onClick={() => {
+              loadOrders();
+              loadOtpOrders();
+            }}
             disabled={loading}
             className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors shadow-xs cursor-pointer disabled:opacity-50"
             title="Refresh Orders"
@@ -291,62 +411,121 @@ function OrdersContent() {
           </button>
 
           <Link
-            href="/dashboard/new-order"
+            href={verticalTab === 'smm' ? '/dashboard/new-order' : '/dashboard/virtual-numbers'}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-black shadow-md shadow-primary/20 transition-all cursor-pointer"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
             </svg>
-            <span>New Order</span>
+            <span>{verticalTab === 'smm' ? 'New SMM Order' : 'Buy Virtual Number'}</span>
           </Link>
         </div>
       </div>
 
+      {/* Top Vertical Switcher Tabs */}
+      <div className="flex items-center gap-2 p-1 bg-slate-200/60 rounded-xl w-fit">
+        <button
+          type="button"
+          onClick={() => {
+            setVerticalTab('smm');
+            setStatusFilter('All');
+          }}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            verticalTab === 'smm'
+              ? 'bg-white text-slate-900 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <span>Social Media Boosts ({orders.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setVerticalTab('otp');
+            setStatusFilter('All');
+          }}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            verticalTab === 'otp'
+              ? 'bg-white text-slate-900 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <svg className="w-3.5 h-3.5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          </svg>
+          <span>Virtual Numbers OTP ({otpOrders.length})</span>
+        </button>
+      </div>
+
       {/* Bento Metric Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        {/* Total Orders */}
+        {/* Total Orders / Numbers */}
         <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Orders</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              {verticalTab === 'smm' ? 'Total Orders' : 'Total Numbers'}
+            </span>
             <span className="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-              </svg>
+              {verticalTab === 'smm' ? (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              )}
             </span>
           </div>
-          <p className="text-xl sm:text-2xl font-black text-slate-900">{metrics.total.toLocaleString()}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Lifetime placements</p>
+          <p className="text-xl sm:text-2xl font-black text-slate-900">{activeMetrics.total.toLocaleString()}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            {verticalTab === 'smm' ? 'Lifetime placements' : 'Allocated virtual lines'}
+          </p>
         </div>
 
-        {/* Delivering / In Progress */}
+        {/* Delivering / In Progress / Listening */}
         <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Active</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              {verticalTab === 'smm' ? 'Active' : 'Listening'}
+            </span>
             <span className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-200/80 text-blue-600 flex items-center justify-center relative">
-              {metrics.active > 0 && (
+              {activeMetrics.active > 0 && (
                 <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-blue-400 opacity-75 top-1 right-1" />
               )}
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-              </svg>
+              {verticalTab === 'smm' ? (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
+                </svg>
+              )}
             </span>
           </div>
-          <p className="text-xl sm:text-2xl font-black text-blue-600">{metrics.active.toLocaleString()}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Delivering right now</p>
+          <p className="text-xl sm:text-2xl font-black text-blue-600">{activeMetrics.active.toLocaleString()}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            {verticalTab === 'smm' ? 'Delivering right now' : 'Awaiting SMS delivery'}
+          </p>
         </div>
 
-        {/* Completed */}
+        {/* Completed / SMS Received */}
         <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Completed</span>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              {verticalTab === 'smm' ? 'Completed' : 'SMS Received'}
+            </span>
             <span className="w-8 h-8 rounded-xl bg-emerald-50 border border-emerald-200/80 text-emerald-600 flex items-center justify-center">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
               </svg>
             </span>
           </div>
-          <p className="text-xl sm:text-2xl font-black text-emerald-600">{metrics.completed.toLocaleString()}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Successfully fulfilled</p>
+          <p className="text-xl sm:text-2xl font-black text-emerald-600">{activeMetrics.completed.toLocaleString()}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            {verticalTab === 'smm' ? 'Successfully fulfilled' : 'Verification codes delivered'}
+          </p>
         </div>
 
         {/* Total Spent */}
@@ -359,8 +538,10 @@ function OrdersContent() {
               </svg>
             </span>
           </div>
-          <p className="text-xl sm:text-2xl font-black text-slate-900">{formatCurrency(metrics.totalSpent)}</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Investment value</p>
+          <p className="text-xl sm:text-2xl font-black text-slate-900">{formatCurrency(activeMetrics.totalSpent)}</p>
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            {verticalTab === 'smm' ? 'Investment value' : 'Virtual numbers cost'}
+          </p>
         </div>
       </div>
 
@@ -408,7 +589,11 @@ function OrdersContent() {
           </span>
           <input
             type="text"
-            placeholder="Search orders by service name, order ID, or target link…"
+            placeholder={
+              verticalTab === 'smm'
+                ? 'Search orders by service name, order ID, or target link…'
+                : 'Search by service name, phone number, code, country, or order ID…'
+            }
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs sm:text-sm font-medium text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition shadow-xs"
@@ -428,7 +613,7 @@ function OrdersContent() {
 
         {/* Filter Pills */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
-          {statusFilters.map((f) => {
+          {activeStatusFilters.map((f) => {
             const isActive = statusFilter === f.key;
             return (
               <button
@@ -449,231 +634,354 @@ function OrdersContent() {
       </div>
 
       {/* Orders List / Cards */}
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        {loading ? (
-          <div className="p-16 text-center">
-            <div className="w-9 h-9 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-xs font-semibold text-slate-500">Loading your orders...</p>
-          </div>
-        ) : filteredOrders.length > 0 ? (
-          <div className="divide-y divide-slate-100">
-            {filteredOrders.map((order) => {
-              const delivered =
-                order.start_count != null && order.remains != null ? order.quantity - order.remains : null;
-              const progress =
-                delivered !== null ? Math.min(100, Math.max(0, (delivered / order.quantity) * 100)) : null;
-              const showProgress =
-                progress !== null && ['in_progress', 'processing', 'partial'].includes(order.status.toLowerCase());
-              const statusLower = order.status.toLowerCase();
+      {verticalTab === 'smm' ? (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          {loading ? (
+            <div className="p-16 text-center">
+              <div className="w-9 h-9 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-xs font-semibold text-slate-500">Loading your orders...</p>
+            </div>
+          ) : filteredOrders.length > 0 ? (
+            <div className="divide-y divide-slate-100">
+              {filteredOrders.map((order) => {
+                const statusLower = order.status.toLowerCase();
+                const progress = calculateProgress(order);
+                const showProgress = progress !== null && ['in_progress', 'processing', 'partial'].includes(statusLower);
+                const delivered = order.start_count !== null && order.start_count !== undefined && order.remains !== null && order.remains !== undefined
+                  ? Math.max(0, order.quantity - order.remains)
+                  : null;
 
-              return (
-                <div
-                  key={order.id}
-                  className="p-4 sm:p-5 hover:bg-slate-50/70 transition-colors relative group"
-                >
-                  {/* Top Row: Platform Icon, Service Name, ID, Price */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3 min-w-0 flex-1">
-                      {getPlatformIcon(order.service_name)}
+                return (
+                  <div
+                    key={order.id}
+                    className="p-4 sm:p-5 hover:bg-slate-50/70 transition-colors duration-150"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      {/* Left: Platform Icon & Service Details */}
+                      <div className="flex items-start gap-3 min-w-0 flex-1">
+                        {getPlatformIcon(order.service_name)}
 
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <h3 className="text-xs sm:text-sm font-black text-slate-900 leading-snug">
-                            {order.service_name}
-                          </h3>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <h3 className="text-xs sm:text-sm font-bold text-slate-900 truncate">
+                              {order.service_name}
+                            </h3>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyOrderId(order.id)}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 text-[10px] font-mono font-bold text-slate-500 hover:bg-slate-200 transition-colors cursor-pointer"
+                              title="Click to copy Order ID"
+                            >
+                              <span>#{String(order.id).slice(0, 8).toUpperCase()}</span>
+                              {copiedId === order.id ? (
+                                <span className="text-emerald-600 font-sans">✓</span>
+                              ) : (
+                                <svg className="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                                </svg>
+                              )}
+                            </button>
+                          </div>
 
-                          {/* Order ID Badge */}
-                          <button
-                            type="button"
-                            onClick={() => handleCopyOrderId(order.id)}
-                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 border border-slate-200 text-[10px] font-mono font-bold text-slate-600 transition-colors cursor-pointer"
-                            title="Click to copy ID"
-                          >
-                            <span>#{String(order.id).slice(0, 8).toUpperCase()}</span>
-                            {copiedId === order.id ? (
-                              <svg className="w-3 h-3 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                              </svg>
-                            ) : (
-                              <svg className="w-3 h-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                              </svg>
-                            )}
-                          </button>
+                          {/* Link Preview */}
+                          <p className="text-xs text-slate-500 truncate max-w-md font-medium">
+                            <a
+                              href={order.link.startsWith('http') ? order.link : `https://${order.link}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hover:text-primary transition-colors hover:underline"
+                            >
+                              {order.link}
+                            </a>
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Quantity & Charge */}
+                      <div className="text-right shrink-0 flex items-center gap-4">
+                        <div className="hidden sm:block">
+                          <p className="text-xs sm:text-sm font-black text-slate-900">{order.quantity.toLocaleString()}</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">Quantity</p>
+                        </div>
+                        <div>
+                          <p className="text-xs sm:text-sm font-black text-slate-900">{formatCurrency(order.charge)}</p>
+                          <p className="text-[10px] font-bold text-slate-400">{formatDate(order.created_at)}</p>
                         </div>
 
-                        {/* Link */}
-                        <a
-                          href={order.link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-primary transition-colors max-w-full truncate"
-                          title={order.link}
+                        {/* Hide Order X Button */}
+                        <button
+                          type="button"
+                          onClick={() => setDeleteConfirm(order.id)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          title="Remove from history"
                         >
-                          <svg className="w-3 h-3 shrink-0 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                           </svg>
-                          <span className="truncate">{order.link}</span>
-                        </a>
+                        </button>
                       </div>
                     </div>
 
-                    {/* Quantity & Charge */}
-                    <div className="text-right shrink-0 flex items-center gap-4">
-                      <div className="hidden sm:block">
-                        <p className="text-xs sm:text-sm font-black text-slate-900">{order.quantity.toLocaleString()}</p>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase">Quantity</p>
-                      </div>
-                      <div>
-                        <p className="text-xs sm:text-sm font-black text-slate-900">{formatCurrency(order.charge)}</p>
-                        <p className="text-[10px] font-bold text-slate-400">{formatDate(order.created_at)}</p>
-                      </div>
-
-                      {/* Hide Order X Button */}
-                      <button
-                        type="button"
-                        onClick={() => setDeleteConfirm(order.id)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                        title="Remove from history"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Progress Bar (if in progress / partial) */}
-                  {showProgress && (
-                    <div className="mt-3.5 pt-3 border-t border-slate-100">
-                      <div className="flex justify-between text-[11px] font-bold text-slate-600 mb-1.5">
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
-                          Delivery Progress
-                        </span>
-                        <span>
-                          {delivered!.toLocaleString()} / {order.quantity.toLocaleString()} ({Math.round(progress!)}%)
-                        </span>
-                      </div>
-                      <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                        <div
-                          className="bg-primary h-2 rounded-full transition-all duration-500 ease-out"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Bottom Strip: Status & Counts & Actions */}
-                  <div className="mt-3.5 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                      {/* Status Badges with Live Radar Pulse */}
-                      {statusLower === 'completed' && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200/80">
-                          <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                          </svg>
-                          <span>Completed</span>
-                        </span>
-                      )}
-
-                      {(statusLower === 'in_progress' || statusLower === 'processing') && (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-blue-50 text-blue-700 border border-blue-200/80">
-                          <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600" />
+                    {/* Progress Bar (if in progress / partial) */}
+                    {showProgress && (
+                      <div className="mt-3.5 pt-3 border-t border-slate-100">
+                        <div className="flex justify-between text-[11px] font-bold text-slate-600 mb-1.5">
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
+                            Delivery Progress
                           </span>
-                          <span>{order.status.replace('_', ' ')}</span>
-                        </span>
-                      )}
+                          <span>
+                            {delivered!.toLocaleString()} / {order.quantity.toLocaleString()} ({Math.round(progress!)}%)
+                          </span>
+                        </div>
+                        <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                          <div
+                            className="bg-primary h-2 rounded-full transition-all duration-500 ease-out"
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
 
-                      {statusLower === 'pending' && (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-amber-50 text-amber-700 border border-amber-200/80">
-                          <svg className="w-3.5 h-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          <span>Pending</span>
-                        </span>
-                      )}
+                    {/* Bottom Strip: Status & Counts & Actions */}
+                    <div className="mt-3.5 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                        {/* Status Badges with Live Radar Pulse */}
+                        {statusLower === 'completed' && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-50 text-emerald-700 border border-emerald-200/80">
+                            <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span>Completed</span>
+                          </span>
+                        )}
 
-                      {statusLower === 'partial' && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black bg-teal-50 text-teal-700 border border-teal-200/80">
-                          <span>Partial</span>
-                        </span>
-                      )}
+                        {(statusLower === 'in_progress' || statusLower === 'processing') && (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-blue-50 text-blue-700 border border-blue-200/80">
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600" />
+                            </span>
+                            <span>{order.status.replace('_', ' ')}</span>
+                          </span>
+                        )}
 
-                      {['canceled', 'cancelled', 'refunded', 'failed'].includes(statusLower) && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black bg-rose-50 text-rose-700 border border-rose-200/80">
-                          <span>{order.status.replace('_', ' ')}</span>
-                        </span>
-                      )}
+                        {statusLower === 'pending' && (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black bg-amber-50 text-amber-700 border border-amber-200/80">
+                            <svg className="w-3.5 h-3.5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span>Pending</span>
+                          </span>
+                        )}
 
-                      {/* Numeric Metrics */}
-                      {order.start_count !== null && order.start_count !== undefined && (
-                        <span className="px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-600">
-                          Start: <strong className="text-slate-900">{order.start_count.toLocaleString()}</strong>
-                        </span>
-                      )}
-                      {order.remains !== null && order.remains !== undefined && (
-                        <span className="px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-600">
-                          Remains: <strong className="text-slate-900">{order.remains.toLocaleString()}</strong>
-                        </span>
-                      )}
-                      {order.avg_completion_time && (
-                        <span className="px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-600 hidden md:inline">
-                          Est. Speed: <strong className="text-slate-900">{order.avg_completion_time}</strong>
-                        </span>
+                        {statusLower === 'partial' && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black bg-teal-50 text-teal-700 border border-teal-200/80">
+                            <span>Partial</span>
+                          </span>
+                        )}
+
+                        {statusLower === 'canceled' && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black bg-rose-50 text-rose-700 border border-rose-200/80">
+                            <span>Canceled</span>
+                          </span>
+                        )}
+
+                        {/* Counts (Start count / Remains) */}
+                        {order.start_count !== null && order.start_count !== undefined && (
+                          <span className="text-[11px] text-slate-500 font-medium">
+                            Start: <strong className="text-slate-700">{order.start_count.toLocaleString()}</strong>
+                          </span>
+                        )}
+                        {order.remains !== null && order.remains !== undefined && (
+                          <span className="text-[11px] text-slate-500 font-medium">
+                            Remains: <strong className="text-slate-700">{order.remains.toLocaleString()}</strong>
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Refill Button */}
+                      {order.service_has_refill && statusLower === 'completed' && (
+                        <button
+                          type="button"
+                          onClick={() => handleRefill(order.id)}
+                          disabled={refillLoading === order.id}
+                          className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-xs"
+                        >
+                          {refillLoading === order.id ? (
+                            <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                          )}
+                          <span>Request Refill</span>
+                        </button>
                       )}
                     </div>
-
-                    {/* Refill Button */}
-                    {order.service_has_refill && statusLower === 'completed' && (
-                      <button
-                        type="button"
-                        onClick={() => handleRefill(order.id)}
-                        disabled={refillLoading === order.id}
-                        className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-xs"
-                      >
-                        {refillLoading === order.id ? (
-                          <div className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                          </svg>
-                        )}
-                        <span>Request Refill</span>
-                      </button>
-                    )}
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="py-16 px-4 text-center">
-            <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3 shadow-xs">
-              <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-              </svg>
+                );
+              })}
             </div>
-            <h3 className="text-base font-black text-slate-900 mb-1">No orders found</h3>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto mb-5 font-medium">
-              {search
-                ? `No results matching "${search}". Try clearing your search query.`
-                : `You haven't placed any orders in this category yet.`}
-            </p>
-            <Link
-              href="/dashboard/new-order"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-black shadow-md shadow-primary/20 transition-all cursor-pointer"
-            >
-              <span>Explore Services & Place Order</span>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            </Link>
-          </div>
-        )}
-      </div>
+          ) : (
+            <div className="py-16 px-4 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3 shadow-xs">
+                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                </svg>
+              </div>
+              <h3 className="text-base font-black text-slate-900 mb-1">No orders found</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto mb-5 font-medium">
+                {search
+                  ? `No results matching "${search}". Try clearing your search query.`
+                  : `You haven't placed any orders in this category yet.`}
+              </p>
+              <Link
+                href="/dashboard/new-order"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-black shadow-md shadow-primary/20 transition-all cursor-pointer"
+              >
+                <span>Explore Services & Place Order</span>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              </Link>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Virtual Numbers OTP Orders List */
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          {otpOrders.length === 0 ? (
+            <div className="py-16 px-4 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3 shadow-xs">
+                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h3 className="text-base font-black text-slate-900 mb-1">No Virtual Numbers Bought Yet</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto mb-5 font-medium">
+                Buy temporary disposable phone numbers to receive SMS codes for WhatsApp, Telegram, Google, and more.
+              </p>
+              <Link
+                href="/dashboard/virtual-numbers"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary-hover text-white text-xs font-black shadow-md shadow-primary/20 transition-all cursor-pointer"
+              >
+                <span>Buy Virtual Number Now</span>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                </svg>
+              </Link>
+            </div>
+          ) : filteredOtpOrders.length === 0 ? (
+            <div className="py-16 px-4 text-center">
+              <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3 shadow-xs">
+                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h3 className="text-base font-black text-slate-900 mb-1">No matching virtual numbers</h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto mb-5 font-medium">
+                {search
+                  ? `No virtual numbers matching "${search}". Try clearing your search query or filter.`
+                  : `No virtual numbers found with status "${statusFilter}".`}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch('');
+                  setStatusFilter('All');
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-black transition-all cursor-pointer"
+              >
+                Clear Filters
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50 border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <tr>
+                    <th className="px-6 py-3.5">Service</th>
+                    <th className="px-6 py-3.5">Phone Number</th>
+                    <th className="px-6 py-3.5">Verification Code</th>
+                    <th className="px-6 py-3.5">Charge</th>
+                    <th className="px-6 py-3.5">Status</th>
+                    <th className="px-6 py-3.5">Date</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredOtpOrders.map((order) => (
+                    <tr
+                      key={order.id}
+                      onClick={() => {
+                        setSelectedOtpOrder(order);
+                        setOtpModalOpen(true);
+                      }}
+                      className="hover:bg-slate-50/70 cursor-pointer transition-colors"
+                    >
+                      <td className="px-6 py-4 font-bold text-slate-900">
+                        <div className="flex items-center gap-2.5">
+                          <CountryFlag code={order.country} className="w-5 h-3.5" />
+                          <span>{order.service_name}</span>
+                          <span className="text-[10px] font-mono font-bold text-slate-400 uppercase">
+                            ({order.country})
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 font-mono text-slate-700">
+                        {order.phone_number}
+                      </td>
+                      <td className="px-6 py-4">
+                        {order.sms_code ? (
+                          <span className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 font-mono font-black rounded-lg text-xs">
+                            {order.sms_code}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 text-xs">—</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 font-bold text-slate-800">
+                        {formatCurrency(order.user_charge)}
+                      </td>
+                      <td className="px-6 py-4">
+                        {order.status === 'RECEIVED' ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">
+                            Received
+                          </span>
+                        ) : order.status === 'PENDING' ? (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                            <span>Pending</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-slate-100 text-slate-600">
+                            {order.formatted_status || order.status}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-xs text-slate-500 whitespace-nowrap">
+                        {formatDate(order.created_at)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Verification Modal for OTP Orders */}
+      <OtpVerificationModal
+        order={selectedOtpOrder}
+        isOpen={otpModalOpen}
+        onClose={() => setOtpModalOpen(false)}
+        onUpdate={(updated) => {
+          setSelectedOtpOrder(updated);
+          setOtpOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+          if (updated.status !== 'PENDING') refreshUser();
+        }}
+      />
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm !== null && (
