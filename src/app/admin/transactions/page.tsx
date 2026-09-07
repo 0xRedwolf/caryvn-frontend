@@ -204,7 +204,7 @@ export default function AdminTransactionsPage() {
     if (res.error) {
       showToast('error', res.error);
     } else {
-      showToast('success', `Transaction verified and credited ₦${tx.amount}`);
+      showToast('success', `Payment verified and credited ₦${parseFloat(tx.amount).toLocaleString()}`);
       load();
     }
   };
@@ -374,6 +374,7 @@ export default function AdminTransactionsPage() {
               const cMeta = getTxCategoryMeta(tx);
               const isPending = tx.status === 'pending';
               const isSquad = tx.payment_gateway === 'squad';
+              const isNexaPay = tx.payment_gateway === 'nexapay';
 
               return (
                 <div key={tx.id} className="bento-card bg-white border border-slate-200 p-4 space-y-3">
@@ -415,23 +416,44 @@ export default function AdminTransactionsPage() {
 
                   <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
                     <span className="text-[11px] text-slate-400">{formatDate(tx.created_at)}</span>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-1.5">
                       {isSquad && isPending && (
                         <button
                           onClick={() => handleVerify(tx)}
                           disabled={actionLoading === `verify-${tx.id}`}
-                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-100 transition-colors disabled:opacity-50"
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-100 transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                          title="Query Squad status"
                         >
-                          {actionLoading === `verify-${tx.id}` ? '…' : 'Query Squad'}
+                          <svg className={`w-3.5 h-3.5 ${actionLoading === `verify-${tx.id}` ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          Query
+                        </button>
+                      )}
+                      {isNexaPay && isPending && (
+                        <button
+                          onClick={() => handleVerify(tx)}
+                          disabled={actionLoading === `verify-${tx.id}`}
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                          title="Query NexaPay status"
+                        >
+                          <svg className={`w-3.5 h-3.5 ${actionLoading === `verify-${tx.id}` ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                          </svg>
+                          Query
                         </button>
                       )}
                       {isPending && (
                         <button
                           onClick={() => handleFail(tx.id)}
                           disabled={actionLoading === `fail-${tx.id}`}
-                          className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors disabled:opacity-50"
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                          title="Mark as Failed"
                         >
-                          {actionLoading === `fail-${tx.id}` ? '…' : 'Fail'}
+                          <svg className={`w-3.5 h-3.5 ${actionLoading === `fail-${tx.id}` ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                          Fail
                         </button>
                       )}
                     </div>
@@ -442,7 +464,7 @@ export default function AdminTransactionsPage() {
           </div>
 
           {/* Desktop: Table */}
-          <div className="hidden sm:block bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+          <div className="hidden sm:block bg-white rounded-2xl border border-slate-200 shadow-xs overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-100 bg-slate-50">
@@ -453,7 +475,7 @@ export default function AdminTransactionsPage() {
                   <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Status</th>
                   <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Reference</th>
                   <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Date</th>
-                  <th className="px-4 py-3 w-10" />
+                  <th className="px-4 py-3 text-right text-xs font-bold text-slate-500 uppercase tracking-wide w-24 min-w-24">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -507,33 +529,42 @@ export default function AdminTransactionsPage() {
                       <td className="px-4 py-3.5 text-slate-400 text-xs whitespace-nowrap">
                         {formatDate(tx.created_at)}
                       </td>
-                      <td className="px-4 py-3.5">
-                        <div className="flex items-center gap-2 justify-end">
+                      <td className="px-4 py-3.5 whitespace-nowrap text-right">
+                        <div className="flex items-center gap-1.5 justify-end">
                           {isSquad && isPending && (
                             <button
                               onClick={() => handleVerify(tx)}
                               disabled={actionLoading === `verify-${tx.id}`}
-                              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-100 transition-colors disabled:opacity-50"
+                              className="p-2 rounded-lg bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-100 transition-colors disabled:opacity-50 cursor-pointer shadow-2xs"
+                              title="Query Squad status"
                             >
-                              {actionLoading === `verify-${tx.id}` ? '…' : 'Query Squad'}
+                              <svg className={`w-3.5 h-3.5 ${actionLoading === `verify-${tx.id}` ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
                             </button>
                           )}
                           {isNexaPay && isPending && (
                             <button
                               onClick={() => handleVerify(tx)}
                               disabled={actionLoading === `verify-${tx.id}`}
-                              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors disabled:opacity-50"
+                              className="p-2 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition-colors disabled:opacity-50 cursor-pointer shadow-2xs"
+                              title="Query NexaPay status"
                             >
-                              {actionLoading === `verify-${tx.id}` ? '…' : 'Verify NexaPay'}
+                              <svg className={`w-3.5 h-3.5 ${actionLoading === `verify-${tx.id}` ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
                             </button>
                           )}
                           {isPending && (
                             <button
                               onClick={() => handleFail(tx.id)}
                               disabled={actionLoading === `fail-${tx.id}`}
-                              className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors disabled:opacity-50"
+                              className="p-2 rounded-lg bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors disabled:opacity-50 cursor-pointer shadow-2xs"
+                              title="Mark as Failed"
                             >
-                              {actionLoading === `fail-${tx.id}` ? '…' : 'Fail'}
+                              <svg className={`w-3.5 h-3.5 ${actionLoading === `fail-${tx.id}` ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
                             </button>
                           )}
                         </div>

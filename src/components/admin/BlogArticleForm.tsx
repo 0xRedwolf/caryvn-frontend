@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { adminBlogApi, BlogAuthor, BlogCategory, BlogPostDetail } from '@/lib/api';
 import CustomSelect from '@/components/CustomSelect';
@@ -181,6 +182,30 @@ export default function BlogArticleForm({ initialPost, isEditing = false }: Blog
       textarea.focus();
       textarea.setSelectionRange(start + before.length, start + before.length + (selected.length || 4));
     }, 10);
+  };
+
+  // Smart Clean & Spacing Formatter
+  const handleCleanFormatContent = () => {
+    if (!content.trim()) return;
+    let formatted = content;
+
+    // 1. Strip redundant inline style attributes from standard tags
+    formatted = formatted.replace(/<(p|h[1-6]|ul|ol|li|blockquote|div)\s+style="[^"]*"/gi, '<$1');
+
+    // 2. If content doesn't contain HTML tags, convert paragraphs separated by double newlines into <p> tags
+    if (!/<(p|h[1-6]|ul|ol|div|blockquote|section|article)\b/i.test(formatted)) {
+      formatted = formatted
+        .split(/\n\s*\n/)
+        .map((chunk) => chunk.trim())
+        .filter(Boolean)
+        .map((para) => `<p>${para.replace(/\n/g, '<br />')}</p>`)
+        .join('\n\n');
+    }
+
+    // 3. Normalize multiple trailing spaces and empty paragraph tags
+    formatted = formatted.replace(/<p>\s*(?:&nbsp;|\s)*<\/p>/gi, '');
+
+    setContent(formatted);
   };
 
   // Form Submission
@@ -541,6 +566,16 @@ export default function BlogArticleForm({ initialPost, isEditing = false }: Blog
                   >
                     &lt;br&gt;
                   </button>
+                  <div className="w-px h-4 bg-slate-300 mx-1 self-center" />
+                  <button
+                    type="button"
+                    onClick={handleCleanFormatContent}
+                    className="px-2.5 py-1 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                    title="Clean Inline Styles & Auto-Format Paragraphs"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Auto-Format Spacing
+                  </button>
                 </div>
               )}
             </div>
@@ -560,7 +595,7 @@ export default function BlogArticleForm({ initialPost, isEditing = false }: Blog
                 data-enable-grammarly="false"
               />
             ) : (
-              <div className="p-8 max-w-none prose prose-slate min-h-95">
+              <div className="p-8 max-w-none article-content min-h-95">
                 <div dangerouslySetInnerHTML={{ __html: content || '<p className="text-slate-400">Nothing to preview yet.</p>' }} />
               </div>
             )}

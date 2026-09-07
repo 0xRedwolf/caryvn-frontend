@@ -252,7 +252,7 @@ export default function BlogPostView({ post }: BlogPostViewProps) {
             {/* Main Reading Body */}
             <div
               id="article-content-body"
-              className="prose prose-slate prose-base sm:prose-lg max-w-none text-slate-700 leading-relaxed font-normal bg-white p-8 sm:p-12 rounded-3xl border border-slate-200 shadow-xs"
+              className="article-content bg-white p-8 sm:p-12 rounded-3xl border border-slate-200 shadow-xs"
               dangerouslySetInnerHTML={{ __html: post.content }}
             />
 
