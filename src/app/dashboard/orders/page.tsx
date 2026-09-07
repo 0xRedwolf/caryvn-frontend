@@ -216,8 +216,7 @@ function OrdersContent() {
   const [verticalTab, setVerticalTab] = useState<'smm' | 'otp'>('smm');
   const [statusFilter, setStatusFilter] = useState('All');
   const [search, setSearch] = useState('');
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
+
   const [showReviewPopup, setShowReviewPopup] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -286,16 +285,7 @@ function OrdersContent() {
     setTimeout(() => setCopiedId(null), 1500);
   };
 
-  const handleHideOrder = async (orderId: string) => {
-    if (!token) return;
-    setDeleteLoading(true);
-    const result = await ordersApi.hideOrder(orderId, token);
-    setDeleteLoading(false);
-    setDeleteConfirm(null);
-    if (result.data) {
-      setOrders((prev) => prev.filter((o) => o.id !== orderId));
-    }
-  };
+
 
   const handleRefill = async (orderId: string) => {
     if (!token) return;
@@ -708,17 +698,7 @@ function OrdersContent() {
                           <p className="text-[10px] font-bold text-slate-400">{formatDate(order.created_at)}</p>
                         </div>
 
-                        {/* Hide Order X Button */}
-                        <button
-                          type="button"
-                          onClick={() => setDeleteConfirm(order.id)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                          title="Remove from history"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
+
                       </div>
                     </div>
 
@@ -983,39 +963,7 @@ function OrdersContent() {
         }}
       />
 
-      {/* Delete Confirmation Modal */}
-      {deleteConfirm !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 sm:p-8 max-w-md w-full text-center ring-1 ring-black/5 animate-in zoom-in-95 duration-150">
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto mb-4">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </div>
-            <h3 className="text-lg font-black text-slate-900 mb-2">Remove Order from View</h3>
-            <p className="text-xs sm:text-sm text-slate-500 mb-6 leading-relaxed">
-              This will hide the order from your history list. It will not cancel active delivery or affect your account balance.
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setDeleteConfirm(null)}
-                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
-              >
-                Keep Order
-              </button>
-              <button
-                type="button"
-                onClick={() => handleHideOrder(deleteConfirm)}
-                disabled={deleteLoading}
-                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-black bg-rose-600 hover:bg-rose-700 text-white transition-colors disabled:opacity-50 cursor-pointer shadow-xs"
-              >
-                {deleteLoading ? 'Removing...' : 'Yes, Remove'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Trustpilot Review Popup */}
       {showReviewPopup && <TrustpilotPopup onClose={() => setShowReviewPopup(false)} />}

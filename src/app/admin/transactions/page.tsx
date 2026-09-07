@@ -158,6 +158,10 @@ export default function AdminTransactionsPage() {
   const { token } = useAuth();
   const [transactions, setTransactions] = useState<AdminTransaction[]>([]);
   const [total, setTotal] = useState(0);
+  const [failConfirmTx, setFailConfirmTx] = useState<string | null>(null);
+  const [failLoading, setFailLoading] = useState(false);
+  const [forceVerifyTx, setForceVerifyTx] = useState<{ id: string; amount: string; ref: string | null; error: string } | null>(null);
+  const [forceLoading, setForceLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState<'all' | 'deposit' | 'smm' | 'otp'>('all');
   const [search, setSearch] = useState('');
@@ -202,18 +206,49 @@ export default function AdminTransactionsPage() {
     const res = await adminApi.verifyTransaction(tx.id, token);
     setActionLoading(null);
     if (res.error) {
-      showToast('error', res.error);
+      if (tx.payment_gateway === 'nexapay' || (res as any).can_force) {
+        setForceVerifyTx({
+          id: tx.id,
+          amount: tx.amount,
+          ref: tx.payment_reference,
+          error: res.error,
+        });
+      } else {
+        showToast('error', res.error);
+      }
     } else {
       showToast('success', `Payment verified and credited ₦${parseFloat(tx.amount).toLocaleString()}`);
       load();
     }
   };
 
-  const handleFail = async (txId: string) => {
-    if (!token || !confirm('Mark this transaction as failed?')) return;
+  const handleConfirmForceVerify = async () => {
+    if (!token || !forceVerifyTx) return;
+    setForceLoading(true);
+    const res = await adminApi.verifyTransaction(forceVerifyTx.id, token, undefined, true);
+    setForceLoading(false);
+    if (res.error) {
+      showToast('error', res.error);
+    } else {
+      showToast('success', `Payment approved and credited ₦${parseFloat(forceVerifyTx.amount).toLocaleString()}`);
+      setForceVerifyTx(null);
+      load();
+    }
+  };
+
+  const handleFail = (txId: string) => {
+    setFailConfirmTx(txId);
+  };
+
+  const handleConfirmFail = async () => {
+    if (!token || !failConfirmTx) return;
+    setFailLoading(true);
+    const txId = failConfirmTx;
     setActionLoading(`fail-${txId}`);
     const res = await adminApi.failTransaction(txId, token);
     setActionLoading(null);
+    setFailLoading(false);
+    setFailConfirmTx(null);
     if (res.error) {
       showToast('error', res.error);
     } else {
@@ -599,6 +634,83 @@ export default function AdminTransactionsPage() {
             >
               Next
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Fail Transaction Confirmation Modal */}
+      {failConfirmTx && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 sm:p-8 max-w-md w-full text-center ring-1 ring-black/5 animate-in zoom-in-95 duration-150">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-black text-slate-900 mb-2">Mark Transaction as Failed</h3>
+            <p className="text-xs sm:text-sm text-slate-500 mb-6 leading-relaxed">
+              Are you sure you want to mark this pending transaction as failed? This will terminate the deposit record and prevent wallet crediting.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setFailConfirmTx(null)}
+                disabled={failLoading}
+                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmFail}
+                disabled={failLoading}
+                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-black bg-rose-600 hover:bg-rose-700 text-white transition-colors disabled:opacity-50 cursor-pointer shadow-xs"
+              >
+                {failLoading ? 'Failing...' : 'Yes, Mark Failed'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Force Verify / Manual Approval Modal for NexaPay / Unverified Gateways */}
+      {forceVerifyTx && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl p-6 sm:p-8 max-w-md w-full text-center ring-1 ring-black/5 animate-in zoom-in-95 duration-150">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-black text-slate-900 mb-2">NexaPay Query Result</h3>
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4 text-left">
+              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Gateway Response</div>
+              <div className="text-xs font-semibold text-rose-600 font-mono break-all">{forceVerifyTx.error}</div>
+              {forceVerifyTx.ref && (
+                <div className="text-[11px] text-slate-500 mt-1 font-mono">Ref: {forceVerifyTx.ref}</div>
+              )}
+            </div>
+            <p className="text-xs text-slate-600 mb-6 leading-relaxed text-left">
+              NexaPay upstream query did not confirm this transaction (e.g. upstream 401 or waiting for bank transfer). If you have verified this payment in your NexaPay merchant dashboard, you can force approve and credit the user immediately.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setForceVerifyTx(null)}
+                disabled={forceLoading}
+                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmForceVerify}
+                disabled={forceLoading}
+                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white transition-colors disabled:opacity-50 cursor-pointer shadow-xs"
+              >
+                {forceLoading ? 'Approving...' : `Force Credit ₦${parseFloat(forceVerifyTx.amount).toLocaleString()}`}
+              </button>
+            </div>
           </div>
         </div>
       )}

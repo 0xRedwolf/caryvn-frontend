@@ -435,10 +435,13 @@ export const adminApi = {
   getPendingDepositsCount: (token: string) =>
     api('/admin/transactions/pending/count/', { token }),
 
-  verifyTransaction: (transactionId: string, token: string, creditAmount?: number) =>
+  verifyTransaction: (transactionId: string, token: string, creditAmount?: number, force?: boolean) =>
     api(`/admin/transactions/${transactionId}/verify/`, {
       method: 'POST',
-      body: creditAmount !== undefined ? { credit_amount: creditAmount } : undefined,
+      body: {
+        ...(creditAmount !== undefined ? { credit_amount: creditAmount } : {}),
+        ...(force ? { force: true } : {}),
+      },
       token,
     }),
 
