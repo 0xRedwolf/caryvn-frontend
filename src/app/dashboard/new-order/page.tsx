@@ -490,7 +490,7 @@ export default function NewOrderPage() {
   const serviceOptions: DropdownOption[] = servicesInCategory.map((service) => ({
     value: service.id.toString(),
     label: `${service.name} — ${formatCurrency(service.user_rate)}/1000`,
-    sublabel: `ID: ${service.external_id} · Min: ${service.min_quantity.toLocaleString()} · Max: ${service.max_quantity.toLocaleString()}`,
+    sublabel: `ID: ${service.id} · Min: ${service.min_quantity.toLocaleString()} · Max: ${service.max_quantity.toLocaleString()}`,
   }));
 
   return (
@@ -611,7 +611,7 @@ export default function NewOrderPage() {
                 <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-primary text-xs font-black shadow-2xs">
-                      ID: {selectedService.external_id}
+                      ID: {selectedService.id}
                     </span>
                     {selectedService.has_refill && (
                       <span className="px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold">

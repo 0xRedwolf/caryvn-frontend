@@ -8,6 +8,8 @@ import { formatCurrency, formatDate, getStatusColor } from '@/lib/utils';
 interface Order {
   id: string;
   user_email: string;
+  service_id?: number | null;
+  service_external_id?: number | null;
   service_name: string;
   link: string;
   quantity: number;
@@ -652,8 +654,24 @@ export default function AdminOrdersPage() {
                       </span>
                     </div>
 
-                    {/* Service name */}
-                    <p className="text-xs text-slate-700 font-medium mb-3 leading-snug line-clamp-2">{order.service_name}</p>
+                    {/* Service name & IDs */}
+                    <div className="mb-3">
+                      {(order.service_id || order.service_external_id) && (
+                        <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                          {order.service_id && (
+                            <span className="font-mono text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-slate-100 text-slate-800 border border-slate-200">
+                              #{order.service_id}
+                            </span>
+                          )}
+                          {order.service_external_id && (
+                            <span className="font-mono text-[10px] text-slate-400 font-semibold">
+                              (Upstream #{order.service_external_id})
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      <p className="text-xs text-slate-700 font-medium leading-snug line-clamp-2">{order.service_name}</p>
+                    </div>
 
                     {/* Stats grid */}
                     <div className="grid grid-cols-3 gap-2 mb-3">
@@ -788,7 +806,23 @@ export default function AdminOrdersPage() {
                           <span className="text-xs text-slate-600 truncate max-w-32 block">{order.user_email}</span>
                         </td>
                         <td className="py-3.5 px-4">
-                          <span className="text-xs text-slate-800 font-medium truncate max-w-48 block">{order.service_name}</span>
+                          <div className="min-w-0 max-w-56">
+                            {(order.service_id || order.service_external_id) && (
+                              <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                                {order.service_id && (
+                                  <span className="font-mono text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-slate-100 text-slate-800 border border-slate-200 shrink-0">
+                                    #{order.service_id}
+                                  </span>
+                                )}
+                                {order.service_external_id && (
+                                  <span className="font-mono text-[10px] text-slate-400 font-semibold shrink-0" title={`Upstream Provider Service #${order.service_external_id}`}>
+                                    (Upstream #{order.service_external_id})
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            <span className="text-xs text-slate-800 font-medium truncate block" title={order.service_name}>{order.service_name}</span>
+                          </div>
                         </td>
                         <td className="py-3.5 px-4">
                           <span className="text-xs text-slate-800 font-semibold">{order.quantity.toLocaleString()}</span>
@@ -1224,9 +1258,16 @@ export default function AdminOrdersPage() {
 
             {/* Order Details Preview */}
             <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 mb-5 space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Service:</span>
-                <span className="font-medium text-slate-900 truncate max-w-56" title={cancelModalOrder.service_name}>{cancelModalOrder.service_name}</span>
+              <div className="flex justify-between items-start gap-2">
+                <span className="text-slate-500 shrink-0">Service:</span>
+                <div className="text-right">
+                  {(cancelModalOrder.service_id || cancelModalOrder.service_external_id) && (
+                    <span className="font-mono text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-700 mr-1.5">
+                      #{cancelModalOrder.service_id || cancelModalOrder.service_external_id}
+                    </span>
+                  )}
+                  <span className="font-medium text-slate-900 truncate max-w-48 inline-block align-bottom" title={cancelModalOrder.service_name}>{cancelModalOrder.service_name}</span>
+                </div>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Quantity:</span>

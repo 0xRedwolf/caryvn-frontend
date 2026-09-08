@@ -368,7 +368,7 @@ export default function ServicesPage() {
                   <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
                     <div className="flex flex-wrap items-center gap-2 text-xs">
                       <span className="px-2.5 py-1 rounded-xl bg-blue-50 text-blue-700 font-bold border border-blue-200/60">
-                        ID: {selectedService.external_id}
+                        ID: {selectedService.id}
                       </span>
                       {selectedService.has_refill && (
                         <span className="px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 font-bold border border-emerald-200/60">
