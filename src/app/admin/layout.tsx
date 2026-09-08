@@ -337,12 +337,33 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <p className="text-xs text-rose-800 mt-0.5 leading-relaxed">{criticalAlert.message}</p>
                   </div>
                 </div>
-                <Link
-                  href="/admin/sync"
-                  className="shrink-0 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors shadow-xs"
-                >
-                  View Providers
-                </Link>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Link
+                    href={criticalAlert.title.toLowerCase().includes('order') ? '/admin/orders' : '/admin/sync'}
+                    className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors shadow-xs"
+                  >
+                    {criticalAlert.title.toLowerCase().includes('order') ? 'View Orders' : 'View Providers'}
+                  </Link>
+                  <button
+                    onClick={async () => {
+                      if (token) {
+                        try {
+                          await adminApi.markNotificationRead(token, criticalAlert.id);
+                        } catch (e) {
+                          console.warn('Failed to mark read:', e);
+                        }
+                        setCriticalAlert(null);
+                        window.dispatchEvent(new CustomEvent('admin-notifications-refresh'));
+                      }
+                    }}
+                    className="p-1.5 rounded-xl text-rose-600 hover:bg-rose-100 transition-colors cursor-pointer"
+                    title="Dismiss alert"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             )}
             {children}

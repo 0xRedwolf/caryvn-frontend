@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { OTPOrder, OTPServiceItem, otpApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import OtpVerificationModal from '@/components/OtpVerificationModal';
+import DashboardPromoBanner from '@/components/DashboardPromoBanner';
 
 const COUNTRIES = [
   { code: 'AF', name: 'Afghanistan' },
@@ -893,6 +894,10 @@ export default function VirtualNumbersPage() {
         <p className="text-slate-500 text-xs sm:text-sm">
           Instant disposable virtual numbers to receive SMS OTP codes for WhatsApp, Telegram, Google, OpenAI, and 500+ services.
         </p>
+      </div>
+
+      <div>
+        <DashboardPromoBanner />
       </div>
 
       {/* Mode Switcher Tabs */}

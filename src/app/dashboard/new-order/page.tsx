@@ -578,7 +578,7 @@ export default function NewOrderPage() {
                 options={categoryOptions}
                 value={selectedCategory}
                 onChange={setSelectedCategory}
-                placeholder="— Choose a category —"
+                placeholder="Choose a category"
                 searchPlaceholder="Search categories…"
               />
             </div>
@@ -599,7 +599,7 @@ export default function NewOrderPage() {
                 options={serviceOptions}
                 value={selectedServiceId}
                 onChange={setSelectedServiceId}
-                placeholder={selectedCategory ? "— Choose a service —" : "— Select a category first —"}
+                placeholder={selectedCategory ? "Choose a service" : "Select a category first"}
                 disabled={!selectedCategory}
                 searchPlaceholder="Search services by name or ID…"
               />

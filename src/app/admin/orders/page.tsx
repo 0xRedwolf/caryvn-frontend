@@ -148,6 +148,12 @@ export default function AdminOrdersPage() {
   const [selectedOrders, setSelectedOrders] = useState<Set<string>>(new Set());
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
+  // Cancel & Refund Modal State
+  const [cancelModalOrder, setCancelModalOrder] = useState<Order | null>(null);
+  const [cancelBulkOpen, setCancelBulkOpen] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [upstreamErrorWarning, setUpstreamErrorWarning] = useState<string | null>(null);
+
   // Multi-service vertical tab
   const [verticalTab, setVerticalTab] = useState<'smm' | 'otp'>('smm');
 
@@ -233,6 +239,7 @@ export default function AdminOrdersPage() {
       setOrders(prev => prev.filter(o => o.id !== orderId));
       setTotal(prev => prev - 1);
       setActionResult({ type: 'success', message: 'Order deleted' });
+      window.dispatchEvent(new CustomEvent('admin-notifications-refresh'));
     } else {
       setActionResult({ type: 'error', message: result.error || 'Failed to delete' });
     }
@@ -246,6 +253,7 @@ export default function AdminOrdersPage() {
     if (result.data) {
       setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'completed' } : o));
       setActionResult({ type: 'success', message: 'Order marked as completed' });
+      window.dispatchEvent(new CustomEvent('admin-notifications-refresh'));
     } else {
       setActionResult({ type: 'error', message: result.error || 'Failed to mark order' });
     }
@@ -281,6 +289,73 @@ export default function AdminOrdersPage() {
       }
     } else {
       setActionResult({ type: 'error', message: result.error || 'Failed to refresh' });
+    }
+  };
+
+  const handleOpenCancelModal = (order: Order) => {
+    setCancelModalOrder(order);
+    setUpstreamErrorWarning(null);
+  };
+
+  const handleExecuteCancel = async (force: boolean = false) => {
+    if (!token || !cancelModalOrder) return;
+    setCancelLoading(true);
+
+    const res = await adminApi.cancelRefundOrders([cancelModalOrder.id], token, force);
+    setCancelLoading(false);
+
+    if (res.error) {
+      if (force) {
+        setActionResult({ type: 'error', message: res.error });
+        setCancelModalOrder(null);
+      } else {
+        // Upstream rejected or failed -> keep modal open and reveal Force Cancel button
+        setUpstreamErrorWarning(res.error);
+      }
+      return;
+    } else {
+      const data = res.data as { refunded?: number; errors?: string[] };
+      if (data?.refunded && data.refunded > 0) {
+        setActionResult({
+          type: 'success',
+          message: `Order #${cancelModalOrder.id.slice(0, 8).toUpperCase()} canceled & ₦${parseFloat(cancelModalOrder.charge).toLocaleString()} refunded`,
+        });
+        setCancelModalOrder(null);
+        loadOrders();
+        window.dispatchEvent(new CustomEvent('admin-notifications-refresh'));
+      } else if (data?.errors && data.errors.length > 0) {
+        setUpstreamErrorWarning(data.errors[0]);
+      } else {
+        setActionResult({ type: 'success', message: 'Order canceled & refunded' });
+        setCancelModalOrder(null);
+        loadOrders();
+        window.dispatchEvent(new CustomEvent('admin-notifications-refresh'));
+      }
+    }
+  };
+
+  const handleBulkCancelRefund = async (force: boolean = false) => {
+    if (!token || selectedOrders.size === 0) return;
+    setBulkActionLoading(true);
+    const orderIds = Array.from(selectedOrders);
+    const res = await adminApi.cancelRefundOrders(orderIds, token, force);
+    setBulkActionLoading(false);
+    setCancelBulkOpen(false);
+
+    if (res.data) {
+      const data = res.data as { refunded?: number; errors?: string[] };
+      if (data.refunded && data.refunded > 0) {
+        setActionResult({
+          type: 'success',
+          message: `Successfully canceled & refunded ${data.refunded} order(s)`,
+        });
+        loadOrders();
+        window.dispatchEvent(new CustomEvent('admin-notifications-refresh'));
+      } else if (data.errors && data.errors.length > 0) {
+        setActionResult({ type: 'error', message: data.errors.join('; ') });
+      }
+    } else {
+      setActionResult({ type: 'error', message: res.error || 'Failed to cancel orders' });
     }
   };
 
@@ -493,11 +568,21 @@ export default function AdminOrdersPage() {
                   Mark Completed
                 </button>
                 <button
+                  onClick={() => setCancelBulkOpen(true)}
+                  disabled={bulkActionLoading}
+                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-700 transition-colors disabled:opacity-50 cursor-pointer shadow-xs"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Cancel & Refund ({selectedOrders.size})
+                </button>
+                <button
                   onClick={() => setSelectedOrders(new Set())}
                   disabled={bulkActionLoading}
-                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold hover:bg-slate-200 transition-colors"
+                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold hover:bg-slate-200 transition-colors cursor-pointer"
                 >
-                  Cancel
+                  Deselect All
                 </button>
               </div>
             </div>
@@ -613,6 +698,13 @@ export default function AdminOrdersPage() {
                                 ? <span className="w-3.5 h-3.5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin block" />
                                 : <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                               }
+                            </button>
+                            <button
+                              onClick={() => handleOpenCancelModal(order)}
+                              className="p-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 transition-colors border border-rose-200 cursor-pointer"
+                              title="Cancel & Refund"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                           </>
                         )}
@@ -750,6 +842,9 @@ export default function AdminOrdersPage() {
                                     ? <span className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin block" />
                                     : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                                   }
+                                </button>
+                                <button onClick={() => handleOpenCancelModal(order)} className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer" title="Cancel & Refund">
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                 </button>
                               </>
                             )}
@@ -1088,6 +1183,141 @@ export default function AdminOrdersPage() {
                 className="flex-1 px-4 py-2.5 rounded-xl text-sm font-bold bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50"
               >
                 {deleteLoading ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel & Refund Modal (Single Order) with Upstream Verification & Force Override */}
+      {cancelModalOrder !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl p-6 w-full max-w-md">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+
+            <h3 className="text-lg font-black text-slate-900 text-center mb-1">Cancel & Refund Order</h3>
+            <p className="text-slate-500 text-xs text-center mb-4">
+              Order #{cancelModalOrder.id.slice(0, 8).toUpperCase()} · {cancelModalOrder.user_email}
+            </p>
+
+            {/* Upstream Error / Warning Banner */}
+            {upstreamErrorWarning && (
+              <div className="mb-4 p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
+                <div className="flex items-center gap-2 font-bold mb-1 text-amber-800">
+                  <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  </svg>
+                  Upstream Provider Rejected Cancellation
+                </div>
+                <p className="font-mono text-[11px] bg-white/70 p-2 rounded border border-amber-200 mb-2">
+                  {upstreamErrorWarning}
+                </p>
+                <p className="text-[11px] text-amber-700 leading-relaxed">
+                  The upstream provider refused to cancel this order (it may already be executing). If you force cancel locally, the provider may still fulfill it and deduct from your balance.
+                </p>
+              </div>
+            )}
+
+            {/* Order Details Preview */}
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 mb-5 space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Service:</span>
+                <span className="font-medium text-slate-900 truncate max-w-56" title={cancelModalOrder.service_name}>{cancelModalOrder.service_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Quantity:</span>
+                <span className="font-bold text-slate-800">{cancelModalOrder.quantity.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Provider ID:</span>
+                <span className="font-mono text-slate-700">{cancelModalOrder.provider_order_id || 'None (Unsubmitted)'}</span>
+              </div>
+              <div className="flex justify-between border-t border-slate-200/70 pt-2">
+                <span className="text-slate-500 font-bold">Refund to Wallet:</span>
+                <span className="font-mono font-black text-rose-600">₦{parseFloat(cancelModalOrder.charge).toLocaleString()}</span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setCancelModalOrder(null)}
+                disabled={cancelLoading}
+                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                Keep Active
+              </button>
+
+              {upstreamErrorWarning ? (
+                <button
+                  type="button"
+                  onClick={() => handleExecuteCancel(true)}
+                  disabled={cancelLoading}
+                  className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-600 text-white hover:bg-amber-700 transition-colors disabled:opacity-50 cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+                >
+                  {cancelLoading ? (
+                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    'Force Cancel & Refund'
+                  )}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleExecuteCancel(false)}
+                  disabled={cancelLoading}
+                  className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold bg-rose-600 text-white hover:bg-rose-700 transition-colors disabled:opacity-50 cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+                >
+                  {cancelLoading ? (
+                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    'Cancel & Refund'
+                  )}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Cancel Modal */}
+      {cancelBulkOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl p-6 w-full max-w-sm">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-black text-slate-900 text-center mb-2">Cancel & Refund Selected</h3>
+            <p className="text-slate-500 text-xs text-center mb-6 leading-relaxed">
+              Are you sure you want to request cancellation for <strong className="text-slate-900">{selectedOrders.size} selected order(s)</strong>? Upstream providers will be notified and matching customer wallets will be 100% refunded.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setCancelBulkOpen(false)}
+                disabled={bulkActionLoading}
+                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                Abort
+              </button>
+              <button
+                type="button"
+                onClick={() => handleBulkCancelRefund(false)}
+                disabled={bulkActionLoading}
+                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold bg-rose-600 text-white hover:bg-rose-700 transition-colors disabled:opacity-50 cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+              >
+                {bulkActionLoading ? (
+                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  'Confirm Cancel'
+                )}
               </button>
             </div>
           </div>

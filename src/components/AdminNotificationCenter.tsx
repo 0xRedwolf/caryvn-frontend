@@ -90,11 +90,16 @@ export default function AdminNotificationCenter({ token, onCriticalAlertChange }
     }
   };
 
-  // Initial fetch and 45s periodic polling
+  // Initial fetch, 45s periodic polling, and custom refresh listener
   useEffect(() => {
     fetchNotifications(true);
     const interval = setInterval(() => fetchNotifications(false), 45000);
-    return () => clearInterval(interval);
+    const onRefresh = () => fetchNotifications(false);
+    window.addEventListener('admin-notifications-refresh', onRefresh);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('admin-notifications-refresh', onRefresh);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -122,9 +127,14 @@ export default function AdminNotificationCenter({ token, onCriticalAlertChange }
   const handleMarkRead = async (id: string) => {
     try {
       await adminApi.markNotificationRead(token, id);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
-      );
+      setNotifications((prev) => {
+        const next = prev.map((n) => (n.id === id ? { ...n, is_read: true } : n));
+        const activeCritical = next.find(
+          (n) => !n.is_read && (n.severity === 'critical' || n.severity === 'warning')
+        );
+        onCriticalAlertChange?.(activeCritical || null);
+        return next;
+      });
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (err) {
       console.error('Failed to mark notification read:', err);

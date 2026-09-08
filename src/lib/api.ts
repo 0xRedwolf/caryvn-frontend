@@ -124,6 +124,7 @@ export async function api<T = unknown>(
         }
       }
       return {
+        data,
         error: errorMessage || 'An error occurred',
         status: response.status,
       };
@@ -395,8 +396,8 @@ export const adminApi = {
     api(`/admin/analytics/?days=${days}`, { token }),
 
   // Order management actions
-  cancelRefundOrders: (orderIds: string[], token: string) =>
-    api('/admin/orders/cancel-refund/', { method: 'POST', body: { order_ids: orderIds }, token }),
+  cancelRefundOrders: (orderIds: string[], token: string, force: boolean = false) =>
+    api('/admin/orders/cancel-refund/', { method: 'POST', body: { order_ids: orderIds, force }, token }),
 
   retryOrders: (orderIds: string[], token: string) =>
     api('/admin/orders/retry/', { method: 'POST', body: { order_ids: orderIds }, token }),
