@@ -242,12 +242,23 @@ export default function AdminBlogListPage() {
 
                     <td className="px-4 py-4 whitespace-nowrap">
                       <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                        {post.category_name || 'General'}
+                        {post.category?.name || post.category_name || 'General'}
                       </span>
                     </td>
 
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="font-semibold text-slate-700">{post.author_name || 'Admin'}</div>
+                      <div className="flex items-center gap-1.5">
+                        {post.author?.avatar_url && (
+                          <img
+                            src={post.author.avatar_url}
+                            alt=""
+                            className="w-4 h-4 rounded-full object-cover border border-slate-200"
+                          />
+                        )}
+                        <div className="font-semibold text-slate-700">
+                          {post.author?.name || post.author_name || 'Admin'}
+                        </div>
+                      </div>
                     </td>
 
                     <td className="px-4 py-4 whitespace-nowrap">
