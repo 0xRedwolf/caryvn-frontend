@@ -1,7 +1,6 @@
 'use client';
 
 import Image from 'next/image';
-import { useTheme } from '@/contexts/ThemeContext';
 
 interface LogoProps {
   width?: number;
@@ -11,11 +10,9 @@ interface LogoProps {
 }
 
 export default function Logo({ width = 160, height = 32, className = '', style }: LogoProps) {
-  const { theme } = useTheme();
-
   return (
     <Image
-      src={theme === 'dark' ? '/svg-logo-dark.svg' : '/svg-logo-light.svg'}
+      src="/svg-logo-light.svg"
       alt="Caryvn"
       width={width}
       height={height}

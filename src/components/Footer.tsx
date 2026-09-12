@@ -16,7 +16,7 @@ export default function Footer() {
     { name: 'YouTube', href: '#', color: 'hover:text-[#FF0000]', icon: (
       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
     )},
-    { name: 'TikTok', href: 'https://www.tiktok.com/@caryvn', color: 'hover:text-[#000000] dark:hover:text-[#00F2EA]', icon: (
+    { name: 'TikTok', href: 'https://www.tiktok.com/@caryvn', color: 'hover:text-[#000000]', icon: (
       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1 .05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1.04-.1z"/></svg>
     )},
     { name: 'WhatsApp', href: '#', color: 'hover:text-[#25D366]', icon: (
@@ -112,7 +112,7 @@ export default function Footer() {
 
           {/* Instagram Services */}
           <div className="lg:col-span-3">
-             <h3 className="!text-white font-bold text-sm uppercase tracking-widest mb-8 border-b border-white/5 pb-4">Instagram Services</h3>
+             <h3 className="text-white! font-bold text-sm uppercase tracking-widest mb-8 border-b border-white/5 pb-4">Instagram Services</h3>
              <ul className="space-y-4">
                 {['Followers', 'Likes', 'Views', 'Comments'].map((item) => (
                   <li key={item}>
@@ -130,7 +130,7 @@ export default function Footer() {
 
           {/* TikTok Services */}
           <div className="lg:col-span-3">
-             <h3 className="!text-white font-bold text-sm uppercase tracking-widest mb-8 border-b border-white/5 pb-4">TikTok Services</h3>
+             <h3 className="text-white! font-bold text-sm uppercase tracking-widest mb-8 border-b border-white/5 pb-4">TikTok Services</h3>
              <ul className="space-y-4">
                 {['Followers', 'Likes', 'Views', 'Shares'].map((item) => (
                   <li key={item}>
@@ -148,7 +148,7 @@ export default function Footer() {
 
           {/* Company */}
           <div className="lg:col-span-2">
-             <h3 className="!text-white font-bold text-sm uppercase tracking-widest mb-8 border-b border-white/5 pb-4">Company</h3>
+             <h3 className="text-white! font-bold text-sm uppercase tracking-widest mb-8 border-b border-white/5 pb-4">Company</h3>
              <ul className="space-y-4">
                 {[
                   { name: 'About Us', href: '/about' },
@@ -160,7 +160,7 @@ export default function Footer() {
                   <li key={link.name}>
                     <Link 
                       href={link.href} 
-                      className="text-[#94a3b8] hover:!text-white text-sm transition-colors"
+                      className="text-[#94a3b8] hover:text-white! text-sm transition-colors"
                     >
                       {link.name}
                     </Link>
@@ -187,13 +187,13 @@ export default function Footer() {
         {/* Bottom Strip */}
         <div className="mt-2 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-8">
            <p className="text-[#94a3b8] text-sm font-medium">
-             &copy; {currentYear} <span className="!text-primary font-bold">Caryvn</span>. All rights reserved.
+             &copy; {currentYear} <span className="text-primary! font-bold">Caryvn</span>. All rights reserved.
            </p>
 
            <div className="flex items-center gap-8 md:gap-12">
               <div className="flex items-center gap-2.5 text-blue-500/60 group cursor-default">
                  <svg className="w-4 h-4 text-primary group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                 <span className="text-[11px] font-bold uppercase tracking-widest group-hover:!text-blue-500 transition-colors">Secure Payment</span>
+                 <span className="text-[11px] font-bold uppercase tracking-widest group-hover:text-blue-500! transition-colors">Secure Payment</span>
               </div>
               <div className="flex items-center gap-2.5 text-blue-500/60 group cursor-default">
                  <svg className="w-4 h-4 text-primary group-hover:text-[#00ff88] group-hover:scale-110 transition-all" fill="currentColor" viewBox="0 0 24 24"><path d="M23,11.99l-2.44-2.79l0.34-3.69l-3.61-0.82L15.4,1.5L12,2.96L8.6,1.5L6.71,4.69L3.1,5.5L3.44,9.2L1,11.99l2.44,2.79 l-0.34,3.7l3.61,0.82L8.6,22.5l3.4-1.47l3.4,1.46l1.89-3.19l3.61-0.82l-0.34-3.69L23,11.99z M19.05,13.47l-0.56,0.65l0.08,0.85 l0.18,1.95l-1.9,0.43l-0.84,0.19l-0.44,0.74l-0.99,1.68l-1.78-0.77L12,18.85l-0.79,0.34l-1.78,0.77l-0.99-1.67l-0.44-0.74 l-0.84-0.19l-1.9-0.43l0.18-1.96l0.08-0.85l-0.56-0.65l-1.29-1.47l1.29-1.48l0.56-0.65L5.43,9.01L5.25,7.07l1.9-0.43l0.84-0.19 l0.44-0.74l0.99-1.68l1.78,0.77L12,5.14l0.79-0.34l1.78-0.77l0.99,1.68l0.44,0.74l0.84,0.19l1.9,0.43l-0.18,1.95l-0.08,0.85 l0.56,0.65l1.29,1.47L19.05,13.47z"/><polygon points="10.09,13.75 7.77,11.42 6.29,12.91 10.09,16.72 17.43,9.36 15.95,7.87"/></svg>

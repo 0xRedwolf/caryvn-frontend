@@ -819,13 +819,12 @@ export interface OTPOrder {
   service_id: string;
   service_name: string;
   provider: string;
-  rental_type: 'short' | 'long';
-  rental_days: number;
   user_charge: string | number;
   status: 'PENDING' | 'RECEIVED' | 'CANCELED' | 'EXPIRED' | 'REFUNDED';
   formatted_status: string;
   sms_code: string | null;
   full_sms: string;
+  sms_messages?: any[];
   expires_at: string;
   received_at: string | null;
   refunded_at: string | null;
@@ -865,8 +864,6 @@ export const otpApi = {
       service: string;
       service_name: string;
       provider?: string;
-      rental_type?: 'short' | 'long';
-      days?: number;
       pool?: string;
     },
     token?: string

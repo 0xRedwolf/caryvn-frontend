@@ -1089,7 +1089,6 @@ export default function AdminOrdersPage() {
                               <CountryFlag code={order.country} />
                               <span className="font-medium text-xs text-slate-900">{order.service_name}</span>
                             </div>
-                            <span className="text-[11px] text-slate-400 capitalize">{order.rental_type} rental</span>
                           </td>
                           <td className="px-4 py-3.5">
                             <div className="flex items-center gap-1.5">

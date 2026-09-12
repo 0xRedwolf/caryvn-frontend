@@ -1,24 +1,25 @@
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Reseller API Documentation | Caryvn SMM Panel',
+  title: 'API Documentation | Caryvn Developer & Reseller REST API v2',
   description:
-    'Full SMM Panel v2 REST API documentation for Caryvn resellers. Automate orders, check balance, and manage services programmatically. API endpoint: https://api.caryvn.com/api/v2/',
+    'Complete SMM Panel v2 REST API documentation for Caryvn. Automate social media orders, query 800+ services, check NGN wallet balance, and track order & refill status programmatically.',
   keywords: [
     'SMM panel API', 'reseller API', 'SMM API documentation', 'social media panel API',
     'Caryvn API', 'SMM v2 API', 'order automation API', 'Instagram reseller API',
+    'TikTok API SMM', 'Nigeria SMM API', 'Caryvn developer docs'
   ],
   openGraph: {
-    title: 'Reseller API Documentation | Caryvn',
-    description: 'Automate your SMM panel orders with the Caryvn REST API. SMM Panel v2 compatible.',
+    title: 'Developer & Reseller API Documentation | Caryvn',
+    description: 'Automate social media orders, query live rates in NGN, and track status with the Caryvn SMM v2 REST API.',
     url: 'https://www.caryvn.com/api-docs',
     siteName: 'Caryvn',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Reseller API Documentation | Caryvn',
-    description: 'Automate your SMM panel orders with the Caryvn REST API. Full documentation with code examples.',
+    title: 'Developer & Reseller API Documentation | Caryvn',
+    description: 'Automate social media orders, query live rates in NGN, and track status with the Caryvn SMM v2 REST API.',
   },
   alternates: {
     canonical: 'https://www.caryvn.com/api-docs',

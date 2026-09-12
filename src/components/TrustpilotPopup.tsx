@@ -86,17 +86,17 @@ export default function TrustpilotPopup({ onClose }: TrustpilotPopupProps) {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[200] bg-black/40 backdrop-blur-[2px] transition-opacity duration-300"
+        className="fixed inset-0 z-200 bg-black/40 backdrop-blur-[2px] transition-opacity duration-300"
         style={{ opacity: visible ? 1 : 0 }}
         onClick={handleDismiss}
       />
 
       {/* Bottom Sheet */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-[201] flex justify-center pointer-events-none"
+        className="fixed bottom-0 left-0 right-0 z-201 flex justify-center pointer-events-none"
       >
         <div
-          className="w-full max-w-md bg-surface-dark border border-border-dark rounded-t-3xl shadow-2xl pointer-events-auto transition-transform duration-500"
+          className="w-full max-w-md bg-white border border-slate-200 rounded-t-3xl shadow-2xl pointer-events-auto transition-transform duration-500"
           style={{
             transform: visible ? "translateY(0)" : "translateY(110%)",
             transitionTimingFunction: "cubic-bezier(0.32, 0.72, 0, 1)",
@@ -104,13 +104,13 @@ export default function TrustpilotPopup({ onClose }: TrustpilotPopupProps) {
         >
           {/* Handle bar */}
           <div className="flex justify-center pt-3 pb-1">
-            <div className="w-10 h-1 bg-border-dark rounded-full" />
+            <div className="w-10 h-1 bg-slate-300 rounded-full" />
           </div>
 
           {/* Close button */}
           <button
             onClick={handleClose}
-            className="absolute top-5 right-5 text-text-secondary hover:text-white transition-colors rounded-full hover:bg-red-500 p-1"
+            className="absolute top-5 right-5 text-slate-400 hover:text-slate-700 transition-colors rounded-full hover:bg-slate-100 p-1"
             aria-label="Close"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -126,15 +126,15 @@ export default function TrustpilotPopup({ onClose }: TrustpilotPopupProps) {
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="#00b67a">
                   <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6L12 2z" />
                 </svg>
-                <span className="text-white font-bold text-base tracking-tight">Trustpilot</span>
+                <span className="text-slate-900 font-bold text-base tracking-tight">Trustpilot</span>
               </div>
             </div>
 
             {/* Heading */}
-            <h2 className="text-white font-bold text-xl text-center mb-1">
+            <h2 className="text-slate-900 font-bold text-xl text-center mb-1">
               Enjoying our service?
             </h2>
-            <p className="text-text-secondary text-sm text-center mb-6">
+            <p className="text-slate-600 text-sm text-center mb-6">
               Your review helps others discover us. It only takes 10 seconds!
             </p>
 
@@ -154,7 +154,7 @@ export default function TrustpilotPopup({ onClose }: TrustpilotPopupProps) {
               ))}
             </div>
 
-            <p className="text-text-secondary text-xs text-center mb-6">
+            <p className="text-slate-500 text-xs text-center mb-6">
               {clicked >= 0
                 ? "Opening Trustpilot… thank you!"
                 : hovered >= 0
@@ -163,12 +163,12 @@ export default function TrustpilotPopup({ onClose }: TrustpilotPopupProps) {
             </p>
 
             {/* Divider */}
-            <div className="border-t border-border-dark mb-5" />
+            <div className="border-t border-slate-200 mb-5" />
 
             {/* Dismiss */}
             <button
               onClick={handleDismiss}
-              className="w-full text-center text-text-secondary text-sm hover:text-white transition-colors py-1"
+              className="w-full text-center text-slate-500 text-sm hover:text-slate-800 transition-colors py-1 font-medium"
             >
               Maybe later
             </button>

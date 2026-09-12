@@ -15,8 +15,8 @@ export const metadata: Metadata = {
   alternates: {
     canonical: '/',
   },
-  title: "Caryvn - Buy Instagram & Tiktok Followers, Views & Likes",
-  description: "Boost your social media accounts with Caryvn. Safe, fast, and reliable SMM services for Instagram, TikTok, YouTube, Twitter, Facebook, Audiomack, and more. Over 80 countries supported with instant delivery and 24/7 support.",
+  title: "Caryvn - SMM Panel & Instant Virtual Numbers (SMS OTP Verification)",
+  description: "Boost your social media growth and receive instant SMS OTP verification online with Caryvn. Buy real Instagram & TikTok followers, views, likes, and rent temporary virtual phone numbers for WhatsApp, Telegram, Google, OpenAI & 500+ services with 100% auto-refund guarantee.",
   keywords: [
     "SMM Panel", 
     "Social Media Marketing", 
@@ -24,7 +24,6 @@ export const metadata: Metadata = {
     "TikTok Views",
     "TikTok Followers",
     "TikTok Likes",
-    "Instagram Followers",
     "Instagram Likes",
     "Instagram Views",
     "YouTube Subscribers",
@@ -35,11 +34,21 @@ export const metadata: Metadata = {
     "Twitter followers",
     "Buy Followers",
     "Digital Marketing",
+    "Virtual Numbers",
+    "Receive SMS Online",
+    "SMS Verification",
+    "OTP Verification",
+    "Temporary Phone Numbers",
+    "Virtual SMS Number",
+    "Buy OTP Online",
+    "WhatsApp Virtual Number",
+    "Telegram OTP Verification",
+    "ZapOTP Alternative",
     "Caryvn"
   ],
   openGraph: {
-    title: "Caryvn - Buy Instagram & Tiktok Followers, Views & Likes",
-    description: "Boost your social media accounts with Caryvn. Safe, fast, and reliable SMM services. Over 80 countries supported with instant delivery and 24/7 support.",
+    title: "Caryvn - SMM Panel & Instant Virtual Numbers (SMS OTP Verification)",
+    description: "Boost social media accounts and receive instant SMS OTP codes for WhatsApp, Telegram, Google, OpenAI & 500+ services with 100% auto-refund guarantee.",
     url: "https://www.caryvn.com",
     siteName: "Caryvn",
     images: [
@@ -55,8 +64,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Caryvn - Buy Instagram & Tiktok Followers, Views & Likes",
-    description: "Boost your social media accounts with Caryvn. Safe, fast, and reliable SMM services. Over 80 countries supported with instant delivery and 24/7 support.",
+    title: "Caryvn - SMM Panel & Instant Virtual Numbers (SMS OTP Verification)",
+    description: "Boost social media accounts and receive instant SMS OTP codes for WhatsApp, Telegram, Google, OpenAI & 500+ services with 100% auto-refund guarantee.",
     images: ["/logo-full.png"],
   },
   icons: {

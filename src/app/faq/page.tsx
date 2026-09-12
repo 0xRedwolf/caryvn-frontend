@@ -68,7 +68,7 @@ export default function FAQPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background-dark flex flex-col">
+    <div className="min-h-screen bg-slate-50 flex flex-col">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
@@ -77,8 +77,8 @@ export default function FAQPage() {
       
       <main className="flex-1 py-32 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto w-full">
         <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-5xl font-extrabold text-text-primary mb-6">Frequently Asked <span className="text-primary">Questions</span></h1>
-          <p className="text-text-secondary text-lg max-w-2xl mx-auto">
+          <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-6">Frequently Asked <span className="text-primary">Questions</span></h1>
+          <p className="text-slate-600 text-lg max-w-2xl mx-auto">
             Everything you need to know about Caryvn services, safety, and delivery. Can&apos;t find what you&apos;re looking for? Contact our 24/7 support.
           </p>
         </div>
@@ -87,7 +87,7 @@ export default function FAQPage() {
           {faqs.map((faq, index) => (
             <div 
               key={index}
-              className="bg-surface-dark border border-border-dark rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+              className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow"
             >
               <button
                 onClick={() => toggleFaq(index)}
@@ -95,9 +95,9 @@ export default function FAQPage() {
               >
                 <div className="flex flex-col gap-1">
                   <span className="text-[11px] font-extrabold text-primary uppercase tracking-widest">{faq.category}</span>
-                  <span className="text-lg font-bold text-text-primary">{faq.q}</span>
+                  <span className="text-lg font-bold text-slate-900">{faq.q}</span>
                 </div>
-                <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center border border-border-dark transition-all duration-300 ${openIndex === index ? 'bg-primary border-primary text-white rotate-180' : 'bg-transparent text-text-secondary'}`}>
+                <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center border border-slate-200 transition-all duration-300 ${openIndex === index ? 'bg-primary border-primary text-white rotate-180' : 'bg-transparent text-slate-500'}`}>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
                   </svg>
@@ -105,9 +105,9 @@ export default function FAQPage() {
               </button>
               
               <div 
-                className={`transition-all duration-300 ease-in-out ${openIndex === index ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'} overflow-hidden`}
+                className={`transition-all duration-300 ease-in-out ${openIndex === index ? 'max-h-125 opacity-100' : 'max-h-0 opacity-0'} overflow-hidden`}
               >
-                <div className="p-6 pt-0 text-text-secondary leading-relaxed border-t border-border-dark/50 bg-background-dark/30">
+                <div className="p-6 pt-0 text-slate-600 leading-relaxed border-t border-slate-100 bg-slate-50/50">
                   {faq.a}
                 </div>
               </div>
@@ -115,14 +115,14 @@ export default function FAQPage() {
           ))}
         </div>
 
-        <div className="mt-16 bg-primary/5 rounded-[2rem] p-8 md:p-12 text-center border border-primary/10">
-          <h2 className="text-2xl font-bold text-text-primary mb-4">Still have questions?</h2>
-          <p className="text-text-secondary mb-8">We&apos;re here to help 24/7. Get in touch with our expert team.</p>
+        <div className="mt-16 bg-primary/5 rounded-4xl p-8 md:p-12 text-center border border-primary/10">
+          <h2 className="text-2xl font-bold text-slate-900 mb-4">Still have questions?</h2>
+          <p className="text-slate-600 mb-8">We&apos;re here to help 24/7. Get in touch with our expert team.</p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <a href="mailto:support@caryvn.com" className="bg-primary hover:bg-primary-hover text-white font-bold py-4 px-8 rounded-xl transition-all shadow-lg shadow-primary/20 w-full sm:w-auto">
               Contact Support
             </a>
-            <a href="https://wa.me/+2348163685196" className="bg-surface-dark border border-border-dark hover:border-primary text-text-primary hover:text-primary font-bold py-4 px-8 rounded-xl transition-all w-full sm:w-auto">
+            <a href="https://wa.me/+2348163685196" className="bg-white border border-slate-200 hover:border-primary text-slate-900 hover:text-primary font-bold py-4 px-8 rounded-xl transition-all w-full sm:w-auto">
               Live Chat
             </a>
           </div>

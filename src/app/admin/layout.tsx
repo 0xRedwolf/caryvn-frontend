@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { ThemeToggle } from '@/contexts/ThemeContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Logo from '@/components/Logo';
 import MobileBottomNav from '@/components/MobileBottomNav';
@@ -11,6 +10,7 @@ import { useState, useEffect } from 'react';
 import { useActivityTracker } from '@/hooks/useActivityTracker';
 import { adminApi } from '@/lib/api';
 import AdminNotificationCenter, { AdminNotificationItem } from '@/components/AdminNotificationCenter';
+import MobileProfileDropdown from '@/components/MobileProfileDropdown';
 
 const adminLinks = [
   {
@@ -185,7 +185,7 @@ const adminLinks = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { token, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [pendingDepositsCount, setPendingDepositsCount] = useState(0);
   const [criticalAlert, setCriticalAlert] = useState<AdminNotificationItem | null>(null);
@@ -318,8 +318,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <Link href="/admin" className="flex items-center justify-center">
               <Logo width={160} height={32} />
             </Link>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               <AdminNotificationCenter token={token || ''} onCriticalAlertChange={setCriticalAlert} />
+              <MobileProfileDropdown user={user} logout={logout} isAdmin />
             </div>
           </div>
 

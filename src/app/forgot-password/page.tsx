@@ -36,24 +36,26 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background-dark flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex items-center justify-center p-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
           <div className="inline-block mb-6">
-            <Logo />
+            <Link href="/" className="cursor-pointer">
+              <Logo width={160} height={32} />
+            </Link>
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2">Forgot Password</h1>
-          <p className="text-text-secondary">
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Forgot Password</h1>
+          <p className="text-slate-600 text-sm">
             Enter your email address and we&apos;ll send you a link to reset your password.
           </p>
         </div>
 
-        <div className="bg-surface-dark rounded-2xl border border-border-dark p-8 shadow-xl">
+        <div className="bg-white rounded-3xl border border-slate-200 p-8 shadow-xl">
           {message && (
-            <div className={`mb-6 p-4 rounded-lg text-sm font-medium ${
+            <div className={`mb-6 p-4 rounded-xl text-sm font-medium ${
               message.type === 'success' 
-                ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400' 
-                : 'bg-red-500/10 border border-red-500/20 text-red-400'
+                ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-600' 
+                : 'bg-red-500/10 border border-red-500/20 text-red-600'
             }`}>
               {message.text}
             </div>
@@ -61,7 +63,7 @@ export default function ForgotPasswordPage() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-text-secondary mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
                 Email Address
               </label>
               <input
@@ -88,10 +90,10 @@ export default function ForgotPasswordPage() {
             </button>
           </form>
 
-          <div className="mt-8 text-center pt-6 border-t border-border-dark">
+          <div className="mt-8 text-center pt-6 border-t border-slate-200">
             <Link 
               href="/login" 
-              className="text-sm text-text-secondary hover:text-white transition-colors"
+              className="text-sm text-slate-600 hover:text-primary transition-colors font-medium"
             >
               Back to Login
             </Link>

@@ -484,14 +484,12 @@ function ServiceDropdown({
   onSelect,
   loading,
   disabled,
-  durationMultiplier = 1,
 }: {
   services: OTPServiceItem[];
   selectedService: OTPServiceItem | null;
   onSelect: (svc: OTPServiceItem) => void;
   loading: boolean;
   disabled: boolean;
-  durationMultiplier?: number;
 }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -551,7 +549,7 @@ function ServiceDropdown({
               </div>
             </div>
             <span className="font-black text-slate-900 text-sm shrink-0">
-              {formatCurrency(Number(selectedService.price) * durationMultiplier)}
+              {formatCurrency(Number(selectedService.price))}
             </span>
           </div>
         ) : (
@@ -627,7 +625,7 @@ function ServiceDropdown({
                       </span>
                     </div>
                     <span className="font-bold text-xs text-slate-900 shrink-0 ml-2">
-                      {formatCurrency(Number(svc.price) * durationMultiplier)}
+                      {formatCurrency(Number(svc.price))}
                     </span>
                   </button>
                 );
@@ -642,8 +640,6 @@ function ServiceDropdown({
 
 export default function VirtualNumbersPage() {
   const { user, refreshUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<'short' | 'long'>('short');
-  const [rentalDays, setRentalDays] = useState<number>(3);
 
   // Service availability gatekeeper
   const [isServiceActive, setIsServiceActive] = useState<boolean | null>(null);
@@ -683,22 +679,20 @@ export default function VirtualNumbersPage() {
     });
   }, []);
 
-  // Step 1: When country or mode changes, fetch services for that country & provider
+  // Step 1: When country changes, fetch services for that country
   useEffect(() => {
     if (isServiceActive === false) return;
     let isMounted = true;
     const loadServices = async () => {
       setLoadingServices(true);
-      setSelectedService(null); // Reset service when country/mode changes so user explicitly selects
+      setSelectedService(null); // Reset service when country changes so user explicitly selects
       setRentError(null);
       try {
         const token = localStorage.getItem('caryvn_token') || undefined;
-        const provider = activeTab === 'long' ? 'usa_long' : 'global';
-        const res = await otpApi.getServices(selectedCountry, provider, undefined, token);
+        const res = await otpApi.getServices(selectedCountry, 'global', undefined, token);
         if (isMounted && res.data?.services) {
           const list = Array.isArray(res.data.services) ? res.data.services : [];
           setServices(list);
-          // Do NOT auto-select WhatsApp or list[0] — leave clean for user to choose
           setSelectedService(null);
         }
       } catch (err) {
@@ -711,7 +705,7 @@ export default function VirtualNumbersPage() {
     return () => {
       isMounted = false;
     };
-  }, [selectedCountry, isServiceActive, activeTab]);
+  }, [selectedCountry, isServiceActive]);
 
   // Fetch Order History
   const loadOrderHistory = async () => {
@@ -772,8 +766,7 @@ export default function VirtualNumbersPage() {
       setLoadingOptions(true);
       try {
         const token = localStorage.getItem('caryvn_token') || undefined;
-        const provider = activeTab === 'long' ? 'usa_long' : 'global';
-        const res = await otpApi.getServices(selectedCountry, provider, String(selectedService.service_id), token);
+        const res = await otpApi.getServices(selectedCountry, 'global', String(selectedService.service_id), token);
         if (isMounted && res.data?.services) {
           const list = Array.isArray(res.data.services) ? res.data.services : [];
           if (list.length > 0) {
@@ -801,13 +794,10 @@ export default function VirtualNumbersPage() {
     return () => {
       isMounted = false;
     };
-  }, [selectedCountry, selectedService?.service_id, activeTab]);
+  }, [selectedCountry, selectedService?.service_id]);
 
-  // Duration multiplier for long-term numbers: 3D=1x, 7D=2.33x, 14D=4.67x, 30D=10x
-  const durationMultiplier = activeTab === 'long' ? Math.max(1, rentalDays / 3) : 1;
   const activeItem = selectedOption || selectedService;
-  const basePrice = activeItem ? Number(activeItem.price) : 0;
-  const currentPrice = basePrice * durationMultiplier;
+  const currentPrice = activeItem ? Number(activeItem.price) : 0;
 
   // Buy number action with synchronous rapid double-click guard
   const handleRent = async () => {
@@ -817,7 +807,7 @@ export default function VirtualNumbersPage() {
     setRentError(null);
 
     const activePool = selectedOption?.pool_id;
-    const activeProvider = selectedOption?.provider || (activeTab === 'long' ? 'usa_long' : 'global');
+    const activeProvider = selectedOption?.provider || 'global';
 
     try {
       const token = localStorage.getItem('caryvn_token') || undefined;
@@ -828,8 +818,6 @@ export default function VirtualNumbersPage() {
           service_name: String(selectedService.service_name || selectedService.service_id),
           provider: activeProvider,
           pool: activePool || undefined,
-          rental_type: activeTab,
-          days: activeTab === 'long' ? rentalDays : 0,
         },
         token
       );
@@ -892,36 +880,12 @@ export default function VirtualNumbersPage() {
           </span>
         </div>
         <p className="text-slate-500 text-xs sm:text-sm">
-          Instant disposable virtual numbers to receive SMS OTP codes for WhatsApp, Telegram, Google, OpenAI, and 500+ services.
+          Instant virtual numbers to receive SMS OTP codes for WhatsApp, Telegram, Google, OpenAI, and 500+ services.
         </p>
       </div>
 
       <div>
         <DashboardPromoBanner />
-      </div>
-
-      {/* Mode Switcher Tabs */}
-      <div className="flex items-center gap-2 mb-6 p-1 bg-slate-200/60 rounded-xl w-fit">
-        <button
-          onClick={() => setActiveTab('short')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-            activeTab === 'short'
-              ? 'bg-white text-slate-900 shadow-xs'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <span>Short-Term Numbers</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('long')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-            activeTab === 'long'
-              ? 'bg-white text-slate-900 shadow-xs'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <span>Long-Term Numbers (3–30 Days)</span>
-        </button>
       </div>
 
       {/* Buying Card Container */}
@@ -936,31 +900,6 @@ export default function VirtualNumbersPage() {
           </div>
           <CountryDropdown value={selectedCountry} onChange={setSelectedCountry} />
         </div>
-
-        {/* Long-Term Days Selector */}
-        {activeTab === 'long' && (
-          <div className="mb-6 p-4 bg-slate-50 rounded-2xl border border-slate-200">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2.5">
-              Rental Duration
-            </label>
-            <div className="grid grid-cols-4 gap-2">
-              {[3, 7, 14, 30].map((days) => (
-                <button
-                  key={days}
-                  type="button"
-                  onClick={() => setRentalDays(days)}
-                  className={`py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                    rentalDays === days
-                      ? 'bg-primary text-white border-primary shadow-xs'
-                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
-                  }`}
-                >
-                  {days} Days
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Step 2: Popular Platforms (Icons Only, unclickable toggle) */}
         <div className="mb-6">
@@ -1005,7 +944,6 @@ export default function VirtualNumbersPage() {
             onSelect={setSelectedService}
             loading={loadingServices}
             disabled={loadingServices}
-            durationMultiplier={durationMultiplier}
           />
         </div>
 
@@ -1035,7 +973,7 @@ export default function VirtualNumbersPage() {
                   const isSelected = selectedOption
                     ? (selectedOption.pool_id ? selectedOption.pool_id === opt.pool_id : selectedOption.service_id === opt.service_id && idx === 0)
                     : idx === 0;
-                  const optPrice = Number(opt.price) * durationMultiplier;
+                  const optPrice = Number(opt.price);
 
                   return (
                     <button
@@ -1067,11 +1005,6 @@ export default function VirtualNumbersPage() {
                           <span className="text-base sm:text-lg font-black text-slate-900">
                             {formatCurrency(optPrice)}
                           </span>
-                          {activeTab === 'long' && (
-                            <span className="text-[10px] text-slate-400 block font-medium">
-                              {rentalDays} days rental
-                            </span>
-                          )}
                         </div>
                         <span className={`text-xs font-bold px-2.5 py-1 rounded-lg transition-colors ${
                           isSelected
@@ -1097,11 +1030,6 @@ export default function VirtualNumbersPage() {
           <span className="text-2xl font-black text-slate-900">
             {formatCurrency(currentPrice)}
           </span>
-          {activeTab === 'long' && (
-            <span className="text-[11px] text-slate-400 block mt-0.5 font-medium">
-              {rentalDays} Days Rental
-            </span>
-          )}
         </div>
 
         {/* Buy Action Button */}

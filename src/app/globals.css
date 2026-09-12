@@ -253,35 +253,23 @@ input[type="number"] {
   box-shadow: 0 0 0 2px rgb(59 130 246 / 0.3);
 }
 
-/* Dark mode by default */
+/* Strictly Clean Light Theme */
 html {
-  color-scheme: dark;
-}
-
-html.light {
   color-scheme: light;
 }
 
 body {
-  background-color: #0b1220;
-  color: #e5e7eb;
+  background-color: #f8fafc;
+  color: #0f172a;
   font-family: "Inter", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition:
-    background-color 0.3s ease,
-    color 0.3s ease;
 }
 
-/* Light Mode Styles */
-html.light body {
-  background-color: #f8fafc;
-  color: #0f172a;
-}
-
-html.light .glass-nav {
-  background: rgba(248, 250, 252, 0.9);
-  border-bottom: 1px solid #e5e7eb;
+.glass-nav {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid #e2e8f0;
 }
 
 html.light .bg-surface-dark,
@@ -478,23 +466,24 @@ html.light .bg-blue-600 {
   color: #f97316 !important;
 }
 
-/* Ad banner — dark mode (default) */
+/* Ad banner */
 .ad-banner {
   background: linear-gradient(
     135deg,
-    rgb(37 99 235 / 0.12) 0%,
-    #0f172a 50%,
-    rgb(37 99 235 / 0.12) 100%
+    rgb(37 99 235 / 0.08) 0%,
+    #ffffff 50%,
+    rgb(37 99 235 / 0.08) 100%
   );
-  border: 1px solid rgb(37 99 235 / 0.3);
+  border: 1px solid rgb(37 99 235 / 0.25);
+  box-shadow: 0 4px 24px rgb(37 99 235 / 0.08);
 }
 
 .ad-banner-title {
-  color: #ffffff;
+  color: #0f172a;
 }
 
 .ad-banner-desc {
-  color: #94a3b8;
+  color: #475569;
 }
 
 .ad-banner-glow-tr {
@@ -503,14 +492,14 @@ html.light .bg-blue-600 {
   right: -5rem;
   width: 15rem;
   height: 15rem;
-  background: rgb(37 99 235 / 0.2);
+  background: rgb(37 99 235 / 0.08);
   border-radius: 9999px;
   filter: blur(80px);
   transition: background 0.5s;
 }
 
 .ad-banner:hover .ad-banner-glow-tr {
-  background: rgb(37 99 235 / 0.3);
+  background: rgb(37 99 235 / 0.15);
 }
 
 .ad-banner-glow-bl {
@@ -519,100 +508,42 @@ html.light .bg-blue-600 {
   left: -5rem;
   width: 12rem;
   height: 12rem;
-  background: rgb(34 211 238 / 0.15);
+  background: rgb(34 211 238 / 0.08);
   border-radius: 9999px;
   filter: blur(80px);
 }
 
-/* Ad banner — light mode */
-html.light .ad-banner {
-  background: linear-gradient(
-    135deg,
-    rgb(37 99 235 / 0.08) 0%,
-    #ffffff 50%,
-    rgb(37 99 235 / 0.08) 100%
-  ) !important;
-  border-color: rgb(37 99 235 / 0.25) !important;
-  box-shadow: 0 4px 24px rgb(37 99 235 / 0.08);
-}
-
-html.light .ad-banner-title {
-  color: #0f172a !important;
-}
-
-html.light .ad-banner-desc {
-  color: #475569 !important;
-}
-
-html.light .ad-banner-glow-tr {
-  background: rgb(37 99 235 / 0.08);
-}
-
-html.light .ad-banner:hover .ad-banner-glow-tr {
-  background: rgb(37 99 235 / 0.15);
-}
-
-html.light .ad-banner-glow-bl {
-  background: rgb(34 211 238 / 0.08);
-}
-
-/* ── Reseller API docs — theme-aware classes ───────────────────────────── */
+/* ── Reseller API docs — Light Theme Classes ───────────────────────────── */
 
 /* Code block / pre background */
 .api-code {
-  background-color: #020617;
-  border: 1px solid #1f2937;
-  color: #94a3b8;
-}
-
-html.light .api-code {
-  background-color: #f8fafc !important;
-  border-color: #e5e7eb !important;
-  color: #334155 !important;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #334155;
 }
 
 /* Inline code token (e.g. content-type) */
 .api-inline-code {
-  background-color: rgb(37 99 235 / 0.12);
-  color: #93c5fd;
-}
-
-html.light .api-inline-code {
-  background-color: #eff6ff !important;
-  color: #2563eb !important;
+  background-color: #eff6ff;
+  color: #2563eb;
 }
 
 /* Table header row background */
 .api-table-header {
-  background-color: #0b1220;
-}
-
-html.light .api-table-header {
-  background-color: #f8fafc !important;
+  background-color: #f8fafc;
 }
 
 /* SMM Panel API v2 badge */
 .api-badge {
-  background-color: rgb(34 197 94 / 0.1);
-  color: #4ade80;
-  border-color: rgb(34 197 94 / 0.2);
-}
-
-html.light .api-badge {
-  background-color: #f0fdf4 !important;
-  color: #16a34a !important;
-  border-color: #bbf7d0 !important;
+  background-color: #f0fdf4;
+  color: #16a34a;
+  border-color: #bbf7d0;
 }
 
 /* Action name badge (services, add, status…) */
 .api-action-badge {
-  background-color: rgb(34 197 94 / 0.1);
-  color: #4ade80;
-}
-
-html.light .api-action-badge {
-  background-color: #f0fdf4 !important;
-  color: #16a34a !important;
+  background-color: #f0fdf4;
+  color: #16a34a;
 }
 
 /* ── Bento Grid & Component Styling (Strictly Light Theme) ────────── */

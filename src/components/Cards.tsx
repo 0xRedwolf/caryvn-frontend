@@ -21,13 +21,13 @@ interface ServiceCardProps {
 
 export default function ServiceCard({ service, onOrder }: ServiceCardProps) {
   return (
-    <div className="bg-surface-dark rounded-xl border border-border-dark p-5 card-hover">
+    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between mb-3">
         <div className="flex-1">
-          <h3 className="text-white font-medium text-sm leading-tight line-clamp-2">
+          <h3 className="text-slate-900 font-medium text-sm leading-tight line-clamp-2">
             {service.name}
           </h3>
-          <p className="text-text-secondary text-xs mt-1">{service.category_name}</p>
+          <p className="text-slate-500 text-xs mt-1">{service.category_name}</p>
         </div>
         {service.is_featured && (
           <span className="ml-2 px-2 py-0.5 rounded text-xs font-medium bg-primary/10 text-primary">
@@ -38,12 +38,12 @@ export default function ServiceCard({ service, onOrder }: ServiceCardProps) {
 
       <div className="flex items-center gap-2 mb-4">
         {service.has_refill && (
-          <span className="px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-500">
+          <span className="px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-600">
             Refill
           </span>
         )}
         {service.has_cancel && (
-          <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-500/10 text-amber-500">
+          <span className="px-2 py-0.5 rounded text-xs font-medium bg-amber-500/10 text-amber-600">
             Cancel
           </span>
         )}
@@ -54,13 +54,13 @@ export default function ServiceCard({ service, onOrder }: ServiceCardProps) {
           <p className="text-primary text-xl font-bold">
             {formatCurrency(service.user_rate)}
           </p>
-          <p className="text-text-secondary text-xs">per 1000</p>
+          <p className="text-slate-500 text-xs">per 1000</p>
         </div>
         <div className="text-right">
-          <p className="text-text-secondary text-xs">
+          <p className="text-slate-500 text-xs">
             Min: {service.min_quantity.toLocaleString()}
           </p>
-          <p className="text-text-secondary text-xs">
+          <p className="text-slate-500 text-xs">
             Max: {service.max_quantity.toLocaleString()}
           </p>
         </div>
@@ -90,16 +90,16 @@ interface StatsCardProps {
 
 export function StatsCard({ title, value, icon, change, positive, valueClassName }: StatsCardProps) {
   return (
-    <div className="bg-surface-dark rounded-xl border border-border-dark p-5">
+    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-text-secondary text-sm">{title}</span>
+        <span className="text-slate-500 text-sm">{title}</span>
         <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
           {icon}
         </div>
       </div>
-      <p className={`text-2xl font-bold ${valueClassName || 'text-white'}`}>{value}</p>
+      <p className={`text-2xl font-bold ${valueClassName || 'text-slate-900'}`}>{value}</p>
       {change && (
-        <p className={`text-xs mt-1 ${positive ? 'text-emerald-500' : 'text-red-500'}`}>
+        <p className={`text-xs mt-1 ${positive ? 'text-emerald-600' : 'text-red-600'}`}>
           {positive ? '↑' : '↓'} {change}
         </p>
       )}
@@ -125,21 +125,21 @@ export function OrderRow({ order, onClick }: OrderRowProps) {
   return (
     <tr
       onClick={onClick}
-      className={`border-b border-border-dark hover:bg-surface-dark/50 transition-colors ${onClick ? 'cursor-pointer' : ''}`}
+      className={`border-b border-slate-200 hover:bg-slate-50 transition-colors ${onClick ? 'cursor-pointer' : ''}`}
     >
       <td className="py-4 px-4">
-        <p className="text-white text-sm font-medium truncate max-w-[200px]">
+        <p className="text-slate-900 text-sm font-medium truncate max-w-50">
           {order.service_name}
         </p>
       </td>
       <td className="py-4 px-4">
-        <p className="text-text-secondary text-sm truncate max-w-[150px]">{order.link}</p>
+        <p className="text-slate-500 text-sm truncate max-w-37.5">{order.link}</p>
       </td>
       <td className="py-4 px-4">
-        <p className="text-white text-sm">{order.quantity.toLocaleString()}</p>
+        <p className="text-slate-900 text-sm">{order.quantity.toLocaleString()}</p>
       </td>
       <td className="py-4 px-4">
-        <p className="text-white text-sm">{formatCurrency(order.charge)}</p>
+        <p className="text-slate-900 text-sm">{formatCurrency(order.charge)}</p>
       </td>
       <td className="py-4 px-4">
         <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(order.status)}`}>
@@ -147,7 +147,7 @@ export function OrderRow({ order, onClick }: OrderRowProps) {
         </span>
       </td>
       <td className="py-4 px-4">
-        <p className="text-text-secondary text-sm">
+        <p className="text-slate-500 text-sm">
           {new Date(order.created_at).toLocaleDateString()}
         </p>
       </td>
@@ -158,7 +158,7 @@ export function OrderRow({ order, onClick }: OrderRowProps) {
 // Skeleton Components
 export function ServiceCardSkeleton() {
   return (
-    <div className="bg-surface-dark rounded-xl border border-border-dark p-5">
+    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
       <div className="skeleton h-4 w-3/4 rounded mb-2" />
       <div className="skeleton h-3 w-1/2 rounded mb-4" />
       <div className="flex gap-2 mb-4">
@@ -173,7 +173,7 @@ export function ServiceCardSkeleton() {
 
 export function StatsCardSkeleton() {
   return (
-    <div className="bg-surface-dark rounded-xl border border-border-dark p-5">
+    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
       <div className="flex items-center justify-between mb-3">
         <div className="skeleton h-4 w-20 rounded" />
         <div className="skeleton h-10 w-10 rounded-lg" />
