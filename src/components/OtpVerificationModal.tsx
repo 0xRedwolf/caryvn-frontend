@@ -120,6 +120,7 @@ export default function OtpVerificationModal({
       } else if (res.data?.order) {
         setShowCancelConfirm(false);
         onUpdate(res.data.order);
+        onClose();
       }
     } catch (err: any) {
       setCancelError(err.message || 'Failed to cancel order');

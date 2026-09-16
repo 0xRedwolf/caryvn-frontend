@@ -156,6 +156,10 @@ export default function AdminOrdersPage() {
   const [cancelLoading, setCancelLoading] = useState(false);
   const [upstreamErrorWarning, setUpstreamErrorWarning] = useState<string | null>(null);
 
+  // Complete Confirmation Modal States
+  const [smmCompleteConfirmOrder, setSmmCompleteConfirmOrder] = useState<Order | null>(null);
+  const [otpCompleteConfirmOrder, setOtpCompleteConfirmOrder] = useState<OTPOrder | null>(null);
+
   // Multi-service vertical tab
   const [verticalTab, setVerticalTab] = useState<'smm' | 'otp'>('smm');
 
@@ -167,6 +171,16 @@ export default function AdminOrdersPage() {
   const [otpStatusFilter, setOtpStatusFilter] = useState('');
   const [otpPage, setOtpPage] = useState(1);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // OTP Action States
+  const [otpSyncLoading, setOtpSyncLoading] = useState<string | null>(null);
+  const [otpSyncAllLoading, setOtpSyncAllLoading] = useState(false);
+  const [otpCompleteLoading, setOtpCompleteLoading] = useState<string | null>(null);
+  const [otpDeleteConfirm, setOtpDeleteConfirm] = useState<string | null>(null);
+  const [otpDeleteLoading, setOtpDeleteLoading] = useState(false);
+  const [otpCancelModalOrder, setOtpCancelModalOrder] = useState<OTPOrder | null>(null);
+  const [otpCancelLoading, setOtpCancelLoading] = useState(false);
+  const [otpUpstreamErrorWarning, setOtpUpstreamErrorWarning] = useState<string | null>(null);
 
   useEffect(() => {
     if (token) loadOrders();
@@ -204,6 +218,118 @@ export default function AdminOrdersPage() {
     }
     setOtpLoading(false);
   }
+
+  const handleSyncOtpOrder = async (orderId: string) => {
+    if (!token) return;
+    setOtpSyncLoading(orderId);
+    const result = await adminOtpApi.syncOrder(orderId, token);
+    setOtpSyncLoading(null);
+    if (result.data) {
+      const updated = result.data.order;
+      setOtpOrders(prev => prev.map(o => o.id === orderId ? updated : o));
+      setActionResult({
+        type: 'success',
+        message: result.data.message || 'OTP Order synced with ZapOTP successfully',
+      });
+      window.dispatchEvent(new CustomEvent('admin-notifications-refresh'));
+    } else {
+      setActionResult({ type: 'error', message: result.error || 'Failed to sync with ZapOTP' });
+    }
+  };
+
+  const handleSyncAllActiveOtpOrders = async () => {
+    if (!token) return;
+    const pendingOrders = otpOrders.filter(o => o.status === 'PENDING');
+    if (pendingOrders.length === 0) {
+      setActionResult({ type: 'success', message: 'No pending virtual numbers to sync' });
+      return;
+    }
+    setOtpSyncAllLoading(true);
+    let syncedCount = 0;
+    for (const ord of pendingOrders) {
+      try {
+        const res = await adminOtpApi.syncOrder(ord.id, token);
+        if (res.data?.order) {
+          setOtpOrders(prev => prev.map(o => o.id === ord.id ? res.data!.order : o));
+          syncedCount++;
+        }
+      } catch (e) {
+        // continue
+      }
+    }
+    setOtpSyncAllLoading(false);
+    setActionResult({
+      type: 'success',
+      message: `Checked ${pendingOrders.length} active number(s) with ZapOTP. Synced ${syncedCount} order(s).`,
+    });
+    window.dispatchEvent(new CustomEvent('admin-notifications-refresh'));
+  };
+
+  const handleCompleteOtpOrder = async (orderId: string) => {
+    if (!token) return;
+    setOtpCompleteLoading(orderId);
+    const result = await adminOtpApi.completeOrder(orderId, token);
+    setOtpCompleteLoading(null);
+    if (result.data) {
+      const updated = result.data.order;
+      setOtpOrders(prev => prev.map(o => o.id === orderId ? updated : o));
+      setActionResult({ type: 'success', message: 'Order marked as completed (Received)' });
+      window.dispatchEvent(new CustomEvent('admin-notifications-refresh'));
+    } else {
+      setActionResult({ type: 'error', message: result.error || 'Failed to complete order' });
+    }
+  };
+
+  const handleOpenOtpCancelModal = (order: OTPOrder) => {
+    setOtpCancelModalOrder(order);
+    setOtpUpstreamErrorWarning(null);
+  };
+
+  const handleExecuteOtpCancel = async (force: boolean = false, refund: boolean = true) => {
+    if (!token || !otpCancelModalOrder) return;
+    setOtpCancelLoading(true);
+
+    const res = await adminOtpApi.cancelRefundOrder(otpCancelModalOrder.id, token, force, refund);
+    setOtpCancelLoading(false);
+
+    if (res.error) {
+      if (force) {
+        setActionResult({ type: 'error', message: res.error });
+        setOtpCancelModalOrder(null);
+      } else {
+        setOtpUpstreamErrorWarning(res.error);
+      }
+    } else {
+      const updated = res.data?.order;
+      if (updated) {
+        setOtpOrders(prev => prev.map(o => o.id === otpCancelModalOrder.id ? updated : o));
+      }
+      setActionResult({
+        type: 'success',
+        message: res.data?.message || (refund
+          ? `Order #${otpCancelModalOrder.id.slice(0, 8).toUpperCase()} canceled and refunded`
+          : `Order #${otpCancelModalOrder.id.slice(0, 8).toUpperCase()} canceled without refund`),
+      });
+      setOtpCancelModalOrder(null);
+      window.dispatchEvent(new CustomEvent('admin-notifications-refresh'));
+    }
+  };
+
+  const handleDeleteOtpOrder = async (orderId: string) => {
+    if (!token) return;
+    setOtpDeleteLoading(true);
+    const result = await adminOtpApi.deleteOrder(orderId, token);
+    setOtpDeleteLoading(false);
+    setOtpDeleteConfirm(null);
+    if (result.data) {
+      setOtpOrders(prev => prev.filter(o => o.id !== orderId));
+      setOtpTotal(prev => Math.max(0, prev - 1));
+      setActionResult({ type: 'success', message: 'Virtual number order deleted' });
+      window.dispatchEvent(new CustomEvent('admin-notifications-refresh'));
+    } else {
+      setActionResult({ type: 'error', message: result.error || 'Failed to delete order' });
+    }
+  };
 
   useEffect(() => {
     if (actionResult) {
@@ -299,11 +425,11 @@ export default function AdminOrdersPage() {
     setUpstreamErrorWarning(null);
   };
 
-  const handleExecuteCancel = async (force: boolean = false) => {
+  const handleExecuteCancel = async (force: boolean = false, refund: boolean = true) => {
     if (!token || !cancelModalOrder) return;
     setCancelLoading(true);
 
-    const res = await adminApi.cancelRefundOrders([cancelModalOrder.id], token, force);
+    const res = await adminApi.cancelRefundOrders([cancelModalOrder.id], token, force, refund);
     setCancelLoading(false);
 
     if (res.error) {
@@ -316,23 +442,26 @@ export default function AdminOrdersPage() {
       }
       return;
     } else {
-      const data = res.data as { refunded?: number; errors?: string[] };
-      if (data?.refunded && data.refunded > 0) {
+      const data = res.data as { refunded?: number; canceled?: number; errors?: string[] };
+      if (refund && data?.refunded && data.refunded > 0) {
         setActionResult({
           type: 'success',
           message: `Order #${cancelModalOrder.id.slice(0, 8).toUpperCase()} canceled & ₦${parseFloat(cancelModalOrder.charge).toLocaleString()} refunded`,
         });
-        setCancelModalOrder(null);
-        loadOrders();
-        window.dispatchEvent(new CustomEvent('admin-notifications-refresh'));
+      } else if (!refund) {
+        setActionResult({
+          type: 'success',
+          message: `Order #${cancelModalOrder.id.slice(0, 8).toUpperCase()} canceled without refund`,
+        });
       } else if (data?.errors && data.errors.length > 0) {
         setUpstreamErrorWarning(data.errors[0]);
+        return;
       } else {
-        setActionResult({ type: 'success', message: 'Order canceled & refunded' });
-        setCancelModalOrder(null);
-        loadOrders();
-        window.dispatchEvent(new CustomEvent('admin-notifications-refresh'));
+        setActionResult({ type: 'success', message: refund ? 'Order canceled & refunded' : 'Order canceled without refund' });
       }
+      setCancelModalOrder(null);
+      loadOrders();
+      window.dispatchEvent(new CustomEvent('admin-notifications-refresh'));
     }
   };
 
@@ -707,7 +836,7 @@ export default function AdminOrdersPage() {
                               }
                             </button>
                             <button
-                              onClick={() => handleMarkCompleted(order.id)}
+                              onClick={() => setSmmCompleteConfirmOrder(order)}
                               disabled={completeLoading === order.id}
                               className="p-1.5 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 transition-colors border border-emerald-200 disabled:opacity-50"
                               title="Mark Completed"
@@ -871,7 +1000,7 @@ export default function AdminOrdersPage() {
                                     : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                                   }
                                 </button>
-                                <button onClick={() => handleMarkCompleted(order.id)} disabled={completeLoading === order.id} className="p-1.5 rounded-lg text-emerald-500 hover:bg-emerald-50 transition-colors disabled:opacity-50" title="Mark Completed">
+                                <button onClick={() => setSmmCompleteConfirmOrder(order)} disabled={completeLoading === order.id} className="p-1.5 rounded-lg text-emerald-500 hover:bg-emerald-50 transition-colors disabled:opacity-50" title="Mark Completed">
                                   {completeLoading === order.id
                                     ? <span className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin block" />
                                     : <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
@@ -933,7 +1062,7 @@ export default function AdminOrdersPage() {
       ) : (
         <>
           {/* OTP Filters Row */}
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
             <div className="relative flex-1">
               <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" />
@@ -951,6 +1080,21 @@ export default function AdminOrdersPage() {
               onChange={setOtpStatusFilter}
               options={OTP_STATUS_LIST}
             />
+            <button
+              onClick={handleSyncAllActiveOtpOrders}
+              disabled={otpSyncAllLoading}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-50 border border-blue-200 text-xs font-bold text-blue-700 hover:bg-blue-100 transition-all shadow-xs cursor-pointer disabled:opacity-50 shrink-0"
+              title="Sync all pending virtual numbers from ZapOTP"
+            >
+              {otpSyncAllLoading ? (
+                <span className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              )}
+              <span>Sync Active</span>
+            </button>
           </div>
 
           {/* OTP Order List */}
@@ -1037,6 +1181,63 @@ export default function AdminOrdersPage() {
                           )}
                         </div>
                       </div>
+
+                      {/* Mobile Superadmin Action Bar */}
+                      <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100">
+                        <button
+                          onClick={() => handleSyncOtpOrder(order.id)}
+                          disabled={otpSyncLoading === order.id}
+                          className="p-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 border border-blue-200 transition-colors disabled:opacity-50 cursor-pointer text-xs flex items-center gap-1"
+                          title="Force Refresh / Sync with ZapOTP"
+                        >
+                          {otpSyncLoading === order.id ? (
+                            <span className="w-3.5 h-3.5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                          )}
+                        </button>
+
+                        {order.status !== 'RECEIVED' && (
+                          <button
+                            onClick={() => setOtpCompleteConfirmOrder(order)}
+                            disabled={otpCompleteLoading === order.id}
+                            className="p-2 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 transition-colors disabled:opacity-50 cursor-pointer text-xs flex items-center gap-1"
+                            title="Force Completed"
+                          >
+                            {otpCompleteLoading === order.id ? (
+                              <span className="w-3.5 h-3.5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </button>
+                        )}
+
+                        {order.status !== 'CANCELED' && (
+                          <button
+                            onClick={() => handleOpenOtpCancelModal(order)}
+                            className="p-2 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer text-xs flex items-center gap-1"
+                            title="Cancel & Refund"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => setOtpDeleteConfirm(order.id)}
+                          className="p-2 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 transition-colors cursor-pointer text-xs flex items-center gap-1"
+                          title="Delete Order"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -1055,6 +1256,7 @@ export default function AdminOrdersPage() {
                       <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Financials</th>
                       <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Status</th>
                       <th className="text-left px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Date</th>
+                      <th className="text-right px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -1154,12 +1356,74 @@ export default function AdminOrdersPage() {
                           <td className="px-4 py-3.5 text-slate-400 text-xs whitespace-nowrap">
                             {formatDate(order.created_at)}
                           </td>
+                          <td className="px-4 py-3.5 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-1">
+                              {/* Force Refresh / Sync from ZapOTP */}
+                              <button
+                                onClick={() => handleSyncOtpOrder(order.id)}
+                                disabled={otpSyncLoading === order.id}
+                                className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 transition-colors disabled:opacity-50 cursor-pointer"
+                                title="Force Refresh / Sync with ZapOTP"
+                              >
+                                {otpSyncLoading === order.id ? (
+                                  <span className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin block" />
+                                ) : (
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                  </svg>
+                                )}
+                              </button>
+
+                              {/* Force Mark Completed */}
+                              {order.status !== 'RECEIVED' && (
+                                <button
+                                  onClick={() => setOtpCompleteConfirmOrder(order)}
+                                  disabled={otpCompleteLoading === order.id}
+                                  className="p-1.5 rounded-lg text-emerald-500 hover:bg-emerald-50 transition-colors disabled:opacity-50 cursor-pointer"
+                                  title="Force Mark Completed (Received)"
+                                >
+                                  {otpCompleteLoading === order.id ? (
+                                    <span className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin block" />
+                                  ) : (
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  )}
+                                </button>
+                              )}
+
+                              {/* Cancel & Refund */}
+                              {order.status !== 'CANCELED' && (
+                                <button
+                                  onClick={() => handleOpenOtpCancelModal(order)}
+                                  className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer"
+                                  title="Cancel & Refund"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                </button>
+                              )}
+
+                              {/* Delete Order */}
+                              <button
+                                onClick={() => setOtpDeleteConfirm(order.id)}
+                                className="p-1.5 rounded-lg text-red-500 hover:bg-red-50 transition-all cursor-pointer"
+                                title="Delete Order"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
               </div>
+
 
               {/* OTP Pagination */}
               {otpTotalPages > 1 && (
@@ -1188,6 +1452,112 @@ export default function AdminOrdersPage() {
             </>
           )}
         </>
+      )}
+
+      {/* SMM Mark Completed Confirmation Modal */}
+      {smmCompleteConfirmOrder !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl p-6 w-full max-w-sm">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-black text-slate-900 text-center mb-1">Mark Order Completed?</h3>
+            <p className="text-slate-500 text-xs text-center mb-4 leading-relaxed">
+              Are you sure you want to manually mark SMM order <strong className="text-slate-900 font-mono">#{smmCompleteConfirmOrder.id.slice(0, 8).toUpperCase()}</strong> as completed?
+            </p>
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 mb-5 space-y-1.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Service:</span>
+                <span className="font-semibold text-slate-800 truncate max-w-44" title={smmCompleteConfirmOrder.service_name}>{smmCompleteConfirmOrder.service_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Quantity:</span>
+                <span className="font-mono text-slate-800 font-semibold">{smmCompleteConfirmOrder.quantity.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Customer:</span>
+                <span className="text-slate-800 truncate max-w-44">{smmCompleteConfirmOrder.user_email || 'User'}</span>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setSmmCompleteConfirmOrder(null)}
+                disabled={completeLoading === smmCompleteConfirmOrder.id}
+                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const id = smmCompleteConfirmOrder.id;
+                  setSmmCompleteConfirmOrder(null);
+                  await handleMarkCompleted(id);
+                }}
+                disabled={completeLoading === smmCompleteConfirmOrder.id}
+                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+              >
+                Confirm Completed
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* OTP Mark Completed Confirmation Modal */}
+      {otpCompleteConfirmOrder !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl p-6 w-full max-w-sm">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-black text-slate-900 text-center mb-1">Mark Virtual Number Completed?</h3>
+            <p className="text-slate-500 text-xs text-center mb-4 leading-relaxed">
+              Are you sure you want to mark virtual number order <strong className="text-slate-900 font-mono">#{otpCompleteConfirmOrder.id.slice(0, 8).toUpperCase()}</strong> as completed (Received)?
+            </p>
+            <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 mb-5 space-y-1.5 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Service:</span>
+                <span className="font-semibold text-slate-800">{otpCompleteConfirmOrder.service_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Phone:</span>
+                <span className="font-mono text-slate-800 font-semibold">{otpCompleteConfirmOrder.phone_number}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Customer:</span>
+                <span className="text-slate-800 truncate max-w-44">{otpCompleteConfirmOrder.user_email || 'User'}</span>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setOtpCompleteConfirmOrder(null)}
+                disabled={otpCompleteLoading === otpCompleteConfirmOrder.id}
+                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const id = otpCompleteConfirmOrder.id;
+                  setOtpCompleteConfirmOrder(null);
+                  await handleCompleteOtpOrder(id);
+                }}
+                disabled={otpCompleteLoading === otpCompleteConfirmOrder.id}
+                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+              >
+                Confirm Completed
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Delete Confirmation Modal */}
@@ -1283,42 +1653,57 @@ export default function AdminOrdersPage() {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-2.5">
               <button
                 type="button"
                 onClick={() => setCancelModalOrder(null)}
                 disabled={cancelLoading}
-                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer text-center"
               >
                 Keep Active
               </button>
 
               {upstreamErrorWarning ? (
-                <button
-                  type="button"
-                  onClick={() => handleExecuteCancel(true)}
-                  disabled={cancelLoading}
-                  className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-600 text-white hover:bg-amber-700 transition-colors disabled:opacity-50 cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
-                >
-                  {cancelLoading ? (
-                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    'Force Cancel & Refund'
-                  )}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleExecuteCancel(true, false)}
+                    disabled={cancelLoading}
+                    className="flex-1 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 transition-colors disabled:opacity-50 cursor-pointer shadow-2xs text-center"
+                    title="Force cancel order status without issuing a wallet refund"
+                  >
+                    Force Cancel (No Refund)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleExecuteCancel(true, true)}
+                    disabled={cancelLoading}
+                    className="flex-1 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-amber-600 text-white hover:bg-amber-700 transition-colors disabled:opacity-50 cursor-pointer shadow-xs text-center"
+                  >
+                    Force Cancel & Refund
+                  </button>
+                </>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => handleExecuteCancel(false)}
-                  disabled={cancelLoading}
-                  className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold bg-rose-600 text-white hover:bg-rose-700 transition-colors disabled:opacity-50 cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
-                >
-                  {cancelLoading ? (
-                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    'Cancel & Refund'
-                  )}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleExecuteCancel(false, false)}
+                    disabled={cancelLoading}
+                    className="flex-1 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-slate-50 text-slate-700 border border-slate-300 hover:bg-slate-100 transition-colors disabled:opacity-50 cursor-pointer shadow-2xs text-center"
+                    title="Cancel order status without refunding customer wallet"
+                  >
+                    Cancel (No Refund)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleExecuteCancel(false, true)}
+                    disabled={cancelLoading}
+                    className="flex-1 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-rose-600 text-white hover:bg-rose-700 transition-colors disabled:opacity-50 cursor-pointer shadow-xs text-center"
+                    title="Cancel order status and refund 100% to customer wallet"
+                  >
+                    Cancel & Refund
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -1363,6 +1748,153 @@ export default function AdminOrdersPage() {
           </div>
         </div>
       )}
+
+      {/* OTP Cancel & Refund Modal */}
+      {otpCancelModalOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl p-6 w-full max-w-md">
+            <div className="w-12 h-12 rounded-2xl bg-rose-100 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-black text-slate-900 text-center mb-1">Cancel Virtual Number</h3>
+            <p className="text-slate-500 text-xs text-center mb-5 leading-relaxed">
+              Order <strong className="text-slate-900 font-mono">#{otpCancelModalOrder.id.slice(0, 8).toUpperCase()}</strong> for {otpCancelModalOrder.service_name} ({otpCancelModalOrder.phone_number}).
+            </p>
+
+            {/* Upstream Warning */}
+            {otpUpstreamErrorWarning && (
+              <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-left space-y-1">
+                <p className="text-xs font-bold text-amber-800 flex items-center gap-1">
+                  <svg className="w-4 h-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  Provider Notice
+                </p>
+                <p className="text-[11px] text-amber-700 leading-relaxed">
+                  {otpUpstreamErrorWarning}
+                </p>
+              </div>
+            )}
+
+            {/* Details Box */}
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 mb-5 space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Service:</span>
+                <span className="font-semibold text-slate-800">{otpCancelModalOrder.service_name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Phone:</span>
+                <span className="font-mono text-slate-800 font-semibold">{otpCancelModalOrder.phone_number}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Customer:</span>
+                <span className="text-slate-800 truncate max-w-48">{otpCancelModalOrder.user_email || 'User'}</span>
+              </div>
+              <div className="flex justify-between border-t border-slate-200/70 pt-2">
+                <span className="text-slate-500 font-bold">Refund to Wallet:</span>
+                <span className="font-mono font-black text-rose-600">₦{parseFloat(String(otpCancelModalOrder.user_charge || 0)).toLocaleString()}</span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row gap-2.5">
+              <button
+                type="button"
+                onClick={() => setOtpCancelModalOrder(null)}
+                disabled={otpCancelLoading}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer text-center"
+              >
+                Keep Active
+              </button>
+
+              {otpUpstreamErrorWarning ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleExecuteOtpCancel(true, false)}
+                    disabled={otpCancelLoading}
+                    className="flex-1 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100 transition-colors disabled:opacity-50 cursor-pointer shadow-2xs text-center"
+                    title="Force cancel without issuing a refund"
+                  >
+                    Force Cancel (No Refund)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleExecuteOtpCancel(true, true)}
+                    disabled={otpCancelLoading}
+                    className="flex-1 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-amber-600 text-white hover:bg-amber-700 transition-colors disabled:opacity-50 cursor-pointer shadow-xs text-center"
+                  >
+                    Force Cancel & Refund
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleExecuteOtpCancel(false, false)}
+                    disabled={otpCancelLoading}
+                    className="flex-1 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-slate-50 text-slate-700 border border-slate-300 hover:bg-slate-100 transition-colors disabled:opacity-50 cursor-pointer shadow-2xs text-center"
+                    title="Cancel virtual number without refunding wallet"
+                  >
+                    Cancel (No Refund)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleExecuteOtpCancel(false, true)}
+                    disabled={otpCancelLoading}
+                    className="flex-1 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-rose-600 text-white hover:bg-rose-700 transition-colors disabled:opacity-50 cursor-pointer shadow-xs text-center"
+                    title="Cancel virtual number and refund 100% to wallet"
+                  >
+                    Cancel & Refund
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* OTP Delete Confirmation Modal */}
+      {otpDeleteConfirm !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl p-6 w-full max-w-sm">
+            <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-black text-slate-900 text-center mb-2">Delete Virtual Number Order?</h3>
+            <p className="text-slate-500 text-xs text-center mb-6 leading-relaxed">
+              Are you sure you want to permanently delete order <strong className="text-slate-900 font-mono">#{otpDeleteConfirm.slice(0, 8).toUpperCase()}</strong>? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setOtpDeleteConfirm(null)}
+                disabled={otpDeleteLoading}
+                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDeleteOtpOrder(otpDeleteConfirm)}
+                disabled={otpDeleteLoading}
+                className="flex-1 px-4 py-2.5 rounded-xl text-xs font-bold bg-red-600 text-white hover:bg-red-700 transition-colors disabled:opacity-50 cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+              >
+                {otpDeleteLoading ? (
+                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  'Delete Record'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

@@ -396,8 +396,8 @@ export const adminApi = {
     api(`/admin/analytics/?days=${days}`, { token }),
 
   // Order management actions
-  cancelRefundOrders: (orderIds: string[], token: string, force: boolean = false) =>
-    api('/admin/orders/cancel-refund/', { method: 'POST', body: { order_ids: orderIds, force }, token }),
+  cancelRefundOrders: (orderIds: string[], token: string, force: boolean = false, refund: boolean = true) =>
+    api('/admin/orders/cancel-refund/', { method: 'POST', body: { order_ids: orderIds, force, refund }, token }),
 
   retryOrders: (orderIds: string[], token: string) =>
     api('/admin/orders/retry/', { method: 'POST', body: { order_ids: orderIds }, token }),
@@ -925,6 +925,26 @@ export const adminOtpApi = {
       };
     }>(`/admin/otp/orders/${qs.toString() ? `?${qs.toString()}` : ''}`, { token });
   },
+  syncOrder: (orderId: string, token: string) =>
+    api<{ status: string; message: string; order: OTPOrder; updated: boolean }>(
+      `/admin/otp/orders/${orderId}/sync/`,
+      { method: 'POST', token }
+    ),
+  cancelRefundOrder: (orderId: string, token: string, force: boolean = false, refund: boolean = true) =>
+    api<{ status: string; message: string; order: OTPOrder }>(
+      `/admin/otp/orders/${orderId}/cancel/`,
+      { method: 'POST', body: { force, refund } as any, token }
+    ),
+  completeOrder: (orderId: string, token: string, sms_code?: string) =>
+    api<{ status: string; message: string; order: OTPOrder }>(
+      `/admin/otp/orders/${orderId}/complete/`,
+      { method: 'POST', body: { sms_code } as any, token }
+    ),
+  deleteOrder: (orderId: string, token: string) =>
+    api<{ status: string; message: string }>(
+      `/admin/otp/orders/${orderId}/delete/`,
+      { method: 'DELETE', token }
+    ),
 };
 
 
