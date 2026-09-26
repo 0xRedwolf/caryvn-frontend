@@ -252,22 +252,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const result = await authApi.login({ login: loginIdentifier, password });
 
-      if (result.data) {
+      if (result.data && (result.status === 200 || result.status === 201)) {
         const data = result.data as { user: User; tokens: { access: string; refresh: string } };
-        setUser(data.user);
-        setToken(data.tokens.access);
-        setRefreshToken(data.tokens.refresh);
-        setSessionExpired(false);
-        localStorage.setItem(TOKEN_KEY, data.tokens.access);
-        localStorage.setItem(REFRESH_KEY, data.tokens.refresh);
-        // Start timer fresh on every login
-        startRefreshTimer();
-        return { success: true };
+        if (data.tokens?.access) {
+          setUser(data.user);
+          setToken(data.tokens.access);
+          setRefreshToken(data.tokens.refresh);
+          setSessionExpired(false);
+          localStorage.setItem(TOKEN_KEY, data.tokens.access);
+          localStorage.setItem(REFRESH_KEY, data.tokens.refresh);
+          // Start timer fresh on every login
+          startRefreshTimer();
+          return { success: true };
+        }
       }
 
       return { success: false, error: result.error || 'Login failed' };
-    } catch {
-      return { success: false, error: 'Network error' };
+    } catch (err) {
+      console.error('Login error:', err);
+      return { success: false, error: 'Network error. Please try again.' };
     }
   };
 
@@ -275,21 +278,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const result = await authApi.register(data);
 
-      if (result.data) {
+      if (result.data && (result.status === 200 || result.status === 201)) {
         const responseData = result.data as { user: User; tokens: { access: string; refresh: string } };
-        setUser(responseData.user);
-        setToken(responseData.tokens.access);
-        setRefreshToken(responseData.tokens.refresh);
-        setSessionExpired(false);
-        localStorage.setItem(TOKEN_KEY, responseData.tokens.access);
-        localStorage.setItem(REFRESH_KEY, responseData.tokens.refresh);
-        startRefreshTimer();
-        return { success: true };
+        if (responseData.tokens?.access) {
+          setUser(responseData.user);
+          setToken(responseData.tokens.access);
+          setRefreshToken(responseData.tokens.refresh);
+          setSessionExpired(false);
+          localStorage.setItem(TOKEN_KEY, responseData.tokens.access);
+          localStorage.setItem(REFRESH_KEY, responseData.tokens.refresh);
+          startRefreshTimer();
+          return { success: true };
+        }
       }
 
       return { success: false, error: result.error || 'Registration failed' };
-    } catch {
-      return { success: false, error: 'Network error' };
+    } catch (err) {
+      console.error('Registration error:', err);
+      return { success: false, error: 'Network error. Please try again.' };
     }
   };
 

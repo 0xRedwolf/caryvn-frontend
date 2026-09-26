@@ -124,7 +124,6 @@ export async function api<T = unknown>(
         }
       }
       return {
-        data,
         error: errorMessage || 'An error occurred',
         status: response.status,
       };
