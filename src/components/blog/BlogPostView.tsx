@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import BlogContentRenderer from './BlogContentRenderer';
 
 interface FAQ {
   q: string;
@@ -253,8 +254,9 @@ export default function BlogPostView({ post }: BlogPostViewProps) {
             <div
               id="article-content-body"
               className="article-content bg-white p-8 sm:p-12 rounded-3xl border border-slate-200 shadow-xs"
-              dangerouslySetInnerHTML={{ __html: post.content }}
-            />
+            >
+              <BlogContentRenderer content={post.content} />
+            </div>
 
             {/* Google Schema.org Interactive FAQ Accordion */}
             {post.faqs && post.faqs.length > 0 && (

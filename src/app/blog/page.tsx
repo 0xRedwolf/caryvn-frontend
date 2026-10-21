@@ -7,113 +7,18 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { blogApi, BlogPostItem, BlogCategory } from '@/lib/api';
 
-// Fallback articles to guarantee the page always renders even if offline or before seeding
-const fallbackPosts: BlogPostItem[] = [
-  {
-    id: '1',
-    title: 'Top 10 Best SMM Panels for Instagram, TikTok & YouTube in 2026',
-    slug: 'top-10-best-smm-panels-2026',
-    excerpt: 'Master the latest algorithms and market trends to skyrocket your reach. We review CaryVN, JAP, and other top SMM Panels based on speed, affordability, and quality.',
-    featured_image: '/blog-hero.png',
-    author_name: 'Alexander Sterling',
-    category_name: 'Tools',
-    category_slug: 'tools',
-    status: 'PUBLISHED',
-    featured: true,
-    read_time: '8 min read',
-    views_count: 3420,
-    published_at: '2026-03-09T00:00:00Z',
-    created_at: '2026-03-09T00:00:00Z',
-  },
-  {
-    id: '2',
-    title: 'Best Social Media Management Tools for Agencies and Freelancers',
-    slug: 'best-smm-tools-2026',
-    excerpt: 'Discover the top social media management tools for 2026 and how to combine distribution software with engagement engines for maximum results.',
-    featured_image: '/cat-tools.png',
-    author_name: 'Alexander Sterling',
-    category_name: 'Tools',
-    category_slug: 'tools',
-    status: 'PUBLISHED',
-    featured: false,
-    read_time: '7 min read',
-    views_count: 1980,
-    published_at: '2026-03-09T00:00:00Z',
-    created_at: '2026-03-09T00:00:00Z',
-  },
-  {
-    id: '3',
-    title: 'Which Social Media Platform is Best for My Business?',
-    slug: 'best-platform-for-business',
-    excerpt: 'Discover how to choose the right social media platform for your business in 2026 based on demographic data, user intent, and platform-specific metrics.',
-    featured_image: '/cat-strategy.png',
-    author_name: 'Alexander Sterling',
-    category_name: 'Strategy',
-    category_slug: 'strategy',
-    status: 'PUBLISHED',
-    featured: false,
-    read_time: '6 min read',
-    views_count: 2150,
-    published_at: '2026-03-09T00:00:00Z',
-    created_at: '2026-03-09T00:00:00Z',
-  },
-  {
-    id: '4',
-    title: 'How to Increase Engagement on Underperforming Posts',
-    slug: 'increase-engagement-2026',
-    excerpt: 'Learn how to revive underperforming social media posts using psychological hook frameworks, Social SEO tweaks, and strategic SMM panel boosts.',
-    featured_image: '/cat-strategy.png',
-    author_name: 'Alexander Sterling',
-    category_name: 'Strategy',
-    category_slug: 'strategy',
-    status: 'PUBLISHED',
-    featured: false,
-    read_time: '5 min read',
-    views_count: 1420,
-    published_at: '2026-03-09T00:00:00Z',
-    created_at: '2026-03-09T00:00:00Z',
-  },
-  {
-    id: '5',
-    title: 'Top Social Media Marketing Trends to Watch in 2026',
-    slug: 'social-media-trends-2026',
-    excerpt: 'Explore the most critical social media marketing trends of 2026, from AI-driven authenticity to the rise of social search and short-form video evolution.',
-    featured_image: '/cat-trends.png',
-    author_name: 'Alexander Sterling',
-    category_name: 'Trends',
-    category_slug: 'trends',
-    status: 'PUBLISHED',
-    featured: false,
-    read_time: '8 min read',
-    views_count: 2890,
-    published_at: '2026-03-09T00:00:00Z',
-    created_at: '2026-03-09T00:00:00Z',
-  },
-  {
-    id: '6',
-    title: 'How to Beat the Social Media Algorithm (Instagram, TikTok, LinkedIn)',
-    slug: 'beat-social-media-algorithm-2026',
-    excerpt: 'Learn the underlying mechanics of the Interest Graph and how to trigger viral distribution on Instagram, TikTok, and LinkedIn in 2026.',
-    featured_image: '/cat-strategy.png',
-    author_name: 'Alexander Sterling',
-    category_name: 'Strategy',
-    category_slug: 'strategy',
-    status: 'PUBLISHED',
-    featured: false,
-    read_time: '9 min read',
-    views_count: 4120,
-    published_at: '2026-03-09T00:00:00Z',
-    created_at: '2026-03-09T00:00:00Z',
-  },
-];
-
 export default function BlogPage() {
-  const [posts, setPosts] = useState<BlogPostItem[]>(fallbackPosts);
+  const [posts, setPosts] = useState<BlogPostItem[]>([]);
   const [categories, setCategories] = useState<BlogCategory[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(6);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
+
+  useEffect(() => {
+    setVisibleCount(6);
+  }, [selectedCategory, searchQuery]);
 
   useEffect(() => {
     const loadDynamicData = async () => {
@@ -126,15 +31,20 @@ export default function BlogPage() {
 
         if (postsRes.data) {
           const fetched = Array.isArray(postsRes.data) ? postsRes.data : postsRes.data.results || [];
-          if (fetched.length > 0) {
-            setPosts(fetched);
-          }
+          setPosts(fetched);
+          setFetchError(false);
+        } else {
+          setPosts([]);
+          setFetchError(true);
         }
-        if (catRes.data && catRes.data.length > 0) {
+
+        if (catRes.data && Array.isArray(catRes.data)) {
           setCategories(catRes.data);
         }
       } catch (err) {
-        console.error('Failed to load dynamic blog posts, using fallback:', err);
+        console.error('Failed to load dynamic blog posts:', err);
+        setPosts([]);
+        setFetchError(true);
       } finally {
         setLoading(false);
       }
@@ -145,12 +55,14 @@ export default function BlogPage() {
 
   // Featured post for the top hero card
   const featuredPost = useMemo(() => {
-    return posts.find((p) => p.featured) || posts[0] || fallbackPosts[0];
+    if (posts.length === 0) return null;
+    return posts.find((p) => p.featured) || posts[0] || null;
   }, [posts]);
 
   // Filtered remaining articles (excluding the featured one)
   const remainingPosts = useMemo(() => {
-    return posts.filter((p) => p.id !== featuredPost?.id);
+    if (!featuredPost) return [];
+    return posts.filter((p) => p.id !== featuredPost.id);
   }, [posts, featuredPost]);
 
   const displayedPosts = remainingPosts.slice(0, visibleCount);
@@ -221,7 +133,7 @@ export default function BlogPage() {
                   href={`/blog/${featuredPost.slug}`}
                   className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-primary text-white text-xs font-black hover:bg-primary-hover transition-all shadow-md shadow-primary/20"
                 >
-                  <span>Read Full Article</span>
+                  <span>Read</span>
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                   </svg>
@@ -287,21 +199,32 @@ export default function BlogPage() {
                 <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
                 <p className="text-xs text-slate-500 font-medium">Fetching articles...</p>
               </div>
-            ) : displayedPosts.length === 0 ? (
+            ) : fetchError && posts.length === 0 ? (
               <div className="p-12 text-center bg-white rounded-3xl border border-slate-200 shadow-xs">
-                <p className="text-sm font-bold text-slate-700">No articles matched your criteria.</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedCategory('all');
-                    setSearchQuery('');
-                  }}
-                  className="mt-3 px-4 py-1.5 bg-slate-100 text-xs font-bold rounded-xl text-slate-600 hover:bg-slate-200 cursor-pointer"
-                >
-                  Clear Filters
-                </button>
+                <p className="text-sm font-bold text-slate-700">Blog posts are temporarily unavailable.</p>
+                <p className="text-xs text-slate-500 mt-1">Please try again shortly.</p>
               </div>
-            ) : (
+            ) : posts.length === 0 ? (
+              <div className="p-12 text-center bg-white rounded-3xl border border-slate-200 shadow-xs">
+                <p className="text-sm font-bold text-slate-700">
+                  {searchQuery || selectedCategory !== 'all'
+                    ? 'No articles matched your criteria.'
+                    : 'No articles published yet.'}
+                </p>
+                {(searchQuery || selectedCategory !== 'all') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategory('all');
+                      setSearchQuery('');
+                    }}
+                    className="mt-3 px-4 py-1.5 bg-slate-100 text-xs font-bold rounded-xl text-slate-600 hover:bg-slate-200 cursor-pointer"
+                  >
+                    Clear Filters
+                  </button>
+                )}
+              </div>
+            ) : displayedPosts.length === 0 ? null : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {displayedPosts.map((post) => (
                   <article

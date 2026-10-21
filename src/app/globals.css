@@ -843,3 +843,23 @@ html.light .bg-blue-600 {
     margin-bottom: 1.25rem;
   }
 }
+
+/* =============================================================================
+   Blog Rich Media Components Styling
+   ============================================================================= */
+.blog-rich-content {
+  width: 100%;
+}
+
+.article-content figure.blog-image {
+  margin: 2rem 0;
+}
+
+.article-content .blog-gallery {
+  margin: 2.5rem 0;
+}
+
+.article-content .blog-video {
+  margin: 2.5rem 0;
+}
+

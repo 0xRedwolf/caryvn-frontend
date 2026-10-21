@@ -3,10 +3,55 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Image as ImageIcon, LayoutGrid, Video, Eye } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { adminBlogApi, BlogAuthor, BlogCategory, BlogPostDetail } from '@/lib/api';
 import CustomSelect from '@/components/CustomSelect';
+import BlogContentRenderer from '@/components/blog/BlogContentRenderer';
+import InsertImageModal from './InsertImageModal';
+import InsertGalleryModal from './InsertGalleryModal';
+import InsertVideoModal from './InsertVideoModal';
+
+// Smart auto-resizing textarea that expands height as text grows
+function AutoResizeTextarea({
+  value,
+  onChange,
+  placeholder,
+  className = '',
+  rows = 2,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  placeholder?: string;
+  className?: string;
+  rows?: number;
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = 'auto';
+      el.style.height = `${Math.max(el.scrollHeight, 40)}px`;
+    }
+  }, [value]);
+
+  return (
+    <textarea
+      ref={textareaRef}
+      value={value}
+      onChange={(e) => {
+        onChange(e.target.value);
+        const el = e.target;
+        el.style.height = 'auto';
+        el.style.height = `${Math.max(el.scrollHeight, 40)}px`;
+      }}
+      placeholder={placeholder}
+      className={`${className} resize-none overflow-hidden`}
+      rows={rows}
+    />
+  );
+}
 
 interface BlogArticleFormProps {
   initialPost?: BlogPostDetail;
@@ -36,6 +81,7 @@ export default function BlogArticleForm({ initialPost, isEditing = false }: Blog
   const [status, setStatus] = useState<'DRAFT' | 'PUBLISHED'>(initialPost?.status || 'PUBLISHED');
   const [featured, setFeatured] = useState(initialPost?.featured || false);
   const [readTime, setReadTime] = useState(initialPost?.read_time || '5 min read');
+  const [viewsCount, setViewsCount] = useState<number>(initialPost?.views_count ?? 0);
 
   // SEO & Meta
   const [seoTitle, setSeoTitle] = useState(initialPost?.seo_title || '');
@@ -63,6 +109,11 @@ export default function BlogArticleForm({ initialPost, isEditing = false }: Blog
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Rich Media Modals State
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [isGalleryModalOpen, setIsGalleryModalOpen] = useState(false);
+  const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
 
   // Load Authors and Categories
   useEffect(() => {
@@ -184,6 +235,25 @@ export default function BlogArticleForm({ initialPost, isEditing = false }: Blog
     }, 10);
   };
 
+  // Insert Rich Block at Cursor Position
+  const insertContentBlock = (blockHtml: string) => {
+    const textarea = document.getElementById('blog-content-area') as HTMLTextAreaElement | null;
+    const formattedBlock = `\n\n${blockHtml.trim()}\n\n`;
+    if (!textarea) {
+      setContent((prev) => prev + formattedBlock);
+      return;
+    }
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const newContent = content.substring(0, start) + formattedBlock + content.substring(end);
+    setContent(newContent);
+    setTimeout(() => {
+      textarea.focus();
+      const pos = start + formattedBlock.length;
+      textarea.setSelectionRange(pos, pos);
+    }, 10);
+  };
+
   // Smart Clean & Spacing Formatter
   const handleCleanFormatContent = () => {
     if (!content.trim()) return;
@@ -237,6 +307,7 @@ export default function BlogArticleForm({ initialPost, isEditing = false }: Blog
       status,
       featured,
       read_time: readTime,
+      views_count: viewsCount,
       seo_title: seoTitle.trim() || title.trim(),
       seo_description: seoDescription.trim() || excerpt.trim(),
       canonical_url: canonicalUrl.trim() || null,
@@ -390,12 +461,12 @@ export default function BlogArticleForm({ initialPost, isEditing = false }: Blog
               <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
                 Excerpt / Summary
               </label>
-              <textarea
+              <AutoResizeTextarea
                 value={excerpt}
-                onChange={(e) => setExcerpt(e.target.value)}
-                rows={2}
+                onChange={(val) => setExcerpt(val)}
                 placeholder="Short 2-sentence summary that appears on cards and search result snippets..."
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-xs text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                rows={2}
               />
             </div>
           </div>
@@ -490,91 +561,134 @@ export default function BlogArticleForm({ initialPost, isEditing = false }: Blog
           {/* Rich Content Editor */}
           <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
             {/* Editor Toolbar & Tabs */}
-            <div className="border-b border-slate-200 bg-slate-50/80 px-4 py-3 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('write')}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                    activeTab === 'write'
-                      ? 'bg-primary text-white shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  Write Content
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('preview')}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                    activeTab === 'preview'
-                      ? 'bg-primary text-white shadow-xs'
-                      : 'text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  Preview Layout
-                </button>
+            <div className="border-b border-slate-200 bg-slate-50/80">
+              {/* Row 1: Mode Switcher Tabs + Status */}
+              <div className="px-4 py-2.5 flex items-center justify-between border-b border-slate-200/60">
+                <div className="flex items-center gap-1 bg-slate-200/70 p-1 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('write')}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
+                      activeTab === 'write'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Write Content
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('preview')}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all cursor-pointer ${
+                      activeTab === 'preview'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Preview Layout
+                  </button>
+                </div>
+
+                <div className="text-[11px] font-mono text-slate-400 hidden sm:block">
+                  {activeTab === 'write' ? 'Markdown & HTML Editor' : 'Live Interactive Preview'}
+                </div>
               </div>
 
+              {/* Row 2: Formatting & Rich Media Action Toolbar (Never Cut Off) */}
               {activeTab === 'write' && (
-                <div className="flex items-center gap-1 text-slate-600">
-                  <button
-                    type="button"
-                    onClick={() => insertFormatting('<h3><strong>', '</strong></h3>\n')}
-                    className="p-1.5 rounded-md hover:bg-slate-200 text-xs font-bold"
-                    title="Heading 3"
-                  >
-                    H3
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertFormatting('<strong>', '</strong>')}
-                    className="p-1.5 rounded-md hover:bg-slate-200 text-xs font-bold"
-                    title="Bold"
-                  >
-                    B
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertFormatting('<em>', '</em>')}
-                    className="p-1.5 rounded-md hover:bg-slate-200 text-xs italic font-serif"
-                    title="Italic"
-                  >
-                    I
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertFormatting('<ul>\n  <li>', '</li>\n</ul>\n')}
-                    className="p-1.5 rounded-md hover:bg-slate-200 text-xs"
-                    title="Bullet List"
-                  >
-                    • List
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertFormatting('<a href="https://..." class="text-primary hover:underline">', '</a>')}
-                    className="p-1.5 rounded-md hover:bg-slate-200 text-xs"
-                    title="Insert Link"
-                  >
-                    Link
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => insertFormatting('<br />\n')}
-                    className="p-1.5 rounded-md hover:bg-slate-200 text-xs"
-                    title="Line Break"
-                  >
-                    &lt;br&gt;
-                  </button>
-                  <div className="w-px h-4 bg-slate-300 mx-1 self-center" />
+                <div className="px-3.5 py-2 flex flex-wrap items-center gap-2 bg-white text-slate-700">
+                  {/* Typography Group */}
+                  <div className="flex items-center gap-0.5 bg-slate-100/90 p-1 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => insertFormatting('<h3><strong>', '</strong></h3>\n')}
+                      className="px-2 py-1 rounded-lg hover:bg-white hover:shadow-xs text-xs font-black text-slate-700 transition-all cursor-pointer"
+                      title="Heading 3 (<h3>)"
+                    >
+                      H3
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => insertFormatting('<strong>', '</strong>')}
+                      className="px-2 py-1 rounded-lg hover:bg-white hover:shadow-xs text-xs font-black text-slate-700 transition-all cursor-pointer"
+                      title="Bold (<strong>)"
+                    >
+                      B
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => insertFormatting('<em>', '</em>')}
+                      className="px-2 py-1 rounded-lg hover:bg-white hover:shadow-xs text-xs italic font-serif text-slate-700 transition-all cursor-pointer"
+                      title="Italic (<em>)"
+                    >
+                      I
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => insertFormatting('<ul>\n  <li>', '</li>\n</ul>\n')}
+                      className="px-2 py-1 rounded-lg hover:bg-white hover:shadow-xs text-xs font-bold text-slate-700 transition-all cursor-pointer"
+                      title="Bullet List (<ul>)"
+                    >
+                      • List
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => insertFormatting('<a href="https://..." class="text-primary hover:underline">', '</a>')}
+                      className="px-2 py-1 rounded-lg hover:bg-white hover:shadow-xs text-xs font-bold text-slate-700 transition-all cursor-pointer"
+                      title="Insert Hyperlink"
+                    >
+                      Link
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => insertFormatting('<br />\n')}
+                      className="px-2 py-1 rounded-lg hover:bg-white hover:shadow-xs text-xs font-bold text-slate-700 transition-all cursor-pointer"
+                      title="Line Break (<br />)"
+                    >
+                      &lt;br&gt;
+                    </button>
+                  </div>
+
+                  {/* Rich Media Group */}
+                  <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-xl">
+                    <button
+                      type="button"
+                      onClick={() => setIsImageModalOpen(true)}
+                      className="px-2.5 py-1 rounded-lg bg-white text-primary shadow-xs hover:bg-blue-50 text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer border border-blue-200/50"
+                      title="Insert Single Image (Cloudinary Upload)"
+                    >
+                      <ImageIcon className="w-3.5 h-3.5" />
+                      <span>Image</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsGalleryModalOpen(true)}
+                      className="px-2.5 py-1 rounded-lg bg-white text-purple-700 shadow-xs hover:bg-purple-50 text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer border border-purple-200/50"
+                      title="Insert Swipeable Photo Gallery (2-6 Photos)"
+                    >
+                      <LayoutGrid className="w-3.5 h-3.5" />
+                      <span>Gallery</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsVideoModalOpen(true)}
+                      className="px-2.5 py-1 rounded-lg bg-white text-red-600 shadow-xs hover:bg-red-50 text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer border border-red-200/50"
+                      title="Insert YouTube Video Embed"
+                    >
+                      <Video className="w-3.5 h-3.5" />
+                      <span>Video</span>
+                    </button>
+                  </div>
+
+                  {/* Auto-Format Button */}
                   <button
                     type="button"
                     onClick={handleCleanFormatContent}
-                    className="px-2.5 py-1 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                    className="ml-auto px-2.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-black flex items-center gap-1.5 transition-colors cursor-pointer border border-indigo-200/50"
                     title="Clean Inline Styles & Auto-Format Paragraphs"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
-                    Auto-Format Spacing
+                    <span>Magic Format</span>
                   </button>
                 </div>
               )}
@@ -596,7 +710,11 @@ export default function BlogArticleForm({ initialPost, isEditing = false }: Blog
               />
             ) : (
               <div className="p-8 max-w-none article-content min-h-95">
-                <div dangerouslySetInnerHTML={{ __html: content || '<p className="text-slate-400">Nothing to preview yet.</p>' }} />
+                {content.trim() ? (
+                  <BlogContentRenderer content={content} />
+                ) : (
+                  <p className="text-slate-400 text-sm italic">Nothing to preview yet. Start typing your article above.</p>
+                )}
               </div>
             )}
 
@@ -656,15 +774,15 @@ export default function BlogArticleForm({ initialPost, isEditing = false }: Blog
                       value={faq.q}
                       onChange={(e) => handleUpdateFaq(idx, 'q', e.target.value)}
                       placeholder="e.g. Can SMM panels help small businesses grow?"
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-900 placeholder:text-slate-400 outline-none"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:ring-1 focus:ring-primary focus:border-primary"
                     />
 
-                    <textarea
+                    <AutoResizeTextarea
                       value={faq.a}
-                      onChange={(e) => handleUpdateFaq(idx, 'a', e.target.value)}
-                      rows={2}
+                      onChange={(val) => handleUpdateFaq(idx, 'a', val)}
                       placeholder="e.g. Yes. Small businesses often use SMM panels to boost engagement..."
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-700 placeholder:text-slate-400 outline-none"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-700 placeholder:text-slate-400 outline-none focus:ring-1 focus:ring-primary focus:border-primary leading-relaxed"
+                      rows={2}
                     />
                   </div>
                 ))}
@@ -714,6 +832,60 @@ export default function BlogArticleForm({ initialPost, isEditing = false }: Blog
                 sublabel: `/${c.slug}`,
               }))}
             />
+
+            {/* View Count Modifier */}
+            <div className="pt-2 border-t border-slate-100 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                  Views Count
+                </label>
+                <span className="text-[10px] text-slate-400 font-medium">
+                  Auto-increments with readers
+                </span>
+              </div>
+              <div className="relative">
+                <input
+                  type="number"
+                  min={0}
+                  value={viewsCount}
+                  onChange={(e) => setViewsCount(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                  className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  placeholder="0"
+                />
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                  <Eye className="w-3.5 h-3.5" />
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-slate-400">Quick adjust:</span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => setViewsCount((prev) => prev + 250)}
+                    className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold transition-colors cursor-pointer"
+                  >
+                    +250
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewsCount((prev) => prev + 500)}
+                    className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold transition-colors cursor-pointer"
+                  >
+                    +500
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewsCount((prev) => prev + 1000)}
+                    className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-600 text-[10px] font-bold transition-colors cursor-pointer"
+                  >
+                    +1K
+                  </button>
+                </div>
+              </div>
+              <p className="text-[10px] text-slate-400 leading-tight">
+                Initial or adjusted views. Real visitors will automatically add to this count.
+              </p>
+            </div>
 
             <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
               <div>
@@ -862,6 +1034,30 @@ export default function BlogArticleForm({ initialPost, isEditing = false }: Blog
           </div>
         </div>
       </div>
+
+      {/* Rich Media Modals */}
+      {token && (
+        <>
+          <InsertImageModal
+            isOpen={isImageModalOpen}
+            onClose={() => setIsImageModalOpen(false)}
+            onInsert={insertContentBlock}
+            token={token}
+          />
+          <InsertGalleryModal
+            isOpen={isGalleryModalOpen}
+            onClose={() => setIsGalleryModalOpen(false)}
+            onInsert={insertContentBlock}
+            token={token}
+          />
+          <InsertVideoModal
+            isOpen={isVideoModalOpen}
+            onClose={() => setIsVideoModalOpen(false)}
+            onInsert={insertContentBlock}
+            token={token}
+          />
+        </>
+      )}
     </form>
   );
 }

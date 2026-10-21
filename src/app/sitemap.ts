@@ -19,17 +19,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://www.caryvn.com';
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
-  let allSlugs = [...defaultSlugs];
+  let allSlugs: string[] = [];
   try {
-    const res = await fetch(`${API_URL}/blog/`, { next: { revalidate: 3600 } });
-    if (res.ok) {
+    let nextUrl: string | null = `${API_URL}/blog/?page_size=50`;
+    let attempts = 0;
+    while (nextUrl && attempts < 20) {
+      attempts++;
+      const res: Response = await fetch(nextUrl, { next: { revalidate: 3600 } });
+      if (!res.ok) break;
       const data = await res.json();
       const results = Array.isArray(data) ? data : data.results || [];
       const fetchedSlugs = results.map((p: any) => p.slug).filter(Boolean);
-      allSlugs = Array.from(new Set([...defaultSlugs, ...fetchedSlugs]));
+      allSlugs.push(...fetchedSlugs);
+      nextUrl = Array.isArray(data) ? null : data.next;
     }
+    allSlugs = Array.from(new Set([...defaultSlugs, ...allSlugs]));
   } catch {
-    // Fallback to defaultSlugs
+    allSlugs = [...defaultSlugs];
   }
 
   const blogEntries: MetadataRoute.Sitemap = allSlugs.map((slug) => ({

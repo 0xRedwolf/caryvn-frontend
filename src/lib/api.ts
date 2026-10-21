@@ -777,6 +777,25 @@ export const adminBlogApi = {
       return { error: e.message || 'Image upload error' };
     }
   },
+  uploadVideo: async (file: File, token: string): Promise<{ url?: string; poster_url?: string; error?: string }> => {
+    try {
+      const formData = new FormData();
+      formData.append('video', file);
+      const res = await fetch(`${API_URL}/admin/blog/upload-video/`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return { error: err.error || 'Failed to upload video' };
+      }
+      const data = await res.json();
+      return { url: data.url, poster_url: data.poster_url };
+    } catch (e: any) {
+      return { error: e.message || 'Video upload error' };
+    }
+  },
   getAuthors: (token: string) =>
     api<BlogAuthor[]>('/admin/blog/authors/', { token }),
   createAuthor: (data: any, token: string) =>
