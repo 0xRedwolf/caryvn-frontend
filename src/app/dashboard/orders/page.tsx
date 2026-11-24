@@ -11,6 +11,7 @@ import OtpVerificationModal from '@/components/OtpVerificationModal';
 
 interface Order {
   id: string;
+  reseller_order_id?: number | null;
   service_name?: string | null;
   link?: string | null;
   quantity: number;
@@ -32,6 +33,8 @@ const smmStatusFilters = [
   { key: 'completed', label: 'Completed' },
   { key: 'partial', label: 'Partial' },
   { key: 'canceled', label: 'Canceled' },
+  { key: 'failed', label: 'Failed' },
+  { key: 'refunded', label: 'Refunded' },
 ];
 
 const otpStatusFilters = [
@@ -318,7 +321,8 @@ function OrdersContent() {
       (o) =>
         (o.service_name || '').toLowerCase().includes(q) ||
         (o.link || '').toLowerCase().includes(q) ||
-        String(o.id || '').toLowerCase().includes(q)
+        String(o.id || '').toLowerCase().includes(q) ||
+        (o.reseller_order_id && String(o.reseller_order_id).includes(q))
     );
   }, [orders, search]);
 
@@ -749,20 +753,20 @@ function OrdersContent() {
                       </div>
 
                       {/* Quantity & Charge */}
-                      <div className="text-right shrink-0 flex items-center gap-4">
-                        <div className="hidden sm:block">
+                      <div className="text-right shrink-0 flex items-center gap-3 sm:gap-4">
+                        <div className="text-right">
                           <p className="text-xs sm:text-sm font-black text-slate-900">{qty.toLocaleString()}</p>
                           <p className="text-[10px] font-bold text-slate-400 uppercase">Quantity</p>
                         </div>
-                        <div>
+                        <div className="text-right pl-3 border-l border-slate-100">
                           <p className="text-xs sm:text-sm font-black text-slate-900">{formatCurrency(order.charge || 0)}</p>
                           <p className="text-[10px] font-bold text-slate-400">{order.created_at ? formatDate(order.created_at) : '—'}</p>
                         </div>
                       </div>
                     </div>
 
-                    {/* Progress Bar (if in progress / partial) */}
-                    {showProgress && (
+                    {/* Progress Bar (if in progress / partial / processing) */}
+                    {['in_progress', 'processing', 'partial'].includes(statusLower) && (
                       <div className="mt-3.5 pt-3 border-t border-slate-100">
                         <div className="flex justify-between text-[11px] font-bold text-slate-600 mb-1.5">
                           <span className="flex items-center gap-1.5">
@@ -770,14 +774,20 @@ function OrdersContent() {
                             Delivery Progress
                           </span>
                           <span>
-                            {(delivered ?? 0).toLocaleString()} / {qty.toLocaleString()} ({Math.round(progress ?? 0)}%)
+                            {progress !== null
+                              ? `${(delivered ?? 0).toLocaleString()} / ${qty.toLocaleString()} (${Math.round(progress)}%)`
+                              : `Processing in Queue · ${qty.toLocaleString()} units`}
                           </span>
                         </div>
                         <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                          <div
-                            className="bg-primary h-2 rounded-full transition-all duration-500 ease-out"
-                            style={{ width: `${progress}%` }}
-                          />
+                          {progress !== null ? (
+                            <div
+                              className="bg-primary h-2 rounded-full transition-all duration-500 ease-out"
+                              style={{ width: `${progress}%` }}
+                            />
+                          ) : (
+                            <div className="bg-primary/50 h-2 rounded-full w-2/5 animate-pulse" />
+                          )}
                         </div>
                       </div>
                     )}
@@ -820,9 +830,39 @@ function OrdersContent() {
                           </span>
                         )}
 
-                        {statusLower === 'canceled' && (
+                        {(statusLower === 'canceled' || statusLower === 'cancelled') && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black bg-rose-50 text-rose-700 border border-rose-200/80">
                             <span>Canceled</span>
+                          </span>
+                        )}
+
+                        {statusLower === 'failed' && (
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black bg-rose-50 text-rose-700 border border-rose-200/80">
+                              <svg className="w-3.5 h-3.5 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                              <span>Failed</span>
+                            </span>
+                            <span className="text-[10px] font-semibold text-rose-600 bg-rose-50/70 border border-rose-100 px-2 py-0.5 rounded-md">
+                              Refunded to wallet
+                            </span>
+                          </div>
+                        )}
+
+                        {statusLower === 'refunded' && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black bg-purple-50 text-purple-700 border border-purple-200/80">
+                            <svg className="w-3.5 h-3.5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                            </svg>
+                            <span>Refunded</span>
+                          </span>
+                        )}
+
+                        {/* Fallback for any unexpected status */}
+                        {!['completed', 'in_progress', 'processing', 'pending', 'partial', 'canceled', 'cancelled', 'failed', 'refunded'].includes(statusLower) && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black bg-slate-100 text-slate-700 border border-slate-200 capitalize">
+                            <span>{statusLower.replace('_', ' ') || 'Unknown'}</span>
                           </span>
                         )}
 
@@ -832,11 +872,15 @@ function OrdersContent() {
                             Start: <strong className="text-slate-700">{Number(order.start_count).toLocaleString()}</strong>
                           </span>
                         )}
-                        {order.remains !== null && order.remains !== undefined && (
+                        {order.remains !== null && order.remains !== undefined ? (
                           <span className="text-[11px] text-slate-500 font-medium">
                             Remains: <strong className="text-slate-700">{Number(order.remains).toLocaleString()}</strong>
                           </span>
-                        )}
+                        ) : ['in_progress', 'processing'].includes(statusLower) ? (
+                          <span className="text-[11px] text-slate-400 font-medium">
+                            Remains: <span className="text-slate-500 italic">Syncing...</span>
+                          </span>
+                        ) : null}
                       </div>
 
                       {/* Refill Button */}
