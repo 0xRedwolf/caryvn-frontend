@@ -42,7 +42,7 @@ export default function SessionTimeoutModal() {
 
         {/* Message */}
         <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mb-6 max-w-sm mx-auto font-normal">
-          We signed you out after 5 minutes of inactivity to keep your account and funds secure. Please log in again to pick up where you left off.
+          We signed you out after 60 minutes of inactivity to keep your account and funds secure. Please log in again to pick up where you left off.
         </p>
 
         {/* Action Button */}

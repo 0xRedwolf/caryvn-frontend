@@ -37,8 +37,8 @@ const REFRESH_KEY = 'caryvn_refresh';
 // Refresh the access token 5 minutes before the 30-minute expiry
 const REFRESH_INTERVAL_MS = 25 * 60 * 1000; // 25 minutes
 
-// Sign out after 5 minutes of total user inactivity
-const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+// Sign out after 60 minutes of total user inactivity
+const INACTIVITY_TIMEOUT_MS = 60 * 60 * 1000; // 60 minutes
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Ref to hold the refresh timer so it can be cleared on logout/unmount
   const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Ref for the 5-minute inactivity timer
+  // Ref for the 60-minute inactivity timer
   const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Helpers ──────────────────────────────────────────────────────────────
