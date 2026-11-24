@@ -58,7 +58,7 @@ export default function BlogImage({ src, alt = '', caption, aspect }: BlogImageP
 
   if (!src) return null;
 
-  const { containerClass, imageClass, style } = getImageAspectStyles(aspect);
+  const { containerClass, imageClass } = getImageAspectStyles(aspect);
 
   return (
     <>
@@ -66,7 +66,6 @@ export default function BlogImage({ src, alt = '', caption, aspect }: BlogImageP
         <div
           onClick={() => setIsOpen(true)}
           className={`relative ${containerClass} w-full rounded-2xl overflow-hidden bg-slate-100 border border-slate-200/80 shadow-xs cursor-zoom-in transition-all duration-300 hover:shadow-lg hover:border-slate-300`}
-          style={style}
         >
           <Image
             src={src}
